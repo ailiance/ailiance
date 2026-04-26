@@ -87,7 +87,6 @@ class MLXWorkerRuntime:
             self._tokenizer,
             prompt=prompt,
             max_tokens=max_tokens,
-            temp=temperature,
         )
         return response, {"domain": self._active_domain}
 
