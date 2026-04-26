@@ -1,0 +1,25 @@
+model_path: /Users/clems/KIKI-Mac_tunner/models/Apertus-70B-Instruct-2509
+adapters_dir: output/adapters/apertus
+port: 9201
+precision: bf16
+domains:
+  - electronics-hw
+  - emc
+  - dsp
+  - spice
+  - kicad
+  - stm32
+  - platformio
+  - iot
+  - embedded
+  - math
+  - reasoning
+  - security
+  - music-audio
+  - freecad
+  - power
+  - misra-c
+  - autosar-cert
+  - doc-technique-ce
+  - calcul-normatif
+  - normes-iec

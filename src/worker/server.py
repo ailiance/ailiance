@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from prometheus_client import CollectorRegistry, Counter, Histogram, generate_latest
@@ -81,3 +82,22 @@ def make_worker_app(cfg: WorkerConfig, skip_model_load: bool = False) -> FastAPI
         )
 
     return app
+
+
+def _load_config_from_yaml(path: str) -> WorkerConfig:
+    import yaml
+
+    raw = yaml.safe_load(Path(path).read_text())
+    return WorkerConfig(**raw)
+
+
+def make_apertus_app() -> FastAPI:
+    return make_worker_app(_load_config_from_yaml("configs/apertus.yaml"))
+
+
+def make_devstral_app() -> FastAPI:
+    return make_worker_app(_load_config_from_yaml("configs/devstral.yaml"))
+
+
+def make_eurollm_app() -> FastAPI:
+    return make_worker_app(_load_config_from_yaml("configs/eurollm.yaml"))

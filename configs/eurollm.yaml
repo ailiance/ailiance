@@ -1,0 +1,9 @@
+model_path: /Users/clems/KIKI-Mac_tunner/models/EuroLLM-22B-Instruct-2512
+adapters_dir: output/adapters/eurollm
+port: 9203
+precision: bf16
+domains:
+  - chat-fr
+  - traduction-tech
+  - redaction-multilingue
+  - localisation-doc

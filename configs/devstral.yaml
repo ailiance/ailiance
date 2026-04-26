@@ -1,0 +1,21 @@
+model_path: /Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-Instruct-2512
+adapters_dir: output/adapters/devstral
+port: 9202
+precision: bf16
+domains:
+  - python
+  - rust
+  - typescript
+  - cpp
+  - shell
+  - html-css
+  - sql
+  - web-backend
+  - web-frontend
+  - docker
+  - devops
+  - yaml-json
+  - llm-ops
+  - llm-orch
+  - ml-training
+  - lua-upy
