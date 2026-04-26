@@ -6,11 +6,9 @@ Used by Apertus-70B (Swiss AI Initiative).
   x > 0:  f(x) = alpha_p * x^2 + beta * x
   x <= 0: f(x) = alpha_n * (exp(min(x, eps)) - 1 - x) + beta * x
 
-alpha_p and alpha_n are per-layer learnable parameters stored
-via softplus reparameterization.
+Apertus checkpoints store alpha_p, alpha_n, beta, eps as direct
+values (not softplus-reparameterized).
 """
-
-import math
 
 import mlx.core as mx
 import mlx.nn as nn
@@ -25,14 +23,12 @@ class XIELU(nn.Module):
         eps: float = -1e-6,
     ):
         super().__init__()
-        self.log_alpha_p = mx.array(math.log(math.exp(alpha_p_init) - 1))
-        self.log_alpha_n = mx.array(math.log(math.exp(alpha_n_init - beta) - 1))
-        self._beta = beta
-        self._eps = eps
+        self.alpha_p = mx.array(alpha_p_init)
+        self.alpha_n = mx.array(alpha_n_init)
+        self.beta = mx.array(beta)
+        self.eps = mx.array(eps)
 
     def __call__(self, x: mx.array) -> mx.array:
-        alpha_p = nn.softplus(self.log_alpha_p)
-        alpha_n = self._beta + nn.softplus(self.log_alpha_n)
-        pos = alpha_p * x * x + self._beta * x
-        neg = alpha_n * (mx.exp(mx.minimum(x, self._eps)) - 1.0 - x) + self._beta * x
+        pos = self.alpha_p * x * x + self.beta * x
+        neg = self.alpha_n * (mx.exp(mx.minimum(x, self.eps)) - 1.0 - x) + self.beta * x
         return mx.where(x > 0, pos, neg)

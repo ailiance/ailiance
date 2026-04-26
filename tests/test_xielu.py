@@ -13,7 +13,7 @@ def test_xielu_positive_quadratic():
     y = act(x)
     mx.eval(y)
 
-    alpha_p = float(nn.softplus(mx.array(math.log(math.exp(0.8) - 1))))
+    alpha_p = 0.8  # stored directly, not softplus
     expected = [alpha_p * v * v + 0.5 * v for v in [1.0, 2.0, 3.0]]
     for got, exp in zip(y.tolist(), expected):
         assert abs(got - exp) < 1e-4, f"{got} != {exp}"
@@ -44,13 +44,14 @@ def test_xielu_zero_continuous():
 
 
 def test_xielu_learnable_params():
-    """alpha_p and alpha_n should be nn.Module parameters"""
+    """alpha_p, alpha_n, beta, eps are stored as direct params (HF compat)"""
     from src.mlx_models.xielu import XIELU
 
     act = XIELU()
     params = act.parameters()
     flat = nn.utils.tree_flatten(params)
     param_names = [name for name, _ in flat]
-    assert "log_alpha_p" in param_names
-    assert "log_alpha_n" in param_names
-    assert len([n for n, _ in flat]) == 2
+    assert "alpha_p" in param_names
+    assert "alpha_n" in param_names
+    assert "beta" in param_names
+    assert "eps" in param_names
