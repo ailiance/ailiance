@@ -1,0 +1,20 @@
+# configs/gateway.yaml
+router:
+  weights_dir: output/router
+  embedding_model: jinaai/jina-embeddings-v3
+  embedding_dim: 1024
+  hidden_dim: 512
+  num_domains: 40
+  threshold: 0.12
+  max_active: 4
+
+workers:
+  apertus:
+    url: http://localhost:9201
+    port: 9201
+  devstral:
+    url: http://localhost:9202
+    port: 9202
+  eurollm:
+    url: http://localhost:9203
+    port: 9203
