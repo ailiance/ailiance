@@ -17,15 +17,15 @@ from src.worker.schemas import ChatCompletionRequest
 log = logging.getLogger(__name__)
 
 WORKER_URLS = {
-    9201: "http://localhost:9201",
-    9202: "http://localhost:9202",
-    9203: "http://localhost:9203",
+    9301: "http://localhost:9301",
+    9302: "http://localhost:9302",
+    9303: "http://localhost:9303",
 }
 
 MODEL_FORCE_MAP = {
-    "eu-kiki-apertus": 9201,
-    "eu-kiki-devstral": 9202,
-    "eu-kiki-eurollm": 9203,
+    "eu-kiki-apertus": 9301,
+    "eu-kiki-devstral": 9302,
+    "eu-kiki-eurollm": 9303,
 }
 
 

@@ -76,12 +76,15 @@ class MLXWorkerRuntime:
 
     def generate(
         self,
-        prompt: str,
+        messages: list[dict],
         max_tokens: int = 2048,
         temperature: float = 0.7,
     ) -> tuple[str, dict]:
         from mlx_lm import generate as mlx_generate
 
+        prompt = self._tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True,
+        )
         response = mlx_generate(
             self._model,
             self._tokenizer,

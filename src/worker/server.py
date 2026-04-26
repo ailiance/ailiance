@@ -63,14 +63,11 @@ def make_worker_app(cfg: WorkerConfig, skip_model_load: bool = False) -> FastAPI
         )
 
         async with semaphore:
-            await asyncio.to_thread(runtime.apply, domain)
+            # MLX Metal requires GPU ops on main thread
+            runtime.apply(domain)
             t0 = time.perf_counter()
-            text, _meta = await asyncio.to_thread(
-                runtime.generate,
-                user_msg,
-                req.max_tokens,
-                req.temperature,
-            )
+            messages = [{"role": m.role, "content": m.content} for m in req.messages]
+            text, _meta = runtime.generate(messages, req.max_tokens, req.temperature)
             latency = time.perf_counter() - t0
 
         inference_latency.observe(latency)

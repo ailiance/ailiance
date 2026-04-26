@@ -1,14 +1,14 @@
 # src/router/domain_map.py
 """Static mapping of domains to worker ports.
 
-Apertus (:9201) — reasoning, hardware, EU normative
-Devstral (:9202) — code generation
-EuroLLM  (:9203) — multilingual EU
+Apertus (:9301) — reasoning, hardware, EU normative
+Devstral (:9302) — code generation
+EuroLLM  (:9303) — multilingual EU
 """
 
-APERTUS_PORT = 9201
-DEVSTRAL_PORT = 9202
-EUROLLM_PORT = 9203
+APERTUS_PORT = 9301
+DEVSTRAL_PORT = 9302
+EUROLLM_PORT = 9303
 
 APERTUS_DOMAINS = frozenset({
     "electronics-hw", "emc", "dsp", "spice", "kicad", "stm32",
