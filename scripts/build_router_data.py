@@ -18,8 +18,14 @@ def load_classified(directory: Path) -> list[dict]:
         with open(jsonl_file) as f:
             for line in f:
                 obj = json.loads(line)
+                # Support both formats: {prompt:...} and {messages:[{role,content}]}
                 prompt = obj.get("prompt") or obj.get("instruction", "")
-                if prompt.strip():
+                if not prompt and "messages" in obj:
+                    for msg in obj["messages"]:
+                        if msg.get("role") == "user":
+                            prompt = msg.get("content", "")
+                            break
+                if prompt and prompt.strip():
                     rows.append({"prompt": prompt.strip(), "domain": domain})
     return rows
 

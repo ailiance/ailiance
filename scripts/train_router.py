@@ -1,14 +1,48 @@
 # scripts/train_router.py
-"""Train Jina v3 + MLP domain router for eu-kiki."""
+"""Train Jina v3 + MLP domain router for eu-kiki.
+
+Uses native JinaEmbeddingsV3Model from transformers (not SentenceTransformer)
+to avoid custom code compatibility issues.
+"""
 
 import argparse
 import json
+import os
 from pathlib import Path
+
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 import torch
 import torch.nn as tnn
 from safetensors.torch import save_file
-from sentence_transformers import SentenceTransformer
+
+
+def _patch_jina_compat():
+    """Patch Jina v3 custom code for transformers 5.6+ compatibility.
+
+    Jina v3's XLMRobertaLoRA and XLMRobertaModel don't define
+    all_tied_weights_keys, which transformers 5.6+ expects.
+    """
+    import os
+    import glob
+    cache = os.path.expanduser("~/.cache/huggingface/modules/transformers_modules/jinaai")
+    for pattern in ["**/modeling_lora.py", "**/modeling_xlm_roberta.py"]:
+        for path in glob.glob(os.path.join(cache, pattern), recursive=True):
+            txt = open(path).read()
+            marker = "self.all_tied_weights_keys = {}"
+            if marker not in txt:
+                txt = txt.replace(
+                    "super().__init__(config)\n",
+                    f"super().__init__(config)\n        {marker}\n",
+                    1,
+                )
+                open(path, "w").write(txt)
+                # Clear pycache
+                pycache = os.path.join(os.path.dirname(path), "__pycache__")
+                if os.path.isdir(pycache):
+                    import shutil
+                    shutil.rmtree(pycache)
+                print(f"  Patched {os.path.basename(path)}")
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -25,23 +59,53 @@ def train(args):
     num_domains = len(all_domains)
     print(f"Domains: {num_domains}")
 
-    encoder = SentenceTransformer(args.embedding_model)
-    dim = encoder.get_sentence_embedding_dimension()
+    # Load Jina v3 natively (no SentenceTransformer — avoids multiprocessing crash)
+    _patch_jina_compat()
+    from transformers import AutoModel, AutoTokenizer
+    print(f"Loading {args.embedding_model}...")
+    jina_tok = AutoTokenizer.from_pretrained(args.embedding_model, trust_remote_code=True)
+    jina_model = AutoModel.from_pretrained(args.embedding_model, trust_remote_code=True)
+    jina_model.eval()
+
+    def _encode_batch(texts: list[str], batch_size: int = 32) -> torch.Tensor:
+        all_embs = []
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i : i + batch_size]
+            inputs = jina_tok(batch, padding=True, truncation=True,
+                              return_tensors="pt", max_length=512)
+            with torch.no_grad():
+                out = jina_model(**inputs)
+            mask = inputs["attention_mask"].unsqueeze(-1).float()
+            embs = (out.last_hidden_state * mask).sum(dim=1) / mask.sum(dim=1)
+            embs = torch.nn.functional.normalize(embs, p=2, dim=1)
+            all_embs.append(embs)
+            if i % (batch_size * 50) == 0:
+                print(f"  {i + len(batch)}/{len(texts)}")
+        return torch.cat(all_embs, dim=0)
+
+    # Detect embedding dim from a test encode
+    with torch.no_grad():
+        test_in = jina_tok(["test"], return_tensors="pt", truncation=True, max_length=512)
+        test_out = jina_model(**test_in)
+        dim = test_out.last_hidden_state.shape[-1]
     print(f"Embedding dim: {dim}")
 
     print("Encoding train...")
-    train_embs = encoder.encode([r["prompt"] for r in train_data], show_progress_bar=True,
-                                 convert_to_tensor=True, normalize_embeddings=True)
+    train_embs = _encode_batch([r["prompt"] for r in train_data])
     train_labels = torch.tensor([label_map[r["domain"]] for r in train_data])
 
     print("Encoding valid...")
-    valid_embs = encoder.encode([r["prompt"] for r in valid_data], show_progress_bar=True,
-                                 convert_to_tensor=True, normalize_embeddings=True)
+    valid_embs = _encode_batch([r["prompt"] for r in valid_data])
     valid_labels = torch.tensor([label_map[r["domain"]] for r in valid_data])
 
+    # Free encoder memory
+    del jina_model, jina_tok
+
+    # Class weights (inverse frequency, clamped)
     counts = torch.bincount(train_labels, minlength=num_domains).float()
     weights = (counts.sum() / (num_domains * counts.clamp(min=1))).clamp(max=10.0)
 
+    # MLP
     hidden = args.hidden_dim
     mlp = tnn.Sequential(
         tnn.Linear(dim, hidden), tnn.GELU(), tnn.Dropout(0.1),
@@ -55,7 +119,7 @@ def train(args):
         perm = torch.randperm(len(train_embs))
         total_loss = 0.0
         for i in range(0, len(perm), args.batch_size):
-            batch_idx = perm[i:i + args.batch_size]
+            batch_idx = perm[i : i + args.batch_size]
             logits = mlp(train_embs[batch_idx])
             loss = loss_fn(logits, train_labels[batch_idx])
             opt.zero_grad()
@@ -75,9 +139,11 @@ def train(args):
                     top3_hits += 1
             top3 = top3_hits / len(valid_labels)
 
-        avg_loss = total_loss / (len(perm) / args.batch_size)
+        n_batches = max(1, len(perm) / args.batch_size)
+        avg_loss = total_loss / n_batches
         print(f"epoch {epoch:>2d}  loss={avg_loss:.4f}  top1={top1:.3f}  top3={top3:.3f}")
 
+    # Save
     out = Path(args.output_dir)
     out.mkdir(parents=True, exist_ok=True)
     save_file(mlp.state_dict(), str(out / "router.safetensors"))
@@ -93,6 +159,7 @@ def train(args):
         "lr": args.lr,
     }
     (out / "meta.json").write_text(json.dumps(meta, indent=2))
+    (out / "label_map.json").write_text(json.dumps(label_map, indent=2))
     print(f"Saved to {out}")
 
 
