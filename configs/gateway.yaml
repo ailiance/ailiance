@@ -1,10 +1,10 @@
 # configs/gateway.yaml
 router:
   weights_dir: output/router
-  embedding_model: jinaai/jina-embeddings-v3
-  embedding_dim: 1024
-  hidden_dim: 512
-  num_domains: 40
+  embedding_model: sentence-transformers/all-MiniLM-L6-v2
+  embedding_dim: 384
+  hidden_dim: 256
+  num_domains: 32
   threshold: 0.12
   max_active: 4
 

@@ -74,7 +74,12 @@ class DomainRouter:
         self._encoder = SentenceTransformer(self._cfg.embedding_model)
         self._mlp = _build_mlp(self._cfg)
         state = load_file(str(weights_path))
-        self._mlp.load_state_dict(state)
+        # Remap keys: training saves "0.weight" but MLP expects "net.0.weight"
+        if any(k.startswith("net.") for k in state):
+            remapped = state
+        else:
+            remapped = {f"net.{k}": v for k, v in state.items()}
+        self._mlp.load_state_dict(remapped)
         self._mlp.eval()
         log.info("Router loaded: %d domains, %s encoder", len(self._domains), self._cfg.embedding_model)
 
@@ -83,6 +88,7 @@ class DomainRouter:
 
         with torch.no_grad():
             emb = self._encoder.encode(query, convert_to_tensor=True, normalize_embeddings=True)
+            emb = emb.cpu()  # MLP is on CPU
             scores = self._mlp(emb.unsqueeze(0)).squeeze(0)
 
         results = []
