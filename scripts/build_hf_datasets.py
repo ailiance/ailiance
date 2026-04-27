@@ -134,19 +134,51 @@ def convert_self_oss_instruct(
 ) -> list[dict]:
     """
     bigcode/self-oss-instruct-sc2-exec-filter-50k
-    Columns: instruction, response, lang (e.g. Python, Rust, …)
+    Columns: instruction, response, seed, concepts
+    No 'lang' column — dataset is mostly Python.
+    For non-Python: detect language from seed code content.
     """
     if isinstance(lang_filter, str):
         lang_filter = [lang_filter]
     lang_lower = [lf.lower() for lf in lang_filter]
 
+    # Language detection heuristics based on seed code
+    LANG_MARKERS = {
+        "python": ["def ", "import ", "print(", "class ", "self.", "elif "],
+        "rust": ["fn ", "let mut", "impl ", "pub fn", "use std::", "-> ", "println!"],
+        "typescript": ["const ", "interface ", "export ", ": string", ": number", "=>"],
+        "javascript": ["const ", "function ", "var ", "=>", "console.log"],
+        "c++": ["#include", "std::", "int main", "cout", "vector<", "nullptr"],
+        "cpp": ["#include", "std::", "int main", "cout", "vector<", "nullptr"],
+        "c": ["#include", "int main", "printf(", "malloc(", "void "],
+        "shell": ["#!/bin/bash", "echo ", "if [", "fi\n", "done\n", "export "],
+        "bash": ["#!/bin/bash", "echo ", "if [", "fi\n", "done\n"],
+        "sql": ["SELECT ", "FROM ", "WHERE ", "INSERT ", "CREATE TABLE"],
+        "html": ["<html", "<div", "<span", "<!DOCTYPE"],
+        "css": ["{color:", "margin:", "padding:", "display:"],
+    }
+
     records: list[dict] = []
     for row in hf_dataset:
-        lang = str(row.get("lang", "")).lower()
         instruction = str(row.get("instruction", ""))
         response = str(row.get("response", ""))
-        if lang in lang_lower and is_nonempty(instruction, response):
+        if not is_nonempty(instruction, response):
+            continue
+
+        # If filtering for "python" and lang_filter is just ["python"],
+        # take all rows (dataset is ~90% Python)
+        if lang_lower == ["python"]:
             records.append(make_message(instruction, response))
+            continue
+
+        # For other languages, check seed code for markers
+        seed = str(row.get("seed", ""))
+        for target_lang in lang_lower:
+            markers = LANG_MARKERS.get(target_lang, [])
+            if any(m in seed for m in markers):
+                records.append(make_message(instruction, response))
+                break
+
     return records
 
 
@@ -457,16 +489,15 @@ def build_math_reasoning() -> None:
 
 def build_rust_domain() -> None:
     """
-    Fortytwo-Network Strand-Rust dataset  — Open
-    191K peer-reviewed synthetic Rust training pairs.
-    Falls back to codeparrot/github-code filtered for Rust when unavailable.
+    gaianet/learn-rust — Open dataset for Rust instruction tuning.
+    Falls back to self-oss-instruct filtered for Rust-like seeds.
     """
-    PRIMARY_HF_ID = "Fortytwo-Network/Strand-Rust-Coder"
-    FALLBACK_HF_ID = "codeparrot/github-code"
+    PRIMARY_HF_ID = "gaianet/learn-rust"
+    FALLBACK_HF_ID = "bigcode/self-oss-instruct-sc2-exec-filter-50k"
     PRIMARY_LICENSE = "Open"
     FALLBACK_LICENSE = "Apache-2.0"
 
-    print(f"\n[rust-strand] Trying {PRIMARY_HF_ID} …")
+    print(f"\n[rust] Trying {PRIMARY_HF_ID} …")
     try:
         ds = load_dataset(PRIMARY_HF_ID, split="train")
         total = len(ds)
@@ -506,30 +537,25 @@ def build_rust_domain() -> None:
             ),
         )
     except Exception as exc:
-        print(f"  Primary failed ({exc}), falling back to {FALLBACK_HF_ID} …")
-        ds = load_dataset(
-            FALLBACK_HF_ID,
-            split="train",
-            streaming=True,
-        )
-        records = []
-        for row in ds:
-            if str(row.get("language", "")).lower() not in ("rust",):
-                continue
-            code = str(row.get("code", ""))
-            repo = str(row.get("repo_name", "unknown"))
-            if not code.strip():
-                continue
-            user = f"Show me a Rust code example from the repository `{repo}`."
-            assistant = code
-            records.append(make_message(user, assistant))
-            if len(records) >= MAX_PER_DOMAIN * 2:
-                break
-
+        print(f"  Primary failed ({exc}), using self-oss-instruct filtered for Rust …")
+        ds = load_dataset(FALLBACK_HF_ID, split="train")
+        records = convert_self_oss_instruct(ds, "rust", "rust")
         total = len(records)
-        print(f"  Rust rows collected from fallback: {total:,}")
+        print(f"  Rust rows from self-oss-instruct: {total:,}")
+        if total == 0:
+            print("  WARNING: No Rust rows found — creating domain with all code examples instead")
+            records = []
+            for row in ds:
+                instr = str(row.get("instruction", ""))
+                resp = str(row.get("response", ""))
+                seed = str(row.get("seed", ""))
+                if "rust" in seed.lower() or "fn " in seed or "let mut" in seed:
+                    if is_nonempty(instr, resp):
+                        records.append(make_message(instr, resp))
+            total = len(records)
+            print(f"  Rust rows (seed-filtered): {total:,}")
         capped = cap(records)
-        n_train, n_valid = save_domain("rust-strand", capped)
+        n_train, n_valid = save_domain("rust", capped)
         record_manifest(
             domain="rust-strand",
             hf_id=FALLBACK_HF_ID,
@@ -560,19 +586,9 @@ def build_security_domain() -> None:
 
     records: list[dict] = []
     for row in ds:
-        # Dataset columns vary; try common patterns
-        user = str(
-            row.get("instruction", "")
-            or row.get("prompt", "")
-            or row.get("question", "")
-            or row.get("input", "")
-        )
-        assistant = str(
-            row.get("output", "")
-            or row.get("response", "")
-            or row.get("answer", "")
-            or row.get("completion", "")
-        )
+        # Fenrir uses system/user/assistant columns
+        user = str(row.get("user", "") or row.get("instruction", "") or row.get("prompt", ""))
+        assistant = str(row.get("assistant", "") or row.get("output", "") or row.get("response", ""))
         if is_nonempty(user, assistant):
             records.append(make_message(user, assistant))
 
@@ -600,7 +616,15 @@ def build_misra_domain() -> None:
     LICENSE = "Research"
 
     print(f"\n[misra-certicoder] Loading {HF_ID} …")
-    ds = load_dataset(HF_ID, split="train")
+    try:
+        ds = load_dataset(HF_ID, split="train")
+    except Exception as e:
+        # CertiCoder has multiple configs, try "rule_tuning"
+        try:
+            ds = load_dataset(HF_ID, "rule_tuning", split="train")
+        except Exception:
+            print(f"  SKIP: could not load CertiCoder ({e})")
+            return
     total = len(ds)
     print(f"  rows: {total:,}")
 
