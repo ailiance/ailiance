@@ -93,9 +93,81 @@ EU-KIKI is a multi-model routing system that dispatches user queries to one of t
 
 ---
 
-## 4. Training Data for LoRA Adapters
+## 4. Training Data Sources (Updated)
 
-### 4.1 Source: KIKI-Mac_tunner classified dataset
+*Access date for all sources: 2026-04-27*
+
+### 4.1 Code Domain
+
+| Dataset | HF ID / Source URL | License | Size | Provenance / Origin | Domain |
+|---------|-------------------|---------|------|---------------------|--------|
+| StarCoder2 Self-Instruct | `bigcode/self-oss-instruct-sc2-exec-filter-50k` | Apache 2.0 | 50K pairs | StarCoder2 self-instruct pipeline; exec-filtered synthetic | python, rust, typescript, cpp, shell, sql, html-css |
+| Strand-Rust | `Fortytwo-Network` (HF org) | Open | 191K | Peer-reviewed synthetic Rust training corpus | rust |
+| GitHub Code | `codeparrot/github-code` | Apache 2.0 | Multi-lang | GitHub public repos with permissive licenses, filtered | rust (fallback), general code |
+
+### 4.2 Safety-Critical Domain
+
+| Dataset | HF ID / Source URL | License | Size | Provenance / Origin | Domain |
+|---------|-------------------|---------|------|---------------------|--------|
+| CertiCoder | `wuog/CertiCoder` | Research | 37.4K | MISRA C:2012-aware certified coding Q&A, synthetic | misra-c |
+| Cybersecurity Fenrir v2 | `AlicanKiraz0/Cybersecurity-Dataset-Fenrir-v2.0` | Apache 2.0 | 83.9K | OWASP / MITRE ATT&CK / NIST-aligned synthetic | security |
+
+### 4.3 Electronics / SPICE Domain
+
+| Dataset | HF ID / Source URL | License | Size | Provenance / Origin | Domain |
+|---------|-------------------|---------|------|---------------------|--------|
+| Masala-CHAI | https://github.com/Masala-CHAI/masala-chai | Open | 7.5K SPICE netlists | Derived from 10 analog/mixed-signal textbooks | spice, electronics |
+| Open Schematics | `bshada/open-schematics` | Open | ~4K+ | Crowdsourced open electronic schematics | electronics, kicad-pcb |
+
+### 4.4 Math / Reasoning Domain
+
+| Dataset | HF ID / Source URL | License | Size | Provenance / Origin | Domain |
+|---------|-------------------|---------|------|---------------------|--------|
+| GSM8K | `openai/gsm8k` | MIT | 8.5K | Human-written grade-school math problems with solutions | math |
+| MathInstruct | `TIGER-Lab/MathInstruct` | MIT | 262K instructions | Diverse math instruction sets from multiple sources | math, reasoning |
+
+### 4.5 Multilingual EU Domain
+
+| Dataset | HF ID / Source URL | License | Size | Provenance / Origin | Domain |
+|---------|-------------------|---------|------|---------------------|--------|
+| Aya Dataset | `CohereLabs/aya_dataset` | Apache 2.0 | 204K | Human-annotated instructions in 65 languages | chat-fr, multilingual-eu |
+| Common Corpus | `PleIAs/common_corpus` | Permissive | 2.27T tokens | EU AI Act compliant open corpus, multi-domain | multilingual-eu |
+| OPUS-100 | `Helsinki-NLP/opus-100` | CC-BY | 55M translation pairs | Parallel corpora across 100 languages | multilingual-eu |
+
+### 4.6 Non-HF Sources (Documented Scraping)
+
+| Source | URL | License | Size | Provenance / Origin | Domain |
+|--------|-----|---------|------|---------------------|--------|
+| Hackaday.io API | https://api.hackaday.io | CC-BY-SA 4.0 | REST API | Maker / hardware project descriptions via official API | electronics, iot |
+| EUR-Lex CELLAR | https://eur-lex.europa.eu/sparql | CC-BY 4.0 | SPARQL endpoint | EU legal texts and regulations via official SPARQL API | normes-iec, doc-technique-ce |
+| Wikipedia dumps | https://dumps.wikimedia.org | CC-BY-SA 3.0 | Bulk dumps | Wikipedia bulk data dumps (official download) | multilingual-eu, reasoning |
+| arXiv eess.* | https://arxiv.org/help/bulk_data_s3 | arXiv license | S3 bulk | Electrical engineering & systems science papers | electronics, dsp, power |
+| Espressif GitHub | https://github.com/espressif | Apache 2.0 | Public repos | Official ESP32/ESP-IDF documentation and examples | embedded, iot |
+| STM32 HAL GitHub | https://github.com/STMicroelectronics | BSD-3 | Public repos | Official STM32 HAL driver source and documentation | embedded, stm32 |
+| KiCad Documentation | https://docs.kicad.org | CC-BY-SA | Official docs | KiCad EDA official documentation | kicad-dsl, kicad-pcb |
+| CircuitSnips | https://circuitsnips.io | CERN-OHL verified | 4300 schematics | Open hardware schematics, CERN-OHL license verified | electronics, kicad-pcb |
+
+---
+
+## EU AI Act PST Compliance Checklist
+
+- [x] Public Summary Template (PST) documented
+- [x] Provenance per sub-corpus documented
+- [x] Synthetic data marked as synthetic
+- [x] License verification per dataset
+- [ ] PII removal verification (pending for scraped sources)
+- [ ] Opt-out/robots.txt verification (pending for scraped sources)
+
+---
+
+## 4-LEGACY. Training Data (Original — Deprecated)
+
+> **Deprecated.** The information below describes the initial bootstrap dataset from KIKI-Mac_tunner.
+> It has been superseded by section 4 above. Retained for audit continuity only.
+
+### 4-LEGACY.1 Source: KIKI-Mac_tunner classified dataset
+
+### 4-LEGACY.1 Source: KIKI-Mac_tunner classified dataset
 
 | Field | Value |
 |-------|-------|
@@ -109,7 +181,7 @@ EU-KIKI is a multi-model routing system that dispatches user queries to one of t
 | **PII** | No PII included (synthetic generation) |
 | **Copyright** | Synthetic data — no copyrighted material |
 
-### 4.2 Domain breakdown
+### 4-LEGACY.2 Domain breakdown
 
 | Domain | Examples | Model Target | Notes |
 |--------|----------|-------------|-------|
@@ -146,7 +218,7 @@ EU-KIKI is a multi-model routing system that dispatches user queries to one of t
 | web-frontend | 748 | Devstral | Frontend web dev |
 | yaml-json | 460 | Devstral | Config file formats |
 
-### 4.3 New EU-specific domains (planned)
+### 4-LEGACY.3 New EU-specific domains (planned)
 
 | Domain | Status | Data Source |
 |--------|--------|-------------|
