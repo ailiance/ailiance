@@ -50,18 +50,57 @@ class MLXWorkerRuntime:
 
     def preload_adapters(self) -> int:
         adapters_root = Path(self._cfg.adapters_dir)
+        model_keys = set(k for k, _ in nn.utils.tree_flatten(self._model.parameters()))
         count = 0
         for domain in self._cfg.domains:
             adapter_path = adapters_root / domain / "adapters.safetensors"
             if adapter_path.exists():
-                weights = mx.load(str(adapter_path))
-                mx.eval(weights)
-                self._adapter_cache[domain] = weights
-                count += 1
-                log.info("Preloaded adapter: %s", domain)
+                raw = mx.load(str(adapter_path))
+                weights = self._remap_adapter_keys(raw, model_keys)
+                if weights:
+                    mx.eval(weights)
+                    self._adapter_cache[domain] = weights
+                    count += 1
+                    log.info("Preloaded adapter: %s (%d keys)", domain, len(weights))
+                else:
+                    log.warning("Adapter %s: no matching keys after remap", domain)
             else:
                 log.warning("No adapter for domain: %s", domain)
         return count
+
+    @staticmethod
+    def _remap_adapter_keys(
+        raw: dict, model_keys: set[str],
+    ) -> dict:
+        """Remap adapter weight keys to match the loaded MLX model.
+
+        Handles prefix mismatches from different training pipelines:
+        - 'language_model.model.layers.*' → 'model.layers.*'
+        - 'model.layers.*' → 'layers.*'
+        """
+        # Try as-is first
+        if any(k in model_keys or k.rsplit(".", 1)[0] + ".weight" in model_keys for k in raw):
+            return dict(raw)
+
+        # Try stripping common prefixes
+        prefixes = ["language_model.model.", "language_model.", "model."]
+        for prefix in prefixes:
+            remapped = {}
+            matched = False
+            for k, v in raw.items():
+                if k.startswith(prefix):
+                    new_k = k[len(prefix):]
+                    remapped[new_k] = v
+                    base = new_k.rsplit(".", 1)[0] + ".weight"
+                    if base in model_keys:
+                        matched = True
+                else:
+                    remapped[k] = v
+            if matched:
+                log.info("  Remapped keys: stripped prefix '%s'", prefix)
+                return remapped
+
+        return dict(raw)
 
     def apply(self, domain: str) -> float:
         t0 = time.perf_counter()
