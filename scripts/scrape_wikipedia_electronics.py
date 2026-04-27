@@ -89,7 +89,10 @@ def extract_from_hf():
     patterns = [re.compile(p, re.IGNORECASE) for p in ELECTRONICS_PATTERNS]
 
     print("Loading Wikipedia from HuggingFace (streaming)...")
-    ds = load_dataset("wikipedia", "20231101.en", split="train", streaming=True)
+    try:
+        ds = load_dataset("wikimedia/wikipedia", "20231101.en", split="train", streaming=True)
+    except Exception:
+        ds = load_dataset("legacy-datasets/wikipedia", "20220301.en", split="train", streaming=True)
 
     records = []
     checked = 0
