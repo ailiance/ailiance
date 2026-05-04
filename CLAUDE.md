@@ -132,12 +132,11 @@ chat-fr, traduction-tech, redaction-multilingue, localisation-doc
 - Compléter **Apertus** : `emc-dsp-power` et `security-fenrir` adapters finals. Logs présents → reprendre. ~6 h chacun.
 - Compléter **EuroLLM** : domaine manquant (`localisation-doc` ?). ~6 h.
 - Finir **batch v2 medium-35** (Mistral-Medium-3.5-128B) : math-reasoning en cours, manque chat-fr/multilingual-eu/traduction-tech. ~6-8 h.
-- Publier le repo sur GitHub (sous `L-electron-Rare/` ou `electron-rare/`) — actuellement local-only sur studio + GrosMac. 1-2 h.
 - Réintégrer `data/quarantine/` (5 dirs PII flaggés) après filtrage propre. 0.5 j.
 
 ### 🟡 Cleanup
 
-- Publier sur HF les adapters EU validés (Apache-2.0, full provenance EU AI Act). Le script existe en sister project (`KIKI-Mac_tunner/scripts/release_hf.py`). 3-4 h.
+- Publier sur HF les adapters EU validés (Apache-2.0, full provenance EU AI Act) — aucun adapter EU-KIKI sur `clemsail/` ni `electron-rare/` à ce jour (audit 2026-05-04). Le script existe en sister project (`KIKI-Mac_tunner/scripts/release_hf.py`). 3-4 h.
 - Standardiser le format de sortie eval (`output/eval/<YYYY-MM-DD>-<scope>.{json,md}`).
 - Documenter le différentiel "20 domains HF-traced (48K examples)" du commit `f2c9cee` vs ~81K lignes mesurées sur 24 domaines (probablement sous-ensemble curé/dédupliqué).
 
@@ -151,7 +150,7 @@ chat-fr, traduction-tech, redaction-multilingue, localisation-doc
 
 - **Divergence routeur à clarifier** : `gateway.yaml` indique 32 domaines + MiniLM-384d, alors que `classifier.py` et ce CLAUDE.md annoncent 40 domaines + Jina-v3-1024d. Possible config legacy — gateway.yaml à aligner.
 - **48K vs 81K examples** : commit `f2c9cee` annonce "20 domains HF-traced (48K examples)" — la mesure brute donne ~81K lignes train sur 24 domaines. Les 48K désignent vraisemblablement le sous-ensemble curé/dédupliqué. À confirmer.
-- **Pas de remote GitHub** — repo local uniquement sur studio + GrosMac (rsync). À publier sous `electron-rare/` ou `L-electron-Rare/` quand mature.
+- **Repo GitHub** : `L-electron-Rare/eu-kiki` (privé) — poussé le 2026-05-04. Mirror local sur studio + GrosMac (rsync).
 
 ## Sister project
 
