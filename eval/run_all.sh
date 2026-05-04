@@ -91,7 +91,9 @@ curl -fsS "http://127.0.0.1:$PORT/v1/models" >/dev/null 2>&1 \
     || { echo "ERROR: server not responding" >&2; exit 1; }
 
 BASE_URL="http://127.0.0.1:$PORT/v1"
-MODEL_NAME="$LABEL"
+# mlx_lm.server registers the model under its absolute path. The OpenAI client
+# `model` field must match this exactly, otherwise HF tries to look it up online.
+MODEL_NAME="$(cd "$(dirname "$MODEL")" && pwd)/$(basename "$MODEL")"
 
 # ---- Build task list -------------------------------------------------------
 LIGHTEVAL_TASKS=""
