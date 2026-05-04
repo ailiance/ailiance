@@ -24,10 +24,12 @@ Périmètre V0 : outil interne, MacStudio M3 Ultra, single-shot, 7 tools, 3 zone
 |---|---|
 | Nom | `agent-kiki` (binaire principal) |
 | Alias | `aki` (lien symbolique vers le même binaire) |
-| Emplacement code | `eu-kiki/agent-kiki/` (sous-module dans le repo eu-kiki existant) |
+| Repo GitHub | `L-electron-Rare/agent-kiki` (**privé**, séparé d'eu-kiki) |
+| Path local | `/Users/electron/Documents/Projets/agent-kiki/` |
+| Couplage à eu-kiki | **Aucune dépendance Python** — communication via HTTP OpenAI-compatible (gateway `:9200`). Repo, CI, secrets et pyproject.toml indépendants. |
 | Statut produit | Outil interne (lab + Clément), pas de release publique au MVP |
 | Cible matérielle MVP | MacStudio M3 Ultra (workers MLX) ; client local sur GrosMac/macM1 via SSH/Tailscale |
-| Langage | Python 3.13+, géré par `uv`, partage `pyproject.toml` et `uv.lock` avec eu-kiki |
+| Langage | Python 3.13+, géré par `uv`, layout `src/agent_kiki/`, `pyproject.toml` autonome, `hatchling` build (cohérence stack maison sans partage de lockfile) |
 
 **Hors-scope explicite (V0) :**
 - Pas d'UI graphique, pas de TUI riche (juste CLI structuré + couleurs sobres via `rich`)
@@ -506,58 +508,67 @@ Précédence : CLI flags > env vars (`AGENT_KIKI_GATEWAY`, etc.) > config file >
 
 ## 10. Layout fichiers
 
+**Repo autonome** `L-electron-Rare/agent-kiki` cloné en `/Users/electron/Documents/Projets/agent-kiki/` :
+
 ```
-eu-kiki/
-├── agent-kiki/                       # ← nouveau module
-│   ├── pyproject.toml                # entries `agent-kiki` et `aki` scripts
-│   ├── src/
-│   │   └── agent_kiki/
-│   │       ├── __init__.py
-│   │       ├── __main__.py            # python -m agent_kiki
-│   │       ├── cli.py                 # typer commands
-│   │       ├── config.py              # pydantic settings
-│   │       ├── modes.py               # detect_mode SCRATCH/EDIT/MIXED
-│   │       ├── orchestrator/
-│   │       │   ├── loop.py            # boucle ReAct principale
-│   │       │   ├── planner.py         # client gateway role=plan
-│   │       │   ├── coder.py           # client gateway role=code
-│   │       │   ├── lang.py            # client gateway role=lang (résumés)
-│   │       │   ├── parser.py          # XML+JSON parser, retry
-│   │       │   ├── prompts.py         # system prompts par mode
-│   │       │   └── budget.py          # max_steps, tokens, time, writes
-│   │       ├── tools/
-│   │       │   ├── base.py            # protocol Tool, schémas pydantic
-│   │       │   ├── filesystem.py      # read/write/edit/list/search
-│   │       │   ├── shell.py           # run_cmd + 3 zones
-│   │       │   ├── finish.py
-│   │       │   └── jail.py            # cwd jail, path validation
-│   │       ├── approvals.py           # interactive y/n, modes safe/auto/yolo
-│   │       ├── tracing/
-│   │       │   ├── logger.py          # JSONL writer
-│   │       │   ├── schemas.py         # pydantic models
-│   │       │   ├── snapshots.py       # files/pre, files/post
-│   │       │   └── secrets_filter.py  # regex secrets
-│   │       ├── ui/
-│   │       │   ├── terminal.py        # rich layout, spinners
-│   │       │   └── json_stream.py     # mode --json
-│   │       └── orchestrators/
-│   │           ├── local_eu_kiki.py   # défaut: Apertus + Devstral + EuroLLM
-│   │           └── claude.py          # mode recherche --orchestrator claude
-│   ├── tests/
-│   │   ├── unit/
-│   │   ├── integration/               # gateway mocké via respx
-│   │   └── golden/                    # 5-10 traces référence
-│   ├── scripts/
-│   │   ├── aki-stats
-│   │   ├── aki-replay
-│   │   └── aki-export-dataset
-│   └── docs/
-│       ├── architecture.md
-│       ├── prompts.md                 # snapshots system prompts
-│       └── trace-schema.md
-└── docs/specs/
-    └── 2026-05-04-agent-kiki-design.md   # CE document
+agent-kiki/                            # repo autonome, GitHub privé
+├── README.md
+├── CLAUDE.md                          # guide local Claude Code
+├── LICENSE                            # Apache-2.0 par défaut (à ajuster pour interne)
+├── .gitignore
+├── pyproject.toml                     # autonome, hatchling, scripts agent-kiki+aki
+├── uv.lock
+├── src/
+│   └── agent_kiki/
+│       ├── __init__.py
+│       ├── __main__.py                # python -m agent_kiki
+│       ├── cli.py                     # typer commands
+│       ├── config.py                  # pydantic settings
+│       ├── modes.py                   # detect_mode SCRATCH/EDIT/MIXED
+│       ├── orchestrator/
+│       │   ├── loop.py                # boucle ReAct principale
+│       │   ├── planner.py             # client gateway role=plan
+│       │   ├── coder.py               # client gateway role=code
+│       │   ├── lang.py                # client gateway role=lang (résumés)
+│       │   ├── parser.py              # XML+JSON parser, retry
+│       │   ├── prompts.py             # system prompts par mode
+│       │   └── budget.py              # max_steps, tokens, time, writes
+│       ├── tools/
+│       │   ├── base.py                # protocol Tool, schémas pydantic
+│       │   ├── filesystem.py          # read/write/edit/list/search
+│       │   ├── shell.py               # run_cmd + 3 zones
+│       │   ├── finish.py
+│       │   └── jail.py                # cwd jail, path validation
+│       ├── approvals.py               # interactive y/n, modes safe/auto/yolo
+│       ├── tracing/
+│       │   ├── logger.py              # JSONL writer
+│       │   ├── schemas.py             # pydantic models
+│       │   ├── snapshots.py           # files/pre, files/post
+│       │   └── secrets_filter.py      # regex secrets
+│       ├── ui/
+│       │   ├── terminal.py            # rich layout, spinners
+│       │   └── json_stream.py         # mode --json
+│       └── orchestrators/
+│           ├── local_eu_kiki.py       # défaut: Apertus + Devstral + EuroLLM
+│           └── claude.py              # mode recherche --orchestrator claude
+├── tests/
+│   ├── unit/
+│   ├── integration/                   # gateway mocké via respx
+│   └── golden/                        # 5-10 traces référence
+├── scripts/
+│   ├── aki-stats
+│   ├── aki-replay
+│   └── aki-export-dataset
+└── docs/
+    ├── architecture.md
+    ├── prompts.md                     # snapshots system prompts
+    ├── trace-schema.md
+    └── specs/
+        ├── 2026-05-04-agent-kiki-design.md  # copie canonique côté agent
+        └── 2026-05-04-agent-kiki-plan.md    # plan d'implémentation
 ```
+
+**Note de coexistence avec eu-kiki :** ce design vit aussi dans `eu-kiki/docs/specs/` parce qu'il a été pensé là (cohérent avec la convention "le spec vit où la conversation a eu lieu"). Le repo agent-kiki en a une **copie canonique** dans son propre `docs/specs/` qui devient la source de vérité. Tout amendement futur se fait côté agent-kiki ; le miroir dans eu-kiki devient un archive du design initial.
 
 ---
 
