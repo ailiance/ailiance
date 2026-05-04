@@ -11,11 +11,24 @@ links to its self-contained directory with `env.json`, `methodology.md`,
 | [`devstral-base-baseline-2026-05-04-v2`](2026-05-04/devstral-base-baseline-2026-05-04-v2/) | Devstral-Small-2-24B-MLX-4bit | — | **87.20 %** | **82.90 %** | Valid baseline |
 | [`devstral-python-adapter-2026-05-04`](2026-05-04/devstral-python-adapter-2026-05-04/) | Devstral-Small-2-24B-MLX-4bit | python (eu-kiki) | 87.20 % | 82.90 % | ⚠️ **INVALIDATED** — adapter silently NOT applied (mlx_lm `load_adapters` skips QuantizedLinear modules; 11/11 outputs bit-identical to base on a control test). Run actually measures base again. |
 
-**Lesson learned (2026-05-04):** mlx_lm.server `--adapter-path` succeeds without error but does not apply LoRA weights to a 4-bit MLX model when the adapter was trained on BF16. The `adapter_config.json` may be silently honored without effect on QuantizedLinear modules. To benchmark adapters reliably, either:
-- Use the BF16 model (Devstral-Small-2-24B-Instruct-2512, 45 GB — Studio only)
-- Fuse the adapter via `mlx_lm.fuse --save-path <fused-model>` then quantize, producing a self-contained 4-bit model
+**Lesson learned (2026-05-04, confirmed via Studio test):** mlx_lm.server `--adapter-path` succeeds without error but does NOT apply LoRA weights — neither on 4-bit MLX models NOR on BF16. The bug is widespread: tested both Devstral 2 24B 4-bit + python adapter and Qwen 35B-A3B BF16 + v4-sota kicad-dsl adapter — in both cases outputs are bit-identical to base.
 
-A fix is in progress; affected runs will be re-executed and re-published once a verified adapter-loading path on the 4-bit model is established.
+**Workaround validated:** `mlx_lm fuse --save-path <fused-model>` successfully bakes the adapter into a self-contained model. Decisive test on Studio:
+
+| Setup | Same prompt: "Génère un sch KiCad: R1=10k entre VCC et GND." |
+|-------|---|
+| Qwen 35B-A3B BASE | "En tant qu'IA textuelle, je ne peux pas générer..." (refuses, suggests manual) |
+| Qwen 35B-A3B + v4-sota kicad-dsl (via fuse) | "`R1 VCC GND 10k`" (direct netlist output) |
+
+→ Fuse produces a **drastically different**, adapter-influenced output. The adapter is genuinely functional; the runtime loader is the problem.
+
+**New methodology for adapter benchmarks:**
+1. `bash eval/runners/fuse_adapter.sh --base <bf16-model> --adapter <path> --out-name <model+adapter>`
+2. Optionally quantize the fused model to 4-bit
+3. Serve the fused/quantized checkpoint via `mlx_lm.server --model <fused-model>` (no `--adapter-path` needed)
+4. Run benchmarks normally
+
+All previously committed "adapter" results that used `--adapter-path` are invalidated. This includes `devstral-python-adapter-2026-05-04` and any KiCad-DSL adapter run. Only base-model benchmarks remain valid (Devstral 24B 4-bit base 87.2 / 82.9 % HumanEval).
 
 ### Comparison context (HumanEval+)
 
