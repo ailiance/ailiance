@@ -67,8 +67,12 @@ def generate_answers(
     max_tokens: int = 1024,
     temperature: float = 0.7,
     n_choices: int = 1,
+    max_questions: int | None = None,
 ) -> Path:
-    """Run inference loop: 80 questions × 2 turns each, write JSONL."""
+    """Run inference loop: N questions × 2 turns each, write JSONL.
+
+    Use max_questions to limit (smoke test). Default = all 80.
+    """
     answer_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Load questions
@@ -78,6 +82,8 @@ def generate_answers(
             line = line.strip()
             if line:
                 questions.append(json.loads(line))
+    if max_questions is not None:
+        questions = questions[:max_questions]
 
     print(f"[mtbench] {len(questions)} questions × 2 turns = {len(questions)*2} generations")
 
