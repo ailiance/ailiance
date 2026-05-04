@@ -104,6 +104,8 @@ def generate_answers(
                     "max_tokens": max_tokens,
                     "temperature": temperature,
                     "stream": False,
+                    # Qwen3.x emits `reasoning` separately when thinking is on
+                    "chat_template_kwargs": {"enable_thinking": False},
                 }
                 req = urllib.request.Request(
                     f"{base_url.rstrip('/')}/chat/completions",
@@ -111,14 +113,16 @@ def generate_answers(
                     headers={"Content-Type": "application/json"},
                 )
                 try:
-                    with urllib.request.urlopen(req, timeout=120) as r:
+                    with urllib.request.urlopen(req, timeout=240) as r:
                         body = json.loads(r.read())
                 except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
                     body = {"error": str(e)}
 
                 content = ""
                 if "choices" in body:
-                    content = body["choices"][0]["message"]["content"]
+                    msg = body["choices"][0]["message"]
+                    # Try content first; fall back to reasoning (Qwen3.x trap)
+                    content = msg.get("content") or msg.get("reasoning") or ""
                 elif "error" in body:
                     content = f"[ERROR: {body['error']}]"
                 turns_out.append(content)
