@@ -71,6 +71,20 @@ First valid measurement of an eu-kiki adapter delta on a custom KIKI-native benc
 - **All 38 other v4-sota adapters likely share this pattern** — should be eval'd before release
 - Pipeline now reproducible end-to-end on macM1 alone (fuse + serve + bench in 30 min for any adapter)
 
+## eu-kiki v1 Devstral on HumanEval+ (FIRST VALID adapter delta)
+
+Replaces the invalidated `devstral-python-adapter-2026-05-04` run (which silently used the base via the broken `--adapter-path`). This time the adapter is **fused** into the base via `mlx_lm fuse` on macM1, producing a self-contained 4-bit checkpoint where the LoRA contributions are guaranteed to be active.
+
+| Run | Setup | HumanEval base | HumanEval+ |
+|-----|-------|---------------:|-----------:|
+| [`devstral-base-baseline-2026-05-04-v2`](2026-05-04/devstral-base-baseline-2026-05-04-v2/) | Devstral-Small-2-24B-MLX-4bit BASE | **87.20 %** | **82.90 %** |
+| [`devstral-python-fused-humanevalplus`](2026-05-04/devstral-python-fused-humanevalplus/) | + eu-kiki v1 python adapter (FUSED) | **86.00 %** | **81.10 %** |
+| **Δ** | | **-1.20 pts** | **-1.80 pts** |
+
+→ Adapter slightly degrades HumanEval+ — matches the initial prediction (scenario A "maintain or slight regression"). The adapter targets verbose chat-assistant Python (Stack-Overflow-style instructional code), not the terse algorithmic completion HumanEval expects. Net effect: 3 additional failures on extra tests (133 vs 136 passing).
+
+Safe to deploy for chat/assistant; should not be relied on for code-generation benchmarks. For a positive delta the right surface is **MT-Bench** (chat) or **AlpacaEval 2.0** (LLM-judge).
+
 ## HumanEval / HumanEval+ (EvalPlus)
 
 | Run | Model | Adapter | HumanEval base | HumanEval+ | Notes |

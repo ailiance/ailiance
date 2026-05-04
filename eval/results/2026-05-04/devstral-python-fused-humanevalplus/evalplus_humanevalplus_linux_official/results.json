@@ -1,0 +1,23 @@
+{
+  "task": "humaneval+ (official EvalPlus, Linux sandbox)",
+  "scorer": "evalplus.evaluate (official)",
+  "host": "kx6tm-23 (Linux x86_64, Python 3.13.5)",
+  "samples_source": "macM1 codegen on Devstral-2-24B-MLX-4bit FUSED with eu-kiki v1 python adapter",
+  "n_problems": 164,
+  "metrics": {
+    "humaneval_base_pass_at_1": 0.860,
+    "humaneval_plus_pass_at_1": 0.811
+  },
+  "n_passed": {
+    "humaneval_base": 141,
+    "humaneval_plus": 133
+  },
+  "delta_vs_baseline": {
+    "humaneval_base": -0.012,
+    "humaneval_plus": -0.018,
+    "interpretation": "Eu-kiki v1 Devstral python adapter (rank 16, alpha 32, q/k/v/o + MLP, 500 iters on 2850 self-oss-instruct samples) degrades slightly on HumanEval+ vs base. -1.2 pts on base tests (143 -> 141 passed), -1.8 pts on extra tests (136 -> 133 passed). Adapter targets verbose chat-assistant Python style (Stack-Overflow / instructional), HumanEval expects terse algorithmic completion. Net effect: 3 additional failures on extra tests due to style mismatch. Confirms initial prediction (scenario A 'maintain or slight regression' 50% prob)."
+  },
+  "compute": "Devstral-Small-2-24B-MLX-4bit + LoRA r16 a32 (q/k/v/o + MLP), fused via mlx_lm fuse on macM1 (12 GB output)",
+  "fuse_workflow": "/tmp/devstral-python-fused-4bit -> mlx_lm.server :8850 -> evalplus codegen 164 -> kx6tm-23 official scoring",
+  "evaluated_at": "2026-05-04T23:45+0200"
+}
