@@ -2,13 +2,41 @@
 
 import time
 import uuid
+from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
-class ChatMessage(BaseModel):
+def _flatten_content(value: Any) -> str | None:
+    """Accept OpenAI native content blocks (list[{type, text}]) and flatten to text.
+
+    OpenAI clients (Cline/Dirac, Anthropic-via-OpenAI, etc.) often send messages with
+    `content` as a list of typed blocks instead of a plain string. We coerce to string
+    so the worker tokenizer's chat template can apply uniformly.
+    """
+    if value is None or isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        parts: list[str] = []
+        for block in value:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict):
+                text = block.get("text") or block.get("content") or ""
+                if text:
+                    parts.append(str(text))
+        return "\n".join(parts) if parts else None
+    return str(value)
+
+
+class ChatMessage(BaseModel, extra="ignore"):
     role: str
     content: str | None = None
+
+    @field_validator("content", mode="before")
+    @classmethod
+    def _coerce_content(cls, value: Any) -> str | None:
+        return _flatten_content(value)
 
 
 class ChatCompletionRequest(BaseModel, extra="ignore"):
