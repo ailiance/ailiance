@@ -17,10 +17,7 @@ from pathlib import Path
 
 import httpx
 
-TOKEN = os.environ.get(
-    "OSHWA_API_TOKEN",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5ZWZlZjY1ZWFhMTg5MDAxNTYyNDhiYiIsImlhdCI6MTc3NzMzMjA2OSwiZXhwIjoxNzg1OTcyMDY5fQ.jh22mVU2NM7ZoXyjD-hLQiF883Wp2_CC9Cgt9obOtO0",
-)
+TOKEN = os.environ.get("OSHWA_API_TOKEN")
 BASE_URL = "https://certificationapi.oshwa.org/api/projects"
 OUTPUT = Path("data/scraped/oshwa")
 BATCH = 100
@@ -114,6 +111,10 @@ def fetch_all():
 
 if __name__ == "__main__":
     if not TOKEN:
-        print("Set OSHWA_API_TOKEN env var")
-    else:
-        fetch_all()
+        print(
+            "ERROR: OSHWA_API_TOKEN environment variable is not set.\n"
+            "Get your token at https://certificationapi.oshwa.org and run:\n"
+            '  export OSHWA_API_TOKEN="your_token_here"'
+        )
+        raise SystemExit(1)
+    fetch_all()

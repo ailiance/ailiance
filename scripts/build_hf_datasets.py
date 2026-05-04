@@ -213,17 +213,18 @@ def convert_gsm8k(hf_dataset) -> list[dict]:
     return records
 
 
-def convert_math_instruct(hf_dataset) -> list[dict]:
+def convert_orca_math(hf_dataset) -> list[dict]:
     """
-    TIGER-Lab/MathInstruct
-    Columns: instruction, output  (or query / response)
+    microsoft/orca-math-word-problems-200k
+    Columns: question, answer
+    MIT license, 200K grade-school math word problems with GPT-4 Turbo solutions.
     """
     records: list[dict] = []
     for row in hf_dataset:
-        user = str(row.get("instruction", "") or row.get("query", ""))
-        assistant = str(row.get("output", "") or row.get("response", ""))
-        if is_nonempty(user, assistant):
-            records.append(make_message(user, assistant))
+        q = str(row.get("question", ""))
+        a = str(row.get("answer", ""))
+        if is_nonempty(q, a):
+            records.append(make_message(q, a))
     return records
 
 
@@ -461,18 +462,19 @@ def build_math_gsm8k() -> None:
 
 def build_math_reasoning() -> None:
     """
-    TIGER-Lab/MathInstruct  — Apache-2.0 (most subsets)
-    Mixed math instruction/response pairs; diverse reasoning formats.
+    microsoft/orca-math-word-problems-200k  — MIT
+    200K grade-school math word problems with step-by-step GPT-4 Turbo solutions.
+    Replaces TIGER-Lab/MathInstruct (unclear sub-source licenses).
     """
-    HF_ID = "TIGER-Lab/MathInstruct"
-    LICENSE = "Apache-2.0 (check individual source attributions)"
+    HF_ID = "microsoft/orca-math-word-problems-200k"
+    LICENSE = "MIT"
 
     print(f"\n[math-reasoning] Loading {HF_ID} …")
     ds = load_dataset(HF_ID, split="train")
     total = len(ds)
     print(f"  rows: {total:,}")
 
-    raw = convert_math_instruct(ds)
+    raw = convert_orca_math(ds)
     capped = cap(raw)
     n_train, n_valid = save_domain("math-reasoning", capped)
     record_manifest(
@@ -483,7 +485,7 @@ def build_math_reasoning() -> None:
         n_used=len(capped),
         n_train=n_train,
         n_valid=n_valid,
-        notes="diverse math instruction sets; verify per-source licenses before redistribution",
+        notes="grade-school math word problems; GPT-4 Turbo solutions; replaces MathInstruct",
     )
 
 
