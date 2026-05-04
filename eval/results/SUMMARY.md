@@ -14,6 +14,8 @@ First valid measurement of an eu-kiki adapter delta on a custom KIKI-native benc
 | [`qwen36-35b-4bit-fused-kicad-dsl`](2026-05-04/qwen36-35b-4bit-fused-kicad-dsl/) | Qwen3.6-35B-A3B-MLX-4bit | v4-sota kicad-dsl | **30.0 %** | **0.382** | -30 pts pass, SPICE-compact over-specialization |
 | [`qwen36-35b-4bit-fused-kicad-pcb-on-kicad-dsl`](2026-05-04/qwen36-35b-4bit-fused-kicad-pcb-on-kicad-dsl/) | Qwen3.6-35B-A3B-MLX-4bit | v4-sota kicad-pcb | **60.0 %** | **0.535** | 0 pts pass, -0.06 avg, redistribution |
 | [`qwen36-35b-4bit-fused-components-on-kicad-dsl`](2026-05-04/qwen36-35b-4bit-fused-components-on-kicad-dsl/) | Qwen3.6-35B-A3B-MLX-4bit | v4-sota components | **30.0 %** | **0.418** | -30 pts pass, similar to kicad-dsl pattern |
+| [`qwen36-35b-4bit-fused-chat-fr-on-kicad-dsl`](2026-05-04/qwen36-35b-4bit-fused-chat-fr-on-kicad-dsl/) | Qwen3.6-35B-A3B-MLX-4bit | v4-sota chat-fr | **70.0 %** | **0.569** | **+10 pts pass**, only positive delta so far |
+| [`qwen36-35b-4bit-fused-electronics-on-kicad-dsl`](2026-05-04/qwen36-35b-4bit-fused-electronics-on-kicad-dsl/) | Qwen3.6-35B-A3B-MLX-4bit | v4-sota electronics | **40.0 %** | **0.532** | -20 pts pass, mid-range |
 | [`devstral-base-kicad-dsl`](2026-05-04/devstral-base-kicad-dsl/) | Devstral-Small-2-24B-MLX-4bit | — | 80.0 % | 0.750 | different base for reference |
 
 ### Per-question delta — Qwen base vs each fused adapter
