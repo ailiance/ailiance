@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 import httpx
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, HTTPException, Response
 from prometheus_client import CollectorRegistry, Counter, Histogram, generate_latest
 
 from src.router.domain_map import ALL_DOMAINS, get_worker_for_domain
@@ -114,6 +114,21 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         )
 
         requests_total.labels(model=req.model, status=str(resp.status_code)).inc()
-        return resp.json()
+        try:
+            return resp.json()
+        except ValueError:
+            log.exception(
+                "Worker %d returned non-JSON body (status=%d, len=%d)",
+                worker_port, resp.status_code, len(resp.content),
+            )
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "type": "bad_gateway",
+                    "worker_port": worker_port,
+                    "worker_status": resp.status_code,
+                    "message": "Worker returned an empty or invalid response",
+                },
+            ) from None
 
     return app

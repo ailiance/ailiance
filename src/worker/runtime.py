@@ -50,22 +50,33 @@ class MLXWorkerRuntime:
 
     def preload_adapters(self) -> int:
         adapters_root = Path(self._cfg.adapters_dir)
-        model_keys = set(k for k, _ in nn.utils.tree_flatten(self._model.parameters()))
+        model_keys = {k for k, _ in nn.utils.tree_flatten(self._model.parameters())}
         count = 0
         for domain in self._cfg.domains:
             adapter_path = adapters_root / domain / "adapters.safetensors"
-            if adapter_path.exists():
-                raw = mx.load(str(adapter_path))
-                weights = self._remap_adapter_keys(raw, model_keys)
-                if weights:
-                    mx.eval(weights)
-                    self._adapter_cache[domain] = weights
-                    count += 1
-                    log.info("Preloaded adapter: %s (%d keys)", domain, len(weights))
-                else:
-                    log.warning("Adapter %s: no matching keys after remap", domain)
-            else:
+            if not adapter_path.exists():
                 log.warning("No adapter for domain: %s", domain)
+                continue
+            raw = mx.load(str(adapter_path))
+            weights = self._remap_adapter_keys(raw, model_keys)
+            # Skip LoRA-only adapters: load_weights is strict; lora_a/lora_b keys
+            # are not in the base model unless linear_to_lora_layers wrapped it
+            # first (it doesn't here). Filter to keys present in the model.
+            filtered = {k: v for k, v in weights.items() if k in model_keys}
+            skipped = len(weights) - len(filtered)
+            if not filtered:
+                log.warning(
+                    "Adapter %s: 0 matching keys (%d skipped LoRA params); "
+                    "running on base model", domain, skipped,
+                )
+                continue
+            mx.eval(filtered)
+            self._adapter_cache[domain] = filtered
+            count += 1
+            log.info(
+                "Preloaded adapter: %s (%d keys, %d skipped)",
+                domain, len(filtered), skipped,
+            )
         return count
 
     @staticmethod

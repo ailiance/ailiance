@@ -7,7 +7,7 @@ import logging
 import time
 from pathlib import Path
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from prometheus_client import CollectorRegistry, Counter, Histogram, generate_latest
 
 from src.worker.runtime import MLXWorkerRuntime, WorkerConfig
@@ -57,18 +57,26 @@ def make_worker_app(cfg: WorkerConfig, skip_model_load: bool = False) -> FastAPI
     @app.post("/v1/chat/completions")
     async def chat_completions(req: ChatCompletionRequest, request: Request) -> ChatCompletion:
         domain = request.headers.get("X-Lora-Domain", cfg.domains[0] if cfg.domains else "")
-        user_msg = next(
-            (m.content for m in reversed(req.messages) if m.role == "user"),
-            "",
-        )
 
-        async with semaphore:
-            # MLX Metal requires GPU ops on main thread
-            runtime.apply(domain)
-            t0 = time.perf_counter()
-            messages = [{"role": m.role, "content": m.content} for m in req.messages]
-            text, _meta = runtime.generate(messages, req.max_tokens, req.temperature)
-            latency = time.perf_counter() - t0
+        try:
+            async with semaphore:
+                # MLX Metal requires GPU ops on main thread
+                runtime.apply(domain)
+                t0 = time.perf_counter()
+                messages = [{"role": m.role, "content": m.content} for m in req.messages]
+                text, _meta = runtime.generate(messages, req.max_tokens, req.temperature)
+                latency = time.perf_counter() - t0
+        except Exception as exc:
+            log.exception("inference failed (domain=%s)", domain)
+            requests_total.labels(status="500").inc()
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "type": "inference_error",
+                    "domain": domain,
+                    "message": str(exc),
+                },
+            ) from exc
 
         inference_latency.observe(latency)
         requests_total.labels(status="200").inc()
