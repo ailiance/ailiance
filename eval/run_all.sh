@@ -146,38 +146,30 @@ if (( !QUICK )); then
         || echo "WARN: evalplus mbppplus failed, continuing"
 fi
 
-# ---- Generate report -------------------------------------------------------
-"$PY" -c "
-import json, pathlib, time
-out = pathlib.Path('$OUT')
-metrics = {}
-for f in out.rglob('results.json'):
-    rel = f.relative_to(out).parent
-    try:
-        d = json.loads(f.read_text())
-        if 'metrics' in d:
-            for k, v in d['metrics'].items():
-                metrics[f'{rel}/{k}'] = v
-        if 'pass_at_k' in d:
-            for k, v in d['pass_at_k'].items():
-                metrics[f'{rel}/{k}'] = v
-    except Exception as e:
-        metrics[f'{rel}/__error__'] = str(e)
+# ---- Generate methodology, rerun, and report -------------------------------
+EVALPLUS_TASKS_LIST="humanevalplus"
+if (( !QUICK )); then
+    EVALPLUS_TASKS_LIST="$EVALPLUS_TASKS_LIST,mbppplus"
+fi
 
-env = json.loads((out / 'env.json').read_text()) if (out / 'env.json').exists() else {}
-report = ['# eu-kiki bench — $LABEL', '']
-report += ['Generated: ' + time.strftime('%Y-%m-%dT%H:%M:%S%z'), '']
-report += ['## Environment', '', '\`\`\`json', json.dumps(env, indent=2), '\`\`\`', '']
-report += ['## Metrics', '', '| Task | Value |', '|---|---|']
-for k, v in sorted(metrics.items()):
-    val = f'{v:.4f}' if isinstance(v, (int, float)) else str(v)
-    report.append(f'| \`{k}\` | {val} |')
-report.append('')
-(out / 'report.md').write_text('\n'.join(report))
-print(f'Report → {out}/report.md')
-"
+"$PY" -m runners.result_writer \
+    --output-dir "$OUT" \
+    --label "$LABEL" \
+    --lighteval-tasks "$LIGHTEVAL_TASKS" \
+    --evalplus-tasks "$EVALPLUS_TASKS_LIST" \
+    --port "$PORT" \
+    --temperature 0.0 \
+    --max-tokens 1024 \
+    --n-samples 1 \
+    --seed 42 \
+    $( (( QUICK )) && echo "--quick" ) \
+    $( (( EXTENDED )) && echo "--extended" )
 
 echo ""
 echo "============================================================"
-echo " Done. Report at $OUT/report.md"
+echo " Done."
+echo "  Report:        $OUT/report.md"
+echo "  Methodology:   $OUT/methodology.md"
+echo "  Rerun script:  $OUT/rerun.sh"
+echo "  Env snapshot:  $OUT/env.json"
 echo "============================================================"

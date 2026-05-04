@@ -85,6 +85,43 @@ def _hardware_snapshot() -> dict:
     }
 
 
+def _git_describe(repo_path: Path) -> dict:
+    """Capture git state for the eu-kiki repo at run time."""
+    out: dict = {"repo": str(repo_path)}
+    if not (repo_path / ".git").exists():
+        out["error"] = "not a git repo"
+        return out
+    try:
+        for key, args in [
+            ("commit", ["rev-parse", "HEAD"]),
+            ("branch", ["rev-parse", "--abbrev-ref", "HEAD"]),
+            ("describe", ["describe", "--always", "--dirty", "--tags"]),
+            ("status_short", ["status", "--porcelain"]),
+        ]:
+            r = subprocess.run(
+                ["git", "-C", str(repo_path)] + args,
+                capture_output=True, text=True, timeout=5,
+            )
+            out[key] = r.stdout.strip() if r.returncode == 0 else None
+    except Exception as e:
+        out["error"] = str(e)
+    return out
+
+
+def _pip_freeze() -> list[str]:
+    """Capture pinned package versions for full reproducibility."""
+    try:
+        r = subprocess.run(
+            [sys.executable, "-m", "pip", "freeze"],
+            capture_output=True, text=True, timeout=30,
+        )
+        if r.returncode == 0:
+            return r.stdout.splitlines()
+    except Exception:
+        pass
+    return []
+
+
 # ----------------------------------------------------------------------------
 # MLXServer
 # ----------------------------------------------------------------------------
@@ -164,14 +201,17 @@ class MLXServer:
     def __exit__(self, *exc) -> None:
         self.stop()
 
-    def env_snapshot(self) -> dict:
+    def env_snapshot(self, eu_kiki_repo: Path | None = None) -> dict:
         """Capture full environment for publishable runs."""
         adapter_sha = None
         if self.adapter_path:
             adapter_file = self.adapter_path / "adapters.safetensors"
             if adapter_file.exists():
                 adapter_sha = _sha256_file(adapter_file)
+        if eu_kiki_repo is None:
+            eu_kiki_repo = Path(__file__).resolve().parents[2]
         return {
+            "schema_version": "eu-kiki-eval-env/1.0",
             "model_path": str(self.model_path),
             "model_first_safetensors_sha256": _shasum_first_safetensors(self.model_path),
             "adapter_path": str(self.adapter_path) if self.adapter_path else None,
@@ -182,6 +222,10 @@ class MLXServer:
                 "base_url": self.base_url,
             },
             "hardware": _hardware_snapshot(),
+            "git": _git_describe(eu_kiki_repo),
+            "pip_freeze": _pip_freeze(),
+            "argv": sys.argv,
+            "cwd": os.getcwd(),
             "started_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         }
 
@@ -216,6 +260,7 @@ def _cli() -> None:
         # Just snapshot env without starting server (no model load)
         # Useful to verify SHA/hardware before a long run.
         env = {
+            "schema_version": "eu-kiki-eval-env/1.0",
             "model_path": str(args.model),
             "model_first_safetensors_sha256": _shasum_first_safetensors(args.model),
             "adapter_path": str(args.adapter) if args.adapter else None,
@@ -223,6 +268,11 @@ def _cli() -> None:
                 if args.adapter and (args.adapter / "adapters.safetensors").exists()
                 else None,
             "hardware": _hardware_snapshot(),
+            "git": _git_describe(Path(__file__).resolve().parents[2]),
+            "pip_freeze": _pip_freeze(),
+            "argv": sys.argv,
+            "cwd": os.getcwd(),
+            "snapshot_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         }
         args.env_out.parent.mkdir(parents=True, exist_ok=True)
         args.env_out.write_text(json.dumps(env, indent=2))
