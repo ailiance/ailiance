@@ -294,6 +294,8 @@ def _cli() -> None:
     p.add_argument("--max-tokens", type=int, default=1024)
     p.add_argument("--temperature", type=float, default=0.7,
                    help="MT-Bench standard is 0.7 for chat models")
+    p.add_argument("--max-questions", type=int, default=None,
+                   help="Limit number of questions (smoke). Default: all 80.")
     p.add_argument("--skip-generate", action="store_true",
                    help="Skip answer generation (re-judge existing answers)")
     p.add_argument("--skip-judge", action="store_true")
@@ -317,6 +319,7 @@ def _cli() -> None:
             answer_path=answer_path,
             max_tokens=args.max_tokens,
             temperature=args.temperature,
+            max_questions=args.max_questions,
         )
 
     if not args.skip_judge:
