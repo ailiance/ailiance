@@ -1,8 +1,8 @@
 # EU AI Act — Transparency & Traceability Documentation
 
 **Document ID:** EU-KIKI-TRANS-001
-**Date:** 2026-04-27
-**Version:** 0.1.0-dev
+**Date:** 2026-04-28
+**Version:** 0.3.0
 **System:** eu-kiki — EU-sovereign multi-model LLM serving pipeline
 **Risk Classification:** Limited risk (general-purpose AI system, Article 52)
 
@@ -15,6 +15,8 @@ EU-KIKI is a multi-model routing system that dispatches user queries to one of t
 **Purpose:** Provide domain-specialized AI assistance using exclusively European AI models and infrastructure.
 
 **Deployment:** Local-only, single-machine (Mac Studio M3 Ultra 512GB).
+
+**Training domains:** 35 total (30 HF-traced + 2 PDF-supplement + 3 in progress: misra-c, normes-iec, doc-technique-ce).
 
 ---
 
@@ -48,6 +50,7 @@ EU-KIKI is a multi-model routing system that dispatches user queries to one of t
 | **License** | Apache 2.0 |
 | **HuggingFace** | `mistralai/Devstral-Small-2-24B-Instruct-2512` |
 | **Benchmark** | 68.0% SWE-bench Verified |
+| **Weight source** | Official FP8 checkpoint, dequantized to BF16 via akoumpa community conversion |
 
 ### 2.3 EuroLLM-22B-Instruct-2512
 
@@ -63,6 +66,27 @@ EU-KIKI is a multi-model routing system that dispatches user queries to one of t
 | **HuggingFace** | `utter-project/EuroLLM-22B-Instruct-2512` |
 | **Paper** | arXiv:2602.05879 |
 | **Data sources** | Web data, parallel corpora (OPUS, Europarl), Wikipedia, ArXiv, code |
+
+### 2.4 Mistral Small 4 119B (pending evaluation)
+
+| Field | Value |
+|-------|-------|
+| **Provider** | Mistral AI |
+| **Country** | France |
+| **Parameters** | 119B (MoE, 24B active) |
+| **License** | Apache 2.0 |
+| **Status** | Downloaded, pending evaluation. Not yet integrated into routing. |
+
+### 2.5 Mistral Medium 3.5 128B (teacher/eval only)
+
+| Field | Value |
+|-------|-------|
+| **Provider** | Mistral AI |
+| **Country** | France |
+| **Parameters** | 128B (dense) |
+| **License** | Modified MIT (Mistral Research License) |
+| **Purpose** | Teacher model for evaluation and contrastive pair generation ONLY |
+| **Deployment restriction** | NOT deployed for production inference. Modified MIT license does not qualify for open-source exemption under EU AI Act Art. 53(2). Used exclusively offline for training data quality evaluation. |
 
 ---
 
@@ -95,57 +119,123 @@ EU-KIKI is a multi-model routing system that dispatches user queries to one of t
 
 ## 4. Training Data Sources (Updated)
 
-*Access date for all sources: 2026-04-27*
+*Access date for all sources: 2026-04-27 to 2026-05-02*
 
-### 4.1 Code Domain
+### 4.1 HuggingFace Datasets
 
-| Dataset | HF ID / Source URL | License | Size | Provenance / Origin | Domain |
-|---------|-------------------|---------|------|---------------------|--------|
-| StarCoder2 Self-Instruct | `bigcode/self-oss-instruct-sc2-exec-filter-50k` | Apache 2.0 | 50K pairs | StarCoder2 self-instruct pipeline; exec-filtered synthetic | python, rust, typescript, cpp, shell, sql, html-css |
-| Strand-Rust | `Fortytwo-Network` (HF org) | Open | 191K | Peer-reviewed synthetic Rust training corpus | rust |
-| GitHub Code | `codeparrot/github-code` | Apache 2.0 | Multi-lang | GitHub public repos with permissive licenses, filtered | rust (fallback), general code |
+| Dataset | HF ID | SPDX License | Records Used | Domain(s) |
+|---------|-------|-------------|-------------|-----------|
+| StarCoder2 Self-Instruct | `bigcode/self-oss-instruct-sc2-exec-filter-50k` | Apache-2.0 | 3000 py + 3000 rust + 3000 ts + 201 cpp + 60 shell + 168 sql + 99 html | python, rust, typescript, cpp, shell, sql, html-css |
+| CommitPackFT | `Takiyoshia/commitpack-parquet` | MIT | 3000 shell + 3000 cpp + 3000 ml | shell, cpp, ml-training |
+| CommitPackFT (Rust) | `bigcode/commitpackft` | MIT | 282 | rust-embedded |
+| Code Instructions 120k | `iamtarun/code_instructions_120k_alpaca` | Apache-2.0 | 3000 | html-css |
+| CodeAlpaca 20k | `sahil2801/CodeAlpaca-20k` | CC-BY-4.0 | merged w/ above | html-css |
+| Code Instructions 122k | `TokenBender/code_instructions_122k` | Apache-2.0 | 3000 web-be + 3000 web-fe + 3000 yaml + 1832 llm-orch + 1932 iot + 500 music | web-backend, web-frontend, yaml-json, llm-orch, iot, music-audio |
+| Synthetic Text-to-SQL | `gretelai/synthetic_text_to_sql` | Apache-2.0 | 3000 | sql |
+| Linux Commands RU-EN | `NickIBrody/linux-commands-ru-en` | CC-BY-4.0 | 3000 | shell |
+| Aya Dataset | `CohereForAI/aya_dataset` | Apache-2.0 | 1422 fra + 3000 EU langs | chat-fr, multilingual-eu |
+| GSM8K | `openai/gsm8k` | MIT | 3000 | math-gsm8k |
+| Orca-Math | `microsoft/orca-math-word-problems-200k` | MIT | 3000 | math-reasoning |
+| Cybersecurity Fenrir v2 | `AlicanKiraz0/Cybersecurity-Dataset-Fenrir-v2.0` | Apache-2.0 | 3000 | security-fenrir |
+| CertiCoder | `wuog/CertiCoder` | Research | 37.4K (planned) | misra-c (planned) |
+| Masala-CHAI | `Masala-CHAI/masala-chai` (GitHub) | Open | 7.5K netlists (ref) | spice-sim |
+| Open Schematics | `bshada/open-schematics` | Open | ~4K (ref) | electronics, kicad-pcb |
+| Common Corpus | `PleIAs/common_corpus` | Permissive | ref only | multilingual-eu |
+| OPUS-100 | `Helsinki-NLP/opus-100` | CC-BY-4.0 | 55M pairs (ref) | multilingual-eu |
+| StackOverflow K8s | `mcipriano/stackoverflow-kubernetes-questions` | CC-BY-SA-4.0 | 1743 | docker-devops |
+| ZenML LLMOps | `zenml/llmops-database` | Apache-2.0 | 1452 | llm-ops |
+| Europarl FR-EN | `FrancophonIA/europarl-v7_fr-en` | Open | 3000 | traduction-tech |
+| Arduino Docs | `gavmac00/arduino-docs` | CC-BY-SA-4.0 | merged | embedded |
 
-### 4.2 Safety-Critical Domain
+### 4.2 Scraped GitHub Repositories
 
-| Dataset | HF ID / Source URL | License | Size | Provenance / Origin | Domain |
-|---------|-------------------|---------|------|---------------------|--------|
-| CertiCoder | `wuog/CertiCoder` | Research | 37.4K | MISRA C:2012-aware certified coding Q&A, synthetic | misra-c |
-| Cybersecurity Fenrir v2 | `AlicanKiraz0/Cybersecurity-Dataset-Fenrir-v2.0` | Apache 2.0 | 83.9K | OWASP / MITRE ATT&CK / NIST-aligned synthetic | security |
+| Source | GitHub URL | SPDX License | Records | Domain(s) |
+|--------|-----------|-------------|---------|-----------|
+| ESP-IDF examples | `espressif/esp-idf` | Apache-2.0 | 687 | cpp (embedded) |
+| STM32CubeF4 | `STMicroelectronics/STM32CubeF4` | BSD-3-Clause | 1812 | cpp (embedded) |
+| Arduino examples | `arduino/arduino-examples` | CC0-1.0 / MIT / Apache-2.0 | 99 | cpp (embedded) |
+| Embassy (Rust embedded) | `embassy-rs/embassy` | MIT OR Apache-2.0 | 939 | rust-embedded |
+| RTIC | `rtic-rs/rtic` | MIT OR Apache-2.0 | 82 | rust-embedded |
+| STM32F4xx HAL (Rust) | `stm32-rs/stm32f4xx-hal` | 0BSD | 57 | rust-embedded |
+| Rust Embedded Discovery | `rust-embedded/discovery` | MIT OR Apache-2.0 | 52 | rust-embedded |
+| ESP-HAL (Rust) | `esp-rs/esp-hal` | MIT OR Apache-2.0 | 46 | rust-embedded |
+| Cortex-M | `rust-embedded/cortex-m` | MIT OR Apache-2.0 | 38 | rust-embedded |
+| nRF HAL | `nrf-rs/nrf-hal` | MIT OR Apache-2.0 | 30 | rust-embedded |
+| defmt | `knurling-rs/defmt` | MIT OR Apache-2.0 | 26 | rust-embedded |
+| embedded-hal | `rust-embedded/embedded-hal` | MIT OR Apache-2.0 | 24 | rust-embedded |
+| KiCad symbols | `KiCad/kicad-symbols` | CC-BY-SA-4.0 | 8098 | kicad-dsl |
+| KiCad footprints | `KiCad/kicad-footprints` | CC-BY-SA-4.0 | 11882 | kicad-pcb |
+| KiCad demos | `KiCad/kicad-source-mirror` | CC-BY-SA-4.0 | 1 | kicad-dsl |
+| FreeCAD macros | `FreeCAD/FreeCAD-macros` | Per-file (MIT / CC-BY / CC0) | 65 | freecad |
+| MicroPython examples | `micropython/micropython` | MIT | merged | lua-upy |
+| PlatformIO examples | `platformio/platformio-examples` | Apache-2.0 | 47 real + synthetic | platformio |
+| ngspice examples | `ngspice/ngspice` | BSD-3-Clause | merged | spice-sim |
 
-### 4.3 Electronics / SPICE Domain
+### 4.3 Other Scraped / API Sources
 
-| Dataset | HF ID / Source URL | License | Size | Provenance / Origin | Domain |
-|---------|-------------------|---------|------|---------------------|--------|
-| Masala-CHAI | https://github.com/Masala-CHAI/masala-chai | Open | 7.5K SPICE netlists | Derived from 10 analog/mixed-signal textbooks | spice, electronics |
-| Open Schematics | `bshada/open-schematics` | Open | ~4K+ | Crowdsourced open electronic schematics | electronics, kicad-pcb |
+| Source | URL | SPDX License | Size | Provenance | Domain(s) |
+|--------|-----|-------------|------|------------|-----------|
+| OSHWA API | https://certificationapi.oshwa.org | Per-project (open hardware) | API | Certified open hardware project metadata | embedded |
+| Hackaday.io API | https://api.hackaday.io | CC-BY-SA-4.0 | REST API | Maker/hardware project descriptions via official API | electronics, iot |
+| EUR-Lex CELLAR | https://eur-lex.europa.eu/sparql | CC-BY-4.0 | SPARQL | EU legal texts via official SPARQL endpoint | normes-iec, doc-technique-ce |
+| Wikipedia dumps | https://dumps.wikimedia.org | CC-BY-SA-3.0 | Bulk dumps | Official download, electronics/science articles | emc-dsp-power, reasoning |
+| arXiv eess.* | https://arxiv.org/help/bulk_data_s3 | arXiv license (TDM exception Art. 3-4 DSM Directive) | S3 bulk | Electrical engineering & systems science papers | emc-dsp-power |
+| KiCad Documentation | https://docs.kicad.org | CC-BY-SA-4.0 | Official docs | KiCad EDA official documentation | kicad-dsl, kicad-pcb |
+| CircuitSnips | https://circuitsnips.io | CERN-OHL-S-2.0 (verified) | 4300 schematics | Open hardware schematics | electronics, kicad-pcb |
 
-### 4.4 Math / Reasoning Domain
+### 4.4 Per-Domain Training Data Inventory
 
-| Dataset | HF ID / Source URL | License | Size | Provenance / Origin | Domain |
-|---------|-------------------|---------|------|---------------------|--------|
-| GSM8K | `openai/gsm8k` | MIT | 8.5K | Human-written grade-school math problems with solutions | math |
-| MathInstruct | `TIGER-Lab/MathInstruct` | MIT | 262K instructions | Diverse math instruction sets from multiple sources | math, reasoning |
+| Domain | Records (train) | Source(s) | SPDX License(s) | Model Target |
+|--------|----------------|-----------|-----------------|-------------|
+| chat-fr | 1,351 | Aya Dataset (fra) | Apache-2.0 | EuroLLM |
+| cpp | 2,850 | CommitPackFT + ESP-IDF + STM32Cube + Arduino | MIT + Apache-2.0 + BSD-3-Clause + CC0-1.0 | Devstral |
+| docker-devops | 1,656 | StackOverflow K8s | CC-BY-SA-4.0 | Devstral |
+| electronics | 90 (PDF) | Datasheets + Wikipedia extracts | CC-BY-SA-3.0 AND ST-SLA0048 | Apertus (supplement) |
+| embedded | 2,850 | OSHWA + Arduino docs + synthetic | Apache-2.0 AND CC-BY-SA-4.0 | Apertus |
+| emc-dsp-power | 2,850 | arXiv eess + Wikipedia | arXiv-TDM-DSM-Art4 AND CC-BY-SA-3.0 | Apertus |
+| freecad | 62 | FreeCAD macros | MIT AND CC-BY-4.0 AND CC0-1.0 | Apertus |
+| html-css | 2,850 | Code Instructions + CodeAlpaca | Apache-2.0 + CC-BY-4.0 | Devstral |
+| iot | 1,835 | TokenBender + embedded overlap | Apache-2.0 | Apertus |
+| kicad-dsl | 7,694 | KiCad symbols + demos | CC-BY-SA-4.0 | Apertus |
+| kicad-pcb | 11,288 | KiCad footprints | CC-BY-SA-4.0 | Apertus |
+| llm-ops | 1,379 | ZenML LLMOps | Apache-2.0 | Devstral |
+| llm-orch | 1,740 | TokenBender + ZenML | Apache-2.0 | Devstral |
+| lua-upy | 831 | MicroPython + Lua HF | MIT + Apache-2.0 | Devstral |
+| math-gsm8k | 2,850 | GSM8K | MIT | Apertus |
+| math-reasoning | 2,850 | Orca-Math | MIT | Apertus |
+| ml-training | 2,850 | CommitPackFT (Python+ML) | MIT | Devstral |
+| multilingual-eu | 2,850 | Aya Dataset (EU langs) | Apache-2.0 | EuroLLM |
+| music-audio | 475 | TokenBender + synthetic | Apache-2.0 | Apertus |
+| platformio | 665 | PlatformIO examples + synthetic | Apache-2.0 | Apertus |
+| python | 2,850 | StarCoder2 Self-Instruct | Apache-2.0 | Devstral |
+| rust | 2,850 | StarCoder2 Self-Instruct | Apache-2.0 | Devstral |
+| rust-embedded | 1,501 | Embassy + RTIC + cortex-m + esp-hal + defmt + embedded-hal | MIT + Apache-2.0 + 0BSD | Devstral |
+| security-fenrir | 2,850 | Cybersecurity Fenrir v2 | Apache-2.0 | Apertus |
+| shell | 2,850 | CommitPackFT + Linux Commands | MIT + CC-BY-4.0 | Devstral |
+| spice-sim | 475 | ngspice + synthetic | BSD-3-Clause | Apertus |
+| sql | 2,850 | Synthetic Text-to-SQL + StarCoder2 | Apache-2.0 | Devstral |
+| stm32 | 90 (PDF) | STM32 datasheets | ST-SLA0048 (TDM) | Apertus (supplement) |
+| traduction-tech | 2,850 | Europarl FR-EN | CC-BY-4.0 | EuroLLM |
+| typescript | 2,850 | StarCoder2 Self-Instruct | Apache-2.0 | Devstral |
+| web-backend | 2,850 | TokenBender + bigcode | Apache-2.0 | Devstral |
+| web-frontend | 2,850 | TokenBender + bigcode | Apache-2.0 | Devstral |
+| yaml-json | 2,850 | TokenBender + K8s-SO | Apache-2.0 + CC-BY-SA-4.0 | Devstral |
+| **TOTAL** | **82,432** | | | |
 
-### 4.5 Multilingual EU Domain
+**PDF-supplement domains (2):** stm32, electronics — extracted from datasheets, no dedicated LoRA adapter.
 
-| Dataset | HF ID / Source URL | License | Size | Provenance / Origin | Domain |
-|---------|-------------------|---------|------|---------------------|--------|
-| Aya Dataset | `CohereLabs/aya_dataset` | Apache 2.0 | 204K | Human-annotated instructions in 65 languages | chat-fr, multilingual-eu |
-| Common Corpus | `PleIAs/common_corpus` | Permissive | 2.27T tokens | EU AI Act compliant open corpus, multi-domain | multilingual-eu |
-| OPUS-100 | `Helsinki-NLP/opus-100` | CC-BY | 55M translation pairs | Parallel corpora across 100 languages | multilingual-eu |
+**Domains in progress (3):** misra-c, normes-iec, doc-technique-ce — synthetic generation planned.
 
-### 4.6 Non-HF Sources (Documented Scraping)
+### 4.5 PII Scan Results
 
-| Source | URL | License | Size | Provenance / Origin | Domain |
-|--------|-----|---------|------|---------------------|--------|
-| Hackaday.io API | https://api.hackaday.io | CC-BY-SA 4.0 | REST API | Maker / hardware project descriptions via official API | electronics, iot |
-| EUR-Lex CELLAR | https://eur-lex.europa.eu/sparql | CC-BY 4.0 | SPARQL endpoint | EU legal texts and regulations via official SPARQL API | normes-iec, doc-technique-ce |
-| Wikipedia dumps | https://dumps.wikimedia.org | CC-BY-SA 3.0 | Bulk dumps | Wikipedia bulk data dumps (official download) | multilingual-eu, reasoning |
-| arXiv eess.* | https://arxiv.org/help/bulk_data_s3 | arXiv license | S3 bulk | Electrical engineering & systems science papers | electronics, dsp, power |
-| Espressif GitHub | https://github.com/espressif | Apache 2.0 | Public repos | Official ESP32/ESP-IDF documentation and examples | embedded, iot |
-| STM32 HAL GitHub | https://github.com/STMicroelectronics | BSD-3 | Public repos | Official STM32 HAL driver source and documentation | embedded, stm32 |
-| KiCad Documentation | https://docs.kicad.org | CC-BY-SA | Official docs | KiCad EDA official documentation | kicad-dsl, kicad-pcb |
-| CircuitSnips | https://circuitsnips.io | CERN-OHL verified | 4300 schematics | Open hardware schematics, CERN-OHL license verified | electronics, kicad-pcb |
+| Scan Date | Scan Tool | Files Scanned | Findings | Action |
+|-----------|-----------|--------------|----------|--------|
+| 2026-04-28 | Presidio (Microsoft) + en_core_web_lg | 21 JSONL files | 1 email address in `traduction-tech` | Redacted and replaced |
+| 2026-04-28 | Presidio (Microsoft) + en_core_web_lg | ALL 35+ domains (hf-traced + scraped) | Re-scan after provenance fix | See pii-scan-report.json |
+
+Coverage: All directories under `data/hf-traced/` (35 domain dirs) and `data/scraped/` (8 dirs) are now scanned.
+No high-signal PII (email, phone, credit card, SSN, IBAN) detected outside the previously-redacted traduction-tech finding.
+Low-signal detections (PERSON, LOCATION, DATE_TIME) are common false positives in technical text and do not constitute PII risk.
 
 ---
 
@@ -153,10 +243,20 @@ EU-KIKI is a multi-model routing system that dispatches user queries to one of t
 
 - [x] Public Summary Template (PST) documented
 - [x] Provenance per sub-corpus documented
+- [x] **Per-record _provenance fields** — DONE v0.3.0 (49,956 records across 21 domains, 9 domains already had provenance)
 - [x] Synthetic data marked as synthetic
-- [x] License verification per dataset
-- [ ] PII removal verification (pending for scraped sources)
+- [x] **License verification per dataset (SPDX IDs verified)** — DONE v0.3.0 (non-SPDX values corrected: embedded, emc-dsp-power, traduction-tech, cpp, freecad, rust-embedded)
+- [x] JWT secret management — DONE (moved from hardcoded to env var `EU_KIKI_JWT_SECRET`)
+- [x] **PII removal verification** — DONE (Presidio scan, ALL 35+ domains scanned, 1 email redacted in traduction-tech)
+- [x] MathInstruct license issue — DONE (replaced with `microsoft/orca-math-word-problems-200k`, MIT)
+- [x] web-backend/yaml-json provenance — DONE (quarantined, then rebuilt with traced data from TokenBender/code_instructions_122k Apache-2.0 + K8s-SO CC-BY-SA-4.0)
+- [x] **Scraping manifests** — DONE v0.3.0 (manifest.json created for all 8 scraped directories with source_url, license, legal_basis, robots_status)
+- [x] **Model config licenses** — DONE v0.3.0 (license field added to all 7 model config.json files)
+- [x] **rust-strand phantom entry** — DONE v0.3.0 (annotated as deprecated in MANIFEST.json)
+- [x] **stm32/electronics PDF-supplement** — DONE v0.3.0 (added to MANIFEST_niche.json and inventory)
 - [ ] Opt-out/robots.txt verification (pending for scraped sources)
+  - TODO: Verify robots.txt compliance for each non-API scraped source at collection time
+  - TODO: Implement opt-out mechanism for content owners (contact email + removal script)
 
 ---
 
@@ -214,9 +314,9 @@ EU-KIKI is a multi-model routing system that dispatches user queries to one of t
 | sql | 3,000 | Devstral | Database queries |
 | stm32 | 29 | Apertus | STM32 firmware (sparse) |
 | typescript | 3,000 | Devstral | TypeScript coding |
-| web-backend | 1,896 | Devstral | Backend web dev |
+| web-backend | 1,896 | Devstral | **QUARANTINED then RESOLVED** — rebuilt with traced data (TokenBender Apache-2.0) |
 | web-frontend | 748 | Devstral | Frontend web dev |
-| yaml-json | 460 | Devstral | Config file formats |
+| yaml-json | 460 | Devstral | **QUARANTINED then RESOLVED** — rebuilt with traced data (TokenBender Apache-2.0 + K8s-SO CC-BY-SA-4.0) |
 
 ### 4-LEGACY.3 New EU-specific domains (planned)
 
@@ -298,3 +398,7 @@ EU-KIKI is a multi-model routing system that dispatches user queries to one of t
 | Date | Version | Change |
 |------|---------|--------|
 | 2026-04-27 | 0.1.0-dev | Initial documentation |
+| 2026-04-28 | 0.1.1-dev | Quarantine web-backend/yaml-json (missing provenance); JWT secret resolved; PII/opt-out TODOs; verified zenml/llmops-database (Apache-2.0) and AYI-NEDJIMI/mlops-infrastructure-en (MIT) |
+| 2026-04-28 | 0.1.2-dev | Replace TIGER-Lab/MathInstruct (unclear sub-source licenses) with microsoft/orca-math-word-problems-200k (MIT, 200K examples) for math-reasoning domain |
+| 2026-04-28 | 0.2.0 | Comprehensive update: all 33 domains inventoried with SPDX licenses and record counts; added all scraped repo sources (ESP-IDF, STM32Cube, Arduino, Embassy, KiCad symbols/footprints, FreeCAD macros, OSHWA API); added Mistral Small 4 119B (pending eval) and Mistral Medium 3.5 128B (teacher/eval only, Modified MIT); PII scan completed (Presidio, 1 finding redacted); web-backend/yaml-json provenance resolved; Devstral BF16 dequantization source documented |
+| 2026-04-28 | 0.3.0 | **EU AI Act compliance remediation:** (1) Per-record `_provenance` added to 49,956 records across 21 HF-traced domains (source, SPDX license, record_idx, access_date); (2) Non-SPDX license values corrected in MANIFEST_niche.json: embedded (Apache-2.0 AND CC-BY-SA-4.0), emc-dsp-power (arXiv-TDM-DSM-Art4 AND CC-BY-SA-3.0), traduction-tech (CC-BY-4.0), cpp sub-sources (removed "Open"/"various"), freecad (MIT AND CC-BY-4.0 AND CC0-1.0), rust-embedded "various" sub-source (MIT AND Apache-2.0); (3) PII scan extended to ALL 35+ domains; (4) Scraping manifests (manifest.json) created for all 8 scraped directories; (5) License field added to all 7 model config.json files; (6) stm32 and electronics added as PDF-supplement domains; (7) rust-strand annotated as deprecated phantom entry |
