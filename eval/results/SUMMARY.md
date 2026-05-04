@@ -10,25 +10,28 @@ First valid measurement of an eu-kiki adapter delta on a custom KIKI-native benc
 
 | Run | Base model | Adapter | Pass rate | Avg score | Notes |
 |-----|------------|---------|----------:|----------:|-------|
-| [`qwen36-35b-4bit-base-kicad-dsl`](2026-05-04/qwen36-35b-4bit-base-kicad-dsl/) | Qwen3.6-35B-A3B-MLX-4bit | — | **60.0 %** | **0.593** | strong out of the box |
-| [`qwen36-35b-4bit-fused-kicad-dsl`](2026-05-04/qwen36-35b-4bit-fused-kicad-dsl/) | Qwen3.6-35B-A3B-MLX-4bit | v4-sota kicad-dsl (rank 16, scale 20) | **30.0 %** | **0.382** | over-specialized SPICE-style, **-30 pts** |
-| [`qwen36-35b-4bit-fused-kicad-pcb-on-kicad-dsl`](2026-05-04/qwen36-35b-4bit-fused-kicad-pcb-on-kicad-dsl/) | Qwen3.6-35B-A3B-MLX-4bit | v4-sota kicad-pcb | **60.0 %** | **0.535** | redistributes, **0 pts pass / -0.058 avg** |
-| [`devstral-base-kicad-dsl`](2026-05-04/devstral-base-kicad-dsl/) | Devstral-Small-2-24B-MLX-4bit | — | 80.0 % | 0.750 | reference (different base) |
+| [`qwen36-35b-4bit-base-kicad-dsl`](2026-05-04/qwen36-35b-4bit-base-kicad-dsl/) | Qwen3.6-35B-A3B-MLX-4bit | — | **60.0 %** | **0.593** | baseline reference |
+| [`qwen36-35b-4bit-fused-kicad-dsl`](2026-05-04/qwen36-35b-4bit-fused-kicad-dsl/) | Qwen3.6-35B-A3B-MLX-4bit | v4-sota kicad-dsl | **30.0 %** | **0.382** | -30 pts pass, SPICE-compact over-specialization |
+| [`qwen36-35b-4bit-fused-kicad-pcb-on-kicad-dsl`](2026-05-04/qwen36-35b-4bit-fused-kicad-pcb-on-kicad-dsl/) | Qwen3.6-35B-A3B-MLX-4bit | v4-sota kicad-pcb | **60.0 %** | **0.535** | 0 pts pass, -0.06 avg, redistribution |
+| [`qwen36-35b-4bit-fused-components-on-kicad-dsl`](2026-05-04/qwen36-35b-4bit-fused-components-on-kicad-dsl/) | Qwen3.6-35B-A3B-MLX-4bit | v4-sota components | **30.0 %** | **0.418** | -30 pts pass, similar to kicad-dsl pattern |
+| [`devstral-base-kicad-dsl`](2026-05-04/devstral-base-kicad-dsl/) | Devstral-Small-2-24B-MLX-4bit | — | 80.0 % | 0.750 | different base for reference |
 
 ### Per-question delta — Qwen base vs each fused adapter
 
-| Q | Domain | Base | +kicad-dsl | +kicad-pcb |
-|---|--------|-----:|----------:|----------:|
-| 001 | passive R/R divider | 0.67 PASS | 0.06 | 0.00 |
-| 002 | LDO AMS1117 | 0.57 | 0.05 | **0.62 PASS** |
-| 003 | LED + 330R | 0.67 PASS | 0.67 PASS | **0.89 PASS** |
-| 004 | RC filter | 0.24 | 0.67 PASS | **0.91 PASS** |
-| 005 | BJT amp 2N3904 | 0.96 PASS | 0.18 | 0.63 PASS |
-| 006 | I2C pull-ups + BME280 | 0.25 | 0.21 | **0.67 PASS** |
-| 007 | H-bridge MOSFETs | 0.67 PASS | 0.63 PASS | 0.04 |
-| 008 | STM32 decoupling | 0.57 | 0.57 | 0.38 |
-| 009 | ESD USB PESD5V0 | 0.67 PASS | 0.40 | 0.67 PASS |
-| 010 | LM358 buffer | 0.67 PASS | 0.39 | 0.56 |
+| Q | Domain | Base | +kicad-dsl | +kicad-pcb | +components |
+|---|--------|-----:|----------:|----------:|------------:|
+| 001 | passive R/R divider | 0.67 P | 0.06 | 0.00 | **0.67 P** |
+| 002 | LDO AMS1117 | 0.57 | 0.05 | **0.62 P** | 0.05 |
+| 003 | LED + 330R | 0.67 P | 0.67 P | **0.89 P** | 0.67 P |
+| 004 | RC filter | 0.24 | **0.67 P** | **0.91 P** | 0.48 |
+| 005 | BJT amp 2N3904 | **0.96 P** | 0.18 | 0.63 P | 0.26 |
+| 006 | I2C pull-ups + BME280 | 0.25 | 0.21 | **0.67 P** | 0.25 |
+| 007 | H-bridge MOSFETs | 0.67 P | 0.63 P | 0.04 | 0.07 |
+| 008 | STM32 decoupling | 0.57 | 0.57 | 0.38 | 0.57 |
+| 009 | ESD USB PESD5V0 | 0.67 P | 0.40 | 0.67 P | 0.67 P |
+| 010 | LM358 buffer | 0.67 P | 0.39 | 0.56 | 0.50 |
+| **PASS count** | | **6/10** | 3/10 | 6/10 | 3/10 |
+| **avg overall** | | **0.593** | 0.382 | 0.535 | 0.418 |
 
 ### Insights from cross-adapter comparison
 

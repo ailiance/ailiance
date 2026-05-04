@@ -1,0 +1,60 @@
+{
+  "task": "kiki-kicad-dsl",
+  "task_version": "0.1.0",
+  "n_questions": 10,
+  "n_passed": 3,
+  "pass_rate": 0.3,
+  "metrics": {
+    "overall_avg": 0.4179,
+    "syntax_ok_rate": 0.1,
+    "contains_avg": 0.6536,
+    "unique_avg": 0.5
+  },
+  "by_category": {
+    "passive": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "regulator": {
+      "avg": 0.048,
+      "n": 1
+    },
+    "led": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "rc-filter": {
+      "avg": 0.476,
+      "n": 1
+    },
+    "transistor-amplifier": {
+      "avg": 0.259,
+      "n": 1
+    },
+    "i2c-pullup": {
+      "avg": 0.25,
+      "n": 1
+    },
+    "h-bridge": {
+      "avg": 0.074,
+      "n": 1
+    },
+    "decoupling": {
+      "avg": 0.571,
+      "n": 1
+    },
+    "esd-protection": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "opamp-buffer": {
+      "avg": 0.5,
+      "n": 1
+    }
+  },
+  "model_id": "/tmp/qwen-components-fused-4bit",
+  "base_url": "http://127.0.0.1:8844/v1",
+  "task_path": "tasks/kiki_native/kicad_dsl.json",
+  "answers_path": "results/2026-05-04/qwen36-35b-4bit-fused-components-on-kicad-dsl/kiki_kicad_dsl/answers.jsonl",
+  "evaluated_at": "2026-05-04T22:36:34+0200"
+}
