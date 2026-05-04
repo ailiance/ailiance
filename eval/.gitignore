@@ -1,0 +1,4 @@
+# Eval result artifacts (raw data, can be regenerated from environment snapshot)
+results/*/
+!results/.gitkeep
+!results/SUMMARY.md
