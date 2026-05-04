@@ -32,13 +32,13 @@ from pathlib import Path
 
 
 def _ensure_fschat() -> None:
-    try:
-        import fastchat  # noqa: F401
-    except ImportError:
-        sys.exit(
-            "fastchat not installed. Install with: "
-            "uv pip install 'fschat[model_worker,llm_judge]'"
-        )
+    """Optional: only used for FastChat-style helpers if added later.
+
+    The current runner uses urllib + json directly (OpenAI-compatible
+    endpoint) so fastchat is NOT required to run. Keep this stub for
+    backward-compat with earlier docs.
+    """
+    pass
 
 
 # Default MT-Bench question source (HF or fastchat repo)
