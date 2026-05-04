@@ -1,0 +1,23 @@
+{
+  "task": "humaneval+ (official EvalPlus, Linux sandbox)",
+  "scorer": "evalplus.evaluate (official, sandbox-enforced)",
+  "host": "kx6tm-23 (Proxmox PVE, Linux x86_64, Python 3.13.5)",
+  "samples_source": "macM1 codegen run b04x2a50m (devstral-base-baseline-2026-05-04-v2)",
+  "n_problems": 164,
+  "metrics": {
+    "humaneval_base_pass_at_1": 0.872,
+    "humaneval_plus_pass_at_1": 0.829
+  },
+  "n_passed": {
+    "humaneval_base": 143,
+    "humaneval_plus": 136
+  },
+  "delta_base_minus_plus": 0.043,
+  "evaluated_at": "2026-05-04T18:47+0200",
+  "notes": [
+    "Cross-validated against custom macOS scorer: base 86.59% (-0.6pts diff)",
+    "EvalPlus sandbox uses resource.RLIMIT_AS, Linux-only — see eval/runners/evalplus_runner.py",
+    "Compute model: Devstral-Small-2-24B-MLX-4bit, no adapter (baseline)",
+    "Generation: T=0.0, greedy, n_samples=1, on macM1 M1 Max via mlx_lm.server :8801"
+  ]
+}

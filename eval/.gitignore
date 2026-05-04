@@ -1,4 +1,34 @@
-# Eval result artifacts (raw data, can be regenerated from environment snapshot)
-results/*/
+# Eval result artifacts — keep summaries (results.json, report.md, methodology.md,
+# rerun.sh, env.json) tracked so benchmarks are auditable. Exclude raw outputs
+# (sample jsonl, lighteval logs) which are heavy and reproducible.
+
+# Ignore everything in results/ ...
+results/*
+
+# ... but keep these:
 !results/.gitkeep
 !results/SUMMARY.md
+!results/*/
+!results/*/*/
+!results/*/*/*/
+!results/*/*/*/results.json
+!results/*/*/*/report.md
+!results/*/*/*/methodology.md
+!results/*/*/*/rerun.sh
+!results/*/*/*/env.json
+!results/*/*/results.json
+!results/*/*/report.md
+!results/*/*/methodology.md
+!results/*/*/rerun.sh
+!results/*/*/env.json
+
+# Always ignore heavy raw outputs
+results/**/*.raw.jsonl
+results/**/samples.jsonl
+results/**/*_temp_*.jsonl
+results/**/*.log
+results/**/lighteval/
+results/**/answers.jsonl
+results/**/judgments.jsonl
+results/**/questions.jsonl
+results/**/eval_results.json
