@@ -4,6 +4,48 @@ Aggregated table of all publishable benchmark runs. Each result entry
 links to its self-contained directory with `env.json`, `methodology.md`,
 `rerun.sh`, and the official scoring artifacts.
 
+## KIKI-DSL (KiCad schematic synthesis)
+
+First valid measurement of an eu-kiki adapter delta on a custom KIKI-native bench. Workflow: `mlx_lm fuse` produces a self-contained 4-bit model with adapter weights baked in (workaround for `--adapter-path` runtime bug), evaluated by [`runners/kiki_native_runner.py`](../runners/kiki_native_runner.py) on 10 hand-curated KiCad prompts.
+
+| Run | Base model | Adapter | Pass rate | Avg score | Notes |
+|-----|------------|---------|----------:|----------:|-------|
+| [`qwen36-35b-4bit-base-kicad-dsl`](2026-05-04/qwen36-35b-4bit-base-kicad-dsl/) | Qwen3.6-35B-A3B-MLX-4bit | — | **60.0 %** | **0.593** | strong out of the box |
+| [`qwen36-35b-4bit-fused-kicad-dsl`](2026-05-04/qwen36-35b-4bit-fused-kicad-dsl/) | Qwen3.6-35B-A3B-MLX-4bit | v4-sota kicad-dsl (rank 16, scale 20) | **30.0 %** | **0.382** | **fused via mlx_lm fuse** |
+| Delta | | | **-30.0 pts** | **-0.211** | adapter degrades |
+| [`devstral-base-kicad-dsl`](2026-05-04/devstral-base-kicad-dsl/) | Devstral-Small-2-24B-MLX-4bit | — | 80.0 % | 0.750 | (10 prompts, broader format support) |
+
+### Reading
+
+- The **base Qwen3.6-35B-A3B** is already strong on KiCad prompts in French (60 % pass).
+- The **v4-sota kicad-dsl adapter** pushes towards a SPICE-compact netlist style (`R1 10k VCC GND`) — verified identical adapter behavior on Studio BF16 fused and macM1 4-bit fused runs.
+- This style hurts our test set, which expects rich content (named ICs like LM358, AMS1117, BME280; explicit value tokens like `100n`, `4.7u`). The adapter omits these to be terse.
+- Net effect: -30 pts pass-rate, -0.21 avg score. Honest negative result documented for publication.
+
+### Per-question delta (Qwen base → fused)
+
+| ID | Domain | Base | Fused | Δ |
+|----|--------|------|-------|---|
+| 001 | passive (R/R divider) | 0.67 PASS | 0.06 FAIL | -0.61 |
+| 002 | regulator (LDO AMS1117) | 0.57 FAIL | 0.05 FAIL | -0.52 |
+| 003 | led (LED + 330R) | 0.67 PASS | 0.67 PASS | 0.00 |
+| 004 | rc-filter | 0.24 FAIL | 0.67 **PASS** | **+0.43** |
+| 005 | transistor amp (2N3904) | 0.96 PASS | 0.18 FAIL | -0.78 |
+| 006 | i2c-pullup (BME280) | 0.25 FAIL | 0.21 FAIL | -0.04 |
+| 007 | h-bridge (IRF540 ×4) | 0.67 PASS | 0.63 PASS | -0.04 |
+| 008 | STM32 decoupling | 0.57 FAIL | 0.57 FAIL | 0.00 |
+| 009 | ESD USB (PESD5V0) | 0.67 PASS | 0.40 FAIL | -0.27 |
+| 010 | opamp buffer (LM358) | 0.67 PASS | 0.39 FAIL | -0.28 |
+
+→ Adapter helps RC filter (component-light, format-driven) but hurts every prompt requiring named ICs.
+
+### Implications for eu-kiki adapters
+
+- v4-sota training likely used SPICE-style netlist as canonical output → over-specialized
+- Future adapter retraining should preserve verbose KiCad sch format OR provide format-mode controls
+- **All 38 other v4-sota adapters likely share this pattern** — should be eval'd before release
+- Pipeline now reproducible end-to-end on macM1 alone (fuse + serve + bench in 30 min for any adapter)
+
 ## HumanEval / HumanEval+ (EvalPlus)
 
 | Run | Model | Adapter | HumanEval base | HumanEval+ | Notes |
