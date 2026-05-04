@@ -80,23 +80,51 @@ def _generate(
 
 
 def _check_syntax(output: str, expected_format: str = "sexpr") -> tuple[bool, str]:
-    """Heuristic syntax check. For S-expression format we balance parens."""
-    if expected_format == "sexpr":
-        # Find a code block or fall back to whole output
-        match = re.search(r"```(?:lisp|sexpr|kicad)?\n(.*?)```", output, re.DOTALL)
+    """Heuristic syntax check.
+
+    For schematic outputs we accept any of:
+      - KiCad S-expression (balanced parens around `kicad_sch`/`symbol`)
+      - SPICE-like compact netlist (lines starting with R/C/L/Q/D + nodes + value)
+      - SPICE deck (with .end)
+
+    Returns (passes, note).
+    """
+    if expected_format in ("sexpr", "schematic"):
+        # Try fenced code block first
+        match = re.search(r"```(?:lisp|sexpr|kicad|schematic|spice|netlist|text)?\n(.*?)```",
+                          output, re.DOTALL)
         body = match.group(1) if match else output
+
+        # KiCad S-expression: balanced parens with `kicad_sch` or `symbol` keywords
         opens = body.count("(")
         closes = body.count(")")
-        if opens == 0:
-            return False, "no S-expression body"
-        if opens != closes:
-            return False, f"unbalanced parens ({opens} ( vs {closes} ))"
-        return True, "balanced"
+        has_kicad_keyword = bool(re.search(r"\b(kicad_sch|kicad_pcb|symbol|component|net)\b",
+                                           body, re.IGNORECASE))
+        if opens >= 5 and opens == closes and has_kicad_keyword:
+            return True, f"sexpr balanced ({opens} pairs)"
+
+        # SPICE-like compact netlist: lines like "R1 N1 N2 10k", "C1 IN OUT 100n"
+        netlist_lines = re.findall(
+            r"^\s*([RCLQDM][A-Z0-9_]*)\s+\S+\s+\S+(?:\s+\S+)*\s*$",
+            body, re.MULTILINE
+        )
+        if len(netlist_lines) >= 1:
+            return True, f"spice-like netlist ({len(netlist_lines)} components)"
+
+        # SPICE deck with .end
+        if re.search(r"\.end\b", body, re.IGNORECASE):
+            return True, "spice deck (.end found)"
+
+        # If parens unbalanced AND no netlist → fail
+        if opens > 0:
+            return False, f"unbalanced parens ({opens} vs {closes}), no netlist"
+        return False, "no recognizable schematic format"
+
     if expected_format == "spice":
-        # SPICE netlist must have a .end and at least one component
-        if ".end" not in output.lower() and ".END" not in output:
-            return False, "no .end"
-        return True, "has .end"
+        if not re.search(r"\.end\b", output, re.IGNORECASE):
+            return False, "no .end directive"
+        return True, ".end found"
+
     return True, "no syntax check defined"
 
 
