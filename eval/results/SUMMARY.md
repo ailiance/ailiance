@@ -6,10 +6,16 @@ links to its self-contained directory with `env.json`, `methodology.md`,
 
 ## HumanEval / HumanEval+ (EvalPlus)
 
-| Run | Model | Adapter | HumanEval base | HumanEval+ | Δ base | Δ plus |
-|-----|-------|---------|---------------:|-----------:|-------:|-------:|
-| [`devstral-base-baseline-2026-05-04-v2`](2026-05-04/devstral-base-baseline-2026-05-04-v2/) | Devstral-Small-2-24B-MLX-4bit | — | **87.20 %** | **82.90 %** | (baseline) | (baseline) |
-| [`devstral-python-adapter-2026-05-04`](2026-05-04/devstral-python-adapter-2026-05-04/) | Devstral-Small-2-24B-MLX-4bit | python (eu-kiki) | **87.20 %** | **82.90 %** | **+0.0 pts** | **+0.0 pts** |
+| Run | Model | Adapter | HumanEval base | HumanEval+ | Notes |
+|-----|-------|---------|---------------:|-----------:|-------|
+| [`devstral-base-baseline-2026-05-04-v2`](2026-05-04/devstral-base-baseline-2026-05-04-v2/) | Devstral-Small-2-24B-MLX-4bit | — | **87.20 %** | **82.90 %** | Valid baseline |
+| [`devstral-python-adapter-2026-05-04`](2026-05-04/devstral-python-adapter-2026-05-04/) | Devstral-Small-2-24B-MLX-4bit | python (eu-kiki) | 87.20 % | 82.90 % | ⚠️ **INVALIDATED** — adapter silently NOT applied (mlx_lm `load_adapters` skips QuantizedLinear modules; 11/11 outputs bit-identical to base on a control test). Run actually measures base again. |
+
+**Lesson learned (2026-05-04):** mlx_lm.server `--adapter-path` succeeds without error but does not apply LoRA weights to a 4-bit MLX model when the adapter was trained on BF16. The `adapter_config.json` may be silently honored without effect on QuantizedLinear modules. To benchmark adapters reliably, either:
+- Use the BF16 model (Devstral-Small-2-24B-Instruct-2512, 45 GB — Studio only)
+- Fuse the adapter via `mlx_lm.fuse --save-path <fused-model>` then quantize, producing a self-contained 4-bit model
+
+A fix is in progress; affected runs will be re-executed and re-published once a verified adapter-loading path on the 4-bit model is established.
 
 ### Comparison context (HumanEval+)
 
