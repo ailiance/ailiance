@@ -87,17 +87,24 @@ def run_evalplus(
     if rc != 0:
         raise RuntimeError(f"evalplus generation failed (rc={rc}); see {raw_log}")
 
-    # 2) Score (re-invoke for explicit pass@k extraction)
-    eval_cmd = [
-        sys.executable, "-m", "evalplus.evaluate",
-        dataset,
-        "--samples", str(samples_path),
-    ]
-    print(f"[evalplus] Scoring {dataset}")
-    _run_subprocess(eval_cmd, raw_log)
-
-    # 3) Parse results — EvalPlus writes to stdout. Read the log.
-    pass_at_k = _parse_evalplus_log(raw_log)
+    # 2) Score using custom scorer (EvalPlus sandbox uses resource.RLIMIT_AS
+    # which is incompatible with macOS — every test sandbox subprocess crashes
+    # during init, returning "timeout" status for all problems regardless
+    # of correctness). The custom scorer uses subprocess.run with a 30s
+    # timeout, sandbox-free. See evalplus issue #N on GitHub for details.
+    sanitized_glob = sorted(
+        (output_dir / dataset).glob("*temp_*.jsonl")
+    )
+    sanitized = next(
+        (p for p in sanitized_glob if not p.name.endswith(".raw.jsonl")),
+        None,
+    )
+    if sanitized is None:
+        print(f"[evalplus] WARN: no sanitized samples found in {output_dir / dataset}")
+        pass_at_k = {}
+    else:
+        pass_at_k = _score_with_custom(sanitized, dataset)
+        print(f"[evalplus] {dataset} (custom scorer): pass@1 = {pass_at_k}")
 
     summary = {
         "task": task,
@@ -116,24 +123,73 @@ def run_evalplus(
     return summary
 
 
-def _parse_evalplus_log(log_path: Path) -> dict:
-    """Extract pass@k metrics from evalplus stdout log."""
-    if not log_path.exists():
+def _score_with_custom(sanitized_path: Path, dataset: str, timeout_s: int = 30) -> dict:
+    """Custom subprocess-based scorer (sandbox-free, macOS-compatible).
+
+    EvalPlus's official sandbox uses resource.RLIMIT_AS which raises
+    `ValueError: current limit exceeds maximum limit` on macOS, marking
+    every problem as "timeout" regardless of correctness.
+
+    This scorer runs `python3 -c <code>` in a plain subprocess with a
+    timeout. Less rigorous than EvalPlus's sandbox (no memory cap, no
+    syscall isolation) but produces accurate pass/fail for the test
+    suite. Trade-off documented in eval/README.md "Limitations".
+    """
+    if dataset != "humaneval":
+        # MBPP scoring would need its own loader; skip for now.
         return {}
-    text = log_path.read_text()
-    metrics: dict[str, float] = {}
-    for line in text.splitlines():
-        # EvalPlus lines look like: "pass@1: 0.756" or "pass@1 (base tests): 0.756"
+
+    try:
+        from evalplus.data import get_human_eval_plus
+        problems = get_human_eval_plus()
+    except Exception as e:
+        return {"_error": f"could not load evalplus dataset: {e}"}
+
+    solutions = {}
+    for line in sanitized_path.read_text().splitlines():
         line = line.strip()
-        if line.startswith("pass@"):
+        if not line:
+            continue
+        d = json.loads(line)
+        solutions[d["task_id"]] = d.get("solution", "")
+
+    base_pass = plus_pass = 0
+    n = 0
+    for task_id in sorted(problems.keys(), key=lambda x: int(x.split("/")[1])):
+        if task_id not in solutions:
+            continue
+        n += 1
+        sol = solutions[task_id]
+        p = problems[task_id]
+        ep = p["entry_point"]
+        base_code = sol + "\n\n" + p["test"] + f"\n\ncheck({ep})\n"
+        plus_test = p.get("test_plus") or p["test"]
+        plus_code = sol + "\n\n" + plus_test + f"\n\ncheck({ep})\n"
+
+        for code, kind in [(base_code, "base"), (plus_code, "plus")]:
             try:
-                key_part, val_part = line.split(":", 1)
-                key = key_part.strip()
-                val = float(val_part.strip())
-                metrics[key] = val
-            except (ValueError, IndexError):
-                continue
-    return metrics
+                r = subprocess.run(
+                    [sys.executable, "-c", code],
+                    capture_output=True, text=True, timeout=timeout_s,
+                )
+                if r.returncode == 0:
+                    if kind == "base":
+                        base_pass += 1
+                    else:
+                        plus_pass += 1
+            except subprocess.TimeoutExpired:
+                pass
+            except Exception:
+                pass
+
+    if n == 0:
+        return {}
+    return {
+        "humaneval_base_pass_at_1": round(base_pass / n, 4),
+        "humaneval_plus_pass_at_1": round(plus_pass / n, 4),
+        "n_problems": n,
+        "scorer": "custom-subprocess (macOS-compatible, EvalPlus sandbox bypassed)",
+    }
 
 
 def _cli() -> None:
