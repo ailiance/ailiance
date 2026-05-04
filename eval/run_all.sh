@@ -96,23 +96,25 @@ BASE_URL="http://127.0.0.1:$PORT/v1"
 MODEL_NAME="$(cd "$(dirname "$MODEL")" && pwd)/$(basename "$MODEL")"
 
 # ---- Build task list -------------------------------------------------------
+# Lighteval 0.13 task name format: <task>|<fewshot>  (no suite prefix).
+# HumanEval/MBPP are NOT in Lighteval 0.13 — use EvalPlus runner for code.
+# BBH/BBEH renamed; subtasks live under bigbench:<task>.
 LIGHTEVAL_TASKS=""
 add_task() { LIGHTEVAL_TASKS="${LIGHTEVAL_TASKS:+$LIGHTEVAL_TASKS,}$1"; }
 
 if (( QUICK )); then
-    add_task "lighteval|humaneval|0|0"
-    add_task "lighteval|gsm8k|5|0"
+    add_task "gsm8k|5"
 else
-    add_task "lighteval|humaneval|0|0"
-    add_task "lighteval|mbpp|3|0"
-    add_task "lighteval|gsm8k|5|0"
-    add_task "lighteval|mmlu_pro|5|0"
-    add_task "lighteval|ifeval|0|0"
-    add_task "lighteval|hellaswag|10|0"
+    add_task "gsm8k|5"
+    add_task "mmlu_pro|5"
+    add_task "ifeval|0"
+    add_task "hellaswag|10"
+    add_task "truthfulqa:mc|0"
 fi
 if (( EXTENDED )); then
-    add_task "extended|bbeh|0|0"
-    add_task "lighteval|big_bench_hard|3|1"
+    # bigbench has 200+ subtasks; pick a representative reasoning sample
+    add_task "bigbench:logical_deduction_seven_objects|3"
+    add_task "bigbench:tracking_shuffled_objects_seven_objects|3"
 fi
 
 # ---- Run lighteval ---------------------------------------------------------
