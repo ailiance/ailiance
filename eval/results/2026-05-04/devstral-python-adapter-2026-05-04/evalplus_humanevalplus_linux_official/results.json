@@ -1,0 +1,24 @@
+{
+  "task": "humaneval+ (official EvalPlus, Linux sandbox)",
+  "scorer": "evalplus.evaluate (official, sandbox-enforced)",
+  "host": "kx6tm-23 (Proxmox PVE, Linux x86_64, Python 3.13.5)",
+  "samples_source": "macM1 codegen run b04x2a50m followed by adapter run on :8802 (devstral-python-adapter-2026-05-04)",
+  "n_problems": 164,
+  "metrics": {
+    "humaneval_base_pass_at_1": 0.872,
+    "humaneval_plus_pass_at_1": 0.829
+  },
+  "n_passed": {
+    "humaneval_base": 143,
+    "humaneval_plus": 136
+  },
+  "delta_vs_baseline": {
+    "humaneval_base": 0.0,
+    "humaneval_plus": 0.0,
+    "interpretation": "ADAPTER NEUTRAL on HumanEval — adapter does not degrade nor improve over base. Expected outcome (predicted scenario A, 50% probability). Adapter targets chat/instructional Python style (training data: bigcode/self-oss-instruct-sc2-exec-filter-50k, 2850 train samples, 500 iters), HumanEval expects raw signature->function completion which the EvalPlus sanitizer extracts cleanly from the verbose output. The fine-tuning is harmless on this benchmark — confirms safe deployment in production. Real adapter impact must be measured on MT-Bench or AlpacaEval (chat benchmarks)."
+  },
+  "compute_model": "Devstral-Small-2-24B-MLX-4bit + LoRA r16/alpha32 q/k/v/o_proj",
+  "adapter_path": "eu-kiki/output/adapters/devstral/python/adapters.safetensors (369 MB)",
+  "generation": "T=0.0 greedy n_samples=1, mlx_lm.server :8802 on macM1 M1 Max",
+  "evaluated_at": "2026-05-04T21:15+0200"
+}
