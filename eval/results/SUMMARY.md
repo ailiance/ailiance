@@ -11,9 +11,31 @@ First valid measurement of an eu-kiki adapter delta on a custom KIKI-native benc
 | Run | Base model | Adapter | Pass rate | Avg score | Notes |
 |-----|------------|---------|----------:|----------:|-------|
 | [`qwen36-35b-4bit-base-kicad-dsl`](2026-05-04/qwen36-35b-4bit-base-kicad-dsl/) | Qwen3.6-35B-A3B-MLX-4bit | — | **60.0 %** | **0.593** | strong out of the box |
-| [`qwen36-35b-4bit-fused-kicad-dsl`](2026-05-04/qwen36-35b-4bit-fused-kicad-dsl/) | Qwen3.6-35B-A3B-MLX-4bit | v4-sota kicad-dsl (rank 16, scale 20) | **30.0 %** | **0.382** | **fused via mlx_lm fuse** |
-| Delta | | | **-30.0 pts** | **-0.211** | adapter degrades |
-| [`devstral-base-kicad-dsl`](2026-05-04/devstral-base-kicad-dsl/) | Devstral-Small-2-24B-MLX-4bit | — | 80.0 % | 0.750 | (10 prompts, broader format support) |
+| [`qwen36-35b-4bit-fused-kicad-dsl`](2026-05-04/qwen36-35b-4bit-fused-kicad-dsl/) | Qwen3.6-35B-A3B-MLX-4bit | v4-sota kicad-dsl (rank 16, scale 20) | **30.0 %** | **0.382** | over-specialized SPICE-style, **-30 pts** |
+| [`qwen36-35b-4bit-fused-kicad-pcb-on-kicad-dsl`](2026-05-04/qwen36-35b-4bit-fused-kicad-pcb-on-kicad-dsl/) | Qwen3.6-35B-A3B-MLX-4bit | v4-sota kicad-pcb | **60.0 %** | **0.535** | redistributes, **0 pts pass / -0.058 avg** |
+| [`devstral-base-kicad-dsl`](2026-05-04/devstral-base-kicad-dsl/) | Devstral-Small-2-24B-MLX-4bit | — | 80.0 % | 0.750 | reference (different base) |
+
+### Per-question delta — Qwen base vs each fused adapter
+
+| Q | Domain | Base | +kicad-dsl | +kicad-pcb |
+|---|--------|-----:|----------:|----------:|
+| 001 | passive R/R divider | 0.67 PASS | 0.06 | 0.00 |
+| 002 | LDO AMS1117 | 0.57 | 0.05 | **0.62 PASS** |
+| 003 | LED + 330R | 0.67 PASS | 0.67 PASS | **0.89 PASS** |
+| 004 | RC filter | 0.24 | 0.67 PASS | **0.91 PASS** |
+| 005 | BJT amp 2N3904 | 0.96 PASS | 0.18 | 0.63 PASS |
+| 006 | I2C pull-ups + BME280 | 0.25 | 0.21 | **0.67 PASS** |
+| 007 | H-bridge MOSFETs | 0.67 PASS | 0.63 PASS | 0.04 |
+| 008 | STM32 decoupling | 0.57 | 0.57 | 0.38 |
+| 009 | ESD USB PESD5V0 | 0.67 PASS | 0.40 | 0.67 PASS |
+| 010 | LM358 buffer | 0.67 PASS | 0.39 | 0.56 |
+
+### Insights from cross-adapter comparison
+
+- **kicad-dsl** over-specializes on SPICE-compact format → hostile to named ICs (LM358, AMS1117, BME280, 2N3904).
+- **kicad-pcb** redistributes strengths: gains on prompts with explicit IC references (LDO, LED, RC filter, I2C+BME280), loses on structural designs (H-bridge, decoupling).
+- **No uniform v4-sota pattern** — each adapter has its own personality. Can't extrapolate from one to all.
+- The kicad-dsl test set may not be the right bench for a kicad-pcb adapter (different sub-domain). A kicad-pcb-specific test set (PCB layout, footprints) would likely show more positive delta.
 
 ### Reading
 

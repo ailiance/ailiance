@@ -1,0 +1,60 @@
+{
+  "task": "kiki-kicad-dsl",
+  "task_version": "0.1.0",
+  "n_questions": 10,
+  "n_passed": 6,
+  "pass_rate": 0.6,
+  "metrics": {
+    "overall_avg": 0.5351,
+    "syntax_ok_rate": 0.2,
+    "contains_avg": 0.6048,
+    "unique_avg": 0.8
+  },
+  "by_category": {
+    "passive": {
+      "avg": 0.0,
+      "n": 1
+    },
+    "regulator": {
+      "avg": 0.619,
+      "n": 1
+    },
+    "led": {
+      "avg": 0.889,
+      "n": 1
+    },
+    "rc-filter": {
+      "avg": 0.905,
+      "n": 1
+    },
+    "transistor-amplifier": {
+      "avg": 0.63,
+      "n": 1
+    },
+    "i2c-pullup": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "h-bridge": {
+      "avg": 0.037,
+      "n": 1
+    },
+    "decoupling": {
+      "avg": 0.381,
+      "n": 1
+    },
+    "esd-protection": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "opamp-buffer": {
+      "avg": 0.556,
+      "n": 1
+    }
+  },
+  "model_id": "/tmp/qwen-kicad-pcb-fused-4bit",
+  "base_url": "http://127.0.0.1:8843/v1",
+  "task_path": "tasks/kiki_native/kicad_dsl.json",
+  "answers_path": "results/2026-05-04/qwen36-35b-4bit-fused-kicad-pcb-on-kicad-dsl/kiki_kicad_dsl/answers.jsonl",
+  "evaluated_at": "2026-05-04T22:22:52+0200"
+}
