@@ -1,0 +1,60 @@
+{
+  "task": "kiki-kicad-dsl",
+  "task_version": "0.1.0",
+  "n_questions": 10,
+  "n_passed": 3,
+  "pass_rate": 0.3,
+  "metrics": {
+    "overall_avg": 0.4726,
+    "syntax_ok_rate": 0.1,
+    "contains_avg": 0.6175,
+    "unique_avg": 0.7
+  },
+  "by_category": {
+    "passive": {
+      "avg": 0.5,
+      "n": 1
+    },
+    "regulator": {
+      "avg": 0.19,
+      "n": 1
+    },
+    "led": {
+      "avg": 0.389,
+      "n": 1
+    },
+    "rc-filter": {
+      "avg": 1.0,
+      "n": 1
+    },
+    "transistor-amplifier": {
+      "avg": 0.111,
+      "n": 1
+    },
+    "i2c-pullup": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "h-bridge": {
+      "avg": 0.278,
+      "n": 1
+    },
+    "decoupling": {
+      "avg": 0.524,
+      "n": 1
+    },
+    "esd-protection": {
+      "avg": 0.4,
+      "n": 1
+    },
+    "opamp-buffer": {
+      "avg": 0.667,
+      "n": 1
+    }
+  },
+  "model_id": "/tmp/qwen-spice-sim-fused-4bit",
+  "base_url": "http://127.0.0.1:8858/v1",
+  "task_path": "tasks/kiki_native/kicad_dsl.json",
+  "answers_path": "results/2026-05-04/qwen36-35b-4bit-fused-spice-sim-on-kicad-dsl/kiki_kicad_dsl/answers.jsonl",
+  "evaluated_at": "2026-05-05T01:04:49+0200"
+}
