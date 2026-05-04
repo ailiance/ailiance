@@ -99,10 +99,10 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             selections = router.route(user_msg)
             route_latency.observe(time.perf_counter() - t0)
             domain = selections[0][0] if selections else "python"
-            worker_port = get_worker_for_domain(domain) or 9202
+            worker_port = get_worker_for_domain(domain) or 9302
         else:
             domain = "python"
-            worker_port = 9202
+            worker_port = 9302
 
         worker_url = WORKER_URLS[worker_port]
         headers = {"X-Lora-Domain": domain}
