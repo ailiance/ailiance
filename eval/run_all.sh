@@ -22,8 +22,11 @@ ADAPTER=""
 LABEL=""
 QUICK=0
 EXTENDED=0
+MTBENCH=0
 PORT=8000
 MAX_SAMPLES=""
+JUDGE_BASE_URL="${JUDGE_BASE_URL:-http://127.0.0.1:8500/v1}"
+JUDGE_MODEL="${JUDGE_MODEL:-mlx-community/Mistral-Medium-3.5-128B-MLX-4bit}"
 SUITE_ROOT="$(cd "$(dirname "$0")" && pwd)"
 EU_KIKI_ROOT="$(cd "$SUITE_ROOT/.." && pwd)"
 DATE="$(date +%Y-%m-%d)"
@@ -36,7 +39,10 @@ while [[ $# -gt 0 ]]; do
         --label)        LABEL="$2"; shift 2 ;;
         --quick)        QUICK=1; shift ;;
         --extended)     EXTENDED=1; shift ;;
+        --mtbench)      MTBENCH=1; shift ;;
         --port)         PORT="$2"; shift 2 ;;
+        --judge-base-url) JUDGE_BASE_URL="$2"; shift 2 ;;
+        --judge-model)  JUDGE_MODEL="$2"; shift 2 ;;
         --max-samples)  MAX_SAMPLES="$2"; shift 2 ;;
         -h|--help)      sed -n '1,20p' "$0"; exit 0 ;;
         *)              echo "Unknown: $1" >&2; exit 2 ;;
@@ -148,6 +154,20 @@ if (( !QUICK )); then
         --temperature 0.0 \
         --n-samples 1 \
         || echo "WARN: evalplus mbppplus failed, continuing"
+fi
+
+# ---- MT-Bench (chat eval, LLM-as-judge) -------------------------------------
+if (( MTBENCH )); then
+    echo ">>> MT-Bench (judge=$JUDGE_MODEL)"
+    "$PY" -m runners.mtbench_runner \
+        --base-url "$BASE_URL" \
+        --model-id "$MODEL_NAME" \
+        --judge-base-url "$JUDGE_BASE_URL" \
+        --judge-model "$JUDGE_MODEL" \
+        --output-dir "$OUT/mtbench" \
+        --temperature 0.7 \
+        --max-tokens 1024 \
+        || echo "WARN: mtbench failed, continuing"
 fi
 
 # ---- Stop server before report -----------------------------------------------
