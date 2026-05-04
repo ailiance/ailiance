@@ -56,7 +56,15 @@ def _generate(
     max_tokens: int = 600,
     temperature: float = 0.0,
     timeout_s: int = 180,
+    disable_thinking: bool = True,
 ) -> str:
+    """Send a chat-completions request, return assistant content.
+
+    Qwen3-family models emit `reasoning` separately from `content` when
+    thinking mode is on. We disable it via `chat_template_kwargs` so all
+    output flows through `content`. Falls back to `reasoning` if `content`
+    is empty (multi-turn safety).
+    """
     payload = {
         "model": model_id,
         "messages": [{"role": "user", "content": prompt}],
@@ -64,6 +72,9 @@ def _generate(
         "temperature": temperature,
         "stream": False,
     }
+    if disable_thinking:
+        payload["chat_template_kwargs"] = {"enable_thinking": False}
+
     req = urllib.request.Request(
         f"{base_url.rstrip('/')}/chat/completions",
         data=json.dumps(payload).encode(),
@@ -72,7 +83,12 @@ def _generate(
     try:
         with urllib.request.urlopen(req, timeout=timeout_s) as r:
             body = json.loads(r.read())
-        return body["choices"][0]["message"]["content"]
+        msg = body["choices"][0]["message"]
+        content = msg.get("content") or ""
+        # Fallback: some models emit only `reasoning` if thinking is on.
+        if not content.strip():
+            content = msg.get("reasoning") or ""
+        return content
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
         return f"[ERROR: {e}]"
     except (KeyError, IndexError, json.JSONDecodeError) as e:
