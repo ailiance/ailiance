@@ -52,39 +52,48 @@ def run_evalplus(
     output_dir: Path,
     n_samples: int = 1,
     temperature: float = 0.0,
-    max_tokens: int = 1024,
     seed: int = 42,
 ) -> dict:
-    """Run EvalPlus task against an OpenAI-compatible endpoint."""
+    """Run EvalPlus task against an OpenAI-compatible endpoint.
+
+    EvalPlus's `evaluate` entrypoint chains codegen + scoring when given a
+    DATASET positional and `--backend openai --base_url <url> --model <id>`.
+    We pass `greedy=True` for deterministic baselines (temperature=0).
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
     raw_log = output_dir / "evalplus.log"
 
-    # 1) Generate samples
+    # EvalPlus expects DATASET as a positional argument, then flags via Fire.
+    # `dataset` task names: humaneval, mbpp (the +/plus tests are auto-included).
+    dataset = task.replace("plus", "")  # humanevalplus -> humaneval
     samples_path = output_dir / "samples.jsonl"
     gen_cmd = [
         sys.executable, "-m", "evalplus.evaluate",
-        "--dataset", task,
+        dataset,
         "--samples", str(samples_path),
-        "--base_url", base_url,
+        "--root", str(output_dir),
+        "--backend", "openai",
+        "--base-url", base_url,
         "--model", model_name,
-        "--temperature", str(temperature),
-        "--n_samples", str(n_samples),
-        "--max_tokens", str(max_tokens),
+        "--n-samples", str(n_samples),
     ]
-    print(f"[evalplus] Generating {task} samples → {samples_path}")
+    if temperature == 0.0:
+        gen_cmd.append("--greedy")
+    else:
+        gen_cmd.extend(["--temperature", str(temperature)])
+
+    print(f"[evalplus] Generating {dataset} samples → {samples_path}")
     rc = _run_subprocess(gen_cmd, raw_log)
     if rc != 0:
         raise RuntimeError(f"evalplus generation failed (rc={rc}); see {raw_log}")
 
-    # 2) Score (EvalPlus auto-runs scoring after generation if --evaluate is set,
-    # but for explicit control we re-invoke)
-    eval_results = output_dir / "evalplus_results.json"
+    # 2) Score (re-invoke for explicit pass@k extraction)
     eval_cmd = [
         sys.executable, "-m", "evalplus.evaluate",
-        "--dataset", task,
+        dataset,
         "--samples", str(samples_path),
     ]
-    print(f"[evalplus] Scoring {task}")
+    print(f"[evalplus] Scoring {dataset}")
     _run_subprocess(eval_cmd, raw_log)
 
     # 3) Parse results — EvalPlus writes to stdout. Read the log.
@@ -92,11 +101,11 @@ def run_evalplus(
 
     summary = {
         "task": task,
+        "dataset": dataset,
         "model_name": model_name,
         "base_url": base_url,
         "n_samples_per_problem": n_samples,
         "temperature": temperature,
-        "max_tokens": max_tokens,
         "seed": seed,
         "pass_at_k": pass_at_k,
         "samples_jsonl": str(samples_path),
@@ -135,7 +144,6 @@ def _cli() -> None:
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--n-samples", type=int, default=1)
     parser.add_argument("--temperature", type=float, default=0.0)
-    parser.add_argument("--max-tokens", type=int, default=1024)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
@@ -147,7 +155,6 @@ def _cli() -> None:
         output_dir=args.output_dir,
         n_samples=args.n_samples,
         temperature=args.temperature,
-        max_tokens=args.max_tokens,
         seed=args.seed,
     )
     print(json.dumps(summary, indent=2))

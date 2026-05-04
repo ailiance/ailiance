@@ -52,16 +52,28 @@ def run_lighteval(
     api_key: str = "EMPTY",
     max_samples: int | None = None,
 ) -> dict:
-    """Run lighteval tasks against an OpenAI-compatible endpoint."""
+    """Run lighteval tasks against an OpenAI-compatible endpoint via LiteLLM.
+
+    Lighteval 0.13 dropped the standalone `openai` endpoint subcommand. We use
+    `endpoint litellm` instead, which proxies to any OpenAI-compatible API
+    when given `model_name=openai/<id>,base_url=<url>` (the `openai/` prefix
+    tells LiteLLM to use its OpenAI client, not actually contact OpenAI).
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
     raw_log = output_dir / "lighteval.log"
 
+    # LiteLLM expects the model_name to be `openai/<arbitrary-id>` for
+    # OpenAI-compatible endpoints. The base_url override redirects to localhost.
+    litellm_model_args = (
+        f"model_name=openai/{model_name},"
+        f"base_url={base_url},"
+        f"api_key={api_key}"
+    )
+
     cmd = [
-        sys.executable, "-m", "lighteval", "endpoint", "openai",
-        "--model", model_name,
-        "--base-url", base_url,
-        "--api-key", api_key,
-        "--tasks", tasks,
+        sys.executable, "-m", "lighteval", "endpoint", "litellm",
+        litellm_model_args,
+        tasks,
         "--output-dir", str(output_dir),
     ]
     if max_samples is not None:
