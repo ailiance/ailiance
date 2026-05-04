@@ -109,16 +109,23 @@ def _git_describe(repo_path: Path) -> dict:
 
 
 def _pip_freeze() -> list[str]:
-    """Capture pinned package versions for full reproducibility."""
-    try:
-        r = subprocess.run(
-            [sys.executable, "-m", "pip", "freeze"],
-            capture_output=True, text=True, timeout=30,
-        )
-        if r.returncode == 0:
-            return r.stdout.splitlines()
-    except Exception:
-        pass
+    """Capture pinned package versions for full reproducibility.
+
+    Tries `pip freeze` first, then `uv pip freeze` (when running in a uv-managed
+    venv where pip itself may not be installed).
+    """
+    for cmd in (
+        [sys.executable, "-m", "pip", "freeze"],
+        ["uv", "pip", "freeze", "--python", sys.executable],
+    ):
+        try:
+            r = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=30,
+            )
+            if r.returncode == 0 and r.stdout.strip():
+                return r.stdout.splitlines()
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            continue
     return []
 
 
