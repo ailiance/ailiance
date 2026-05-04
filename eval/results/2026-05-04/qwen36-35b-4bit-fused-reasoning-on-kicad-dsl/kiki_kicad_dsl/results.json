@@ -1,0 +1,60 @@
+{
+  "task": "kiki-kicad-dsl",
+  "task_version": "0.1.0",
+  "n_questions": 10,
+  "n_passed": 9,
+  "pass_rate": 0.9,
+  "metrics": {
+    "overall_avg": 0.6718,
+    "syntax_ok_rate": 0.2,
+    "contains_avg": 0.915,
+    "unique_avg": 0.9
+  },
+  "by_category": {
+    "passive": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "regulator": {
+      "avg": 0.619,
+      "n": 1
+    },
+    "led": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "rc-filter": {
+      "avg": 0.571,
+      "n": 1
+    },
+    "transistor-amplifier": {
+      "avg": 0.63,
+      "n": 1
+    },
+    "i2c-pullup": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "h-bridge": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "decoupling": {
+      "avg": 0.619,
+      "n": 1
+    },
+    "esd-protection": {
+      "avg": 1.0,
+      "n": 1
+    },
+    "opamp-buffer": {
+      "avg": 0.611,
+      "n": 1
+    }
+  },
+  "model_id": "/tmp/qwen-reasoning-fused-4bit",
+  "base_url": "http://127.0.0.1:8860/v1",
+  "task_path": "tasks/kiki_native/kicad_dsl.json",
+  "answers_path": "results/2026-05-04/qwen36-35b-4bit-fused-reasoning-on-kicad-dsl/kiki_kicad_dsl/answers.jsonl",
+  "evaluated_at": "2026-05-05T01:14:36+0200"
+}
