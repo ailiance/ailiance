@@ -1,0 +1,97 @@
+{
+  "name": "kiki-kicad-dsl",
+  "version": "0.1.0",
+  "description": "KiCad schematic synthesis from text prompts. Tests adapter knowledge of KiCad symbol library, S-expression DSL, net naming, and footprint conventions.",
+  "license": "Apache-2.0",
+  "scoring": {
+    "method": "rule-based + LLM-judge fallback",
+    "rules": [
+      "Output must be valid S-expression syntax (parseable)",
+      "Required components list must appear in output",
+      "Each component must have a unique reference designator",
+      "Net labels must be consistent across components"
+    ]
+  },
+  "questions": [
+    {
+      "id": "kicad-dsl-001",
+      "category": "passive",
+      "prompt": "Génère un sch KiCad minimal pour un diviseur de tension : R1=10k, R2=10k, alimentation +VCC, sortie OUT, masse GND. Format S-expression KiCad 7+.",
+      "must_contain": ["R1", "R2", "10k", "VCC", "GND", "OUT"],
+      "must_be_unique": ["R1", "R2"],
+      "max_tokens": 600
+    },
+    {
+      "id": "kicad-dsl-002",
+      "category": "regulator",
+      "prompt": "Schéma KiCad d'un régulateur LDO 3.3V à partir d'un AMS1117-3.3 : entrée VIN (5V), sortie 3V3, deux capacités de découplage 10µF (C1 entrée, C2 sortie), masse GND.",
+      "must_contain": ["AMS1117", "C1", "C2", "10u", "VIN", "3V3", "GND"],
+      "must_be_unique": ["C1", "C2"],
+      "max_tokens": 800
+    },
+    {
+      "id": "kicad-dsl-003",
+      "category": "led",
+      "prompt": "Circuit LED simple : R1=330R en série avec une LED rouge D1, alimentation 5V, masse GND.",
+      "must_contain": ["R1", "D1", "330", "5V", "GND", "LED"],
+      "must_be_unique": ["R1", "D1"],
+      "max_tokens": 500
+    },
+    {
+      "id": "kicad-dsl-004",
+      "category": "rc-filter",
+      "prompt": "Filtre passe-bas RC : R=1k, C=100nF, fréquence de coupure ~1.6kHz. Entrée IN, sortie OUT, masse GND. Donne le schéma KiCad.",
+      "must_contain": ["R1", "C1", "1k", "100n", "IN", "OUT", "GND"],
+      "must_be_unique": ["R1", "C1"],
+      "max_tokens": 500
+    },
+    {
+      "id": "kicad-dsl-005",
+      "category": "transistor-amplifier",
+      "prompt": "Amplificateur émetteur commun avec 2N3904 : Rb=10k (base), Rc=4.7k (collecteur), Re=1k (émetteur), Vcc=12V, capacité de couplage entrée 1µF, sortie 1µF. Donne le schéma KiCad complet.",
+      "must_contain": ["2N3904", "Rb", "Rc", "Re", "10k", "4.7k", "1k", "12V", "1u"],
+      "must_be_unique": ["Rb", "Rc", "Re"],
+      "max_tokens": 900
+    },
+    {
+      "id": "kicad-dsl-006",
+      "category": "i2c-pullup",
+      "prompt": "Bus I2C avec pull-ups : R1=4.7k sur SDA, R2=4.7k sur SCL, alimentation 3.3V, masse GND. Connexion vers un capteur BME280 (4 pins : VCC, GND, SDA, SCL).",
+      "must_contain": ["R1", "R2", "4.7k", "SDA", "SCL", "3.3V", "GND", "BME280"],
+      "must_be_unique": ["R1", "R2"],
+      "max_tokens": 700
+    },
+    {
+      "id": "kicad-dsl-007",
+      "category": "h-bridge",
+      "prompt": "Pont en H pour moteur DC avec 4 MOSFETs N-channel (IRF540) : Q1, Q2 (high-side), Q3, Q4 (low-side). Signaux de commande IN1, IN2, IN3, IN4. Alimentation +VM, masse GND.",
+      "must_contain": ["Q1", "Q2", "Q3", "Q4", "IRF540", "IN1", "IN4", "VM", "GND"],
+      "must_be_unique": ["Q1", "Q2", "Q3", "Q4"],
+      "max_tokens": 1000
+    },
+    {
+      "id": "kicad-dsl-008",
+      "category": "decoupling",
+      "prompt": "Découplage d'un microcontrôleur STM32F103C8T6 : 4 capacités 100nF (une par paire VDD/VSS), 1 condensateur 4.7µF tantale en entrée, alimentation 3.3V.",
+      "must_contain": ["STM32F103", "100n", "4.7u", "3.3V", "VDD", "VSS", "GND"],
+      "must_be_unique": [],
+      "max_tokens": 800
+    },
+    {
+      "id": "kicad-dsl-009",
+      "category": "esd-protection",
+      "prompt": "Protection ESD sur lignes USB-D+/D- : deux diodes TVS bidirectionnelles (PESD5V0L1BA), entrée USB, sortie vers contrôleur. Format KiCad avec label de net D+ / D- / GND.",
+      "must_contain": ["PESD5V0L1BA", "D+", "D-", "GND", "TVS"],
+      "must_be_unique": [],
+      "max_tokens": 600
+    },
+    {
+      "id": "kicad-dsl-010",
+      "category": "opamp-buffer",
+      "prompt": "Buffer suiveur de tension avec un LM358 : entrée IN, sortie OUT, alimentation +5V/GND (single supply). Inclure découplage 100nF sur l'alimentation.",
+      "must_contain": ["LM358", "IN", "OUT", "5V", "GND", "100n"],
+      "must_be_unique": [],
+      "max_tokens": 700
+    }
+  ]
+}
