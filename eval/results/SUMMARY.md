@@ -77,6 +77,38 @@ First valid measurement of an eu-kiki adapter delta on a custom KIKI-native benc
 - **All 38 other v4-sota adapters likely share this pattern** — should be eval'd before release
 - Pipeline now reproducible end-to-end on macM1 alone (fuse + serve + bench in 30 min for any adapter)
 
+## MT-Bench (LLM-as-judge, local Mistral-Medium-128B)
+
+**First MT-Bench score** for eu-kiki, fully local pipeline. Subject and judge both run on Studio (M3 Ultra 512 GB). No external API dependency — judge is Mistral-Medium-3.5-128B-MLX-4bit (~73 GB), reproducible.
+
+| Run | Subject | Judge | Score | Turns judged |
+|-----|---------|-------|------:|-------------:|
+| [`devstral-base-mtbench-smoke`](2026-05-04/devstral-base-mtbench-smoke/) | Devstral-Small-2-24B-MLX-4bit (BASE) | Mistral-Medium-3.5-128B-MLX-4bit | **9.2 / 10** | 5 (smoke) |
+
+### Caveats (smoke run, not publishable as-is)
+
+- Only **5 questions × 1+ turn** judged (smoke run, validates pipeline)
+- All 5 in category **"writing"** — first 5 of MT-Bench `question.jsonl`
+- Turn 2 only successfully judged for 1 of the 5 questions (4 timeouts caused by GPU contention with a concurrent training process on Studio)
+- **Mistral-Medium may be a lenient judge** — score 9.2 is on par with GPT-4 (~9.0) on the original MT-Bench paper, which is suspiciously high for a 24B 4-bit model. Calibration with a stronger reference judge needed for publication.
+
+### Pipeline validated end-to-end
+
+- mtbench_runner: spawn subject server, fetch MT-Bench questions from FastChat repo, generate, judge, aggregate
+- Bug fixes during validation (5 attempts):
+  1. `--max-questions` not in CLI parser
+  2. `fastchat` hard import dependency
+  3. Qwen3.x thinking mode → reasoning vs content (KeyError)
+  4. macM1 OOM Metal (Qwen 35B fused + 800-token chat KV cache)
+  5. Studio not synced with latest fixes
+- Final commit: `593302e` — pipeline portable, runs all-on-Studio.
+
+### Next
+
+- MT-Bench **full** (80 questions × 2 turns × 8 categories) for publishable result
+- A/B: Devstral 24B base vs Devstral 24B + eu-kiki v1 python adapter (fused)
+- Consider stronger judge (GPT-4 or human) for calibration of Mistral-Medium leniency
+
 ## eu-kiki v1 Devstral on HumanEval+ (FIRST VALID adapter delta)
 
 Replaces the invalidated `devstral-python-adapter-2026-05-04` run (which silently used the base via the broken `--adapter-path`). This time the adapter is **fused** into the base via `mlx_lm fuse` on macM1, producing a self-contained 4-bit checkpoint where the LoRA contributions are guaranteed to be active.

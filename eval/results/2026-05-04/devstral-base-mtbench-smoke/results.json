@@ -1,0 +1,27 @@
+{
+  "overall_score": 9.2,
+  "n_judged_turns": 5,
+  "by_category": {
+    "writing": {
+      "avg": 9.2,
+      "n": 5
+    }
+  },
+  "by_turn": {
+    "1": {
+      "avg": 9.0,
+      "n": 4
+    },
+    "2": {
+      "avg": 10.0,
+      "n": 1
+    }
+  },
+  "model_id": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit",
+  "judge_model": "/Users/clems/KIKI-Mac_tunner/models/Mistral-Medium-3.5-128B-MLX-4bit",
+  "base_url": "http://127.0.0.1:8870/v1",
+  "judge_base_url": "http://127.0.0.1:8500/v1",
+  "temperature": 0.7,
+  "max_tokens": 800,
+  "evaluated_at": "2026-05-05T01:57:04+0200"
+}
