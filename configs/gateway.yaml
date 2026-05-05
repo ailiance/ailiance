@@ -5,7 +5,7 @@ router:
   embedding_dim: 384
   hidden_dim: 256
   num_domains: 32
-  threshold: 0.12
+  threshold: 0.50
   max_active: 4
 
 workers:
