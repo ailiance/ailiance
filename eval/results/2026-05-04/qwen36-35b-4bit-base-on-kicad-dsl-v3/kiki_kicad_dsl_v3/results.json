@@ -1,0 +1,80 @@
+{
+  "task": "kiki-kicad-dsl-v3",
+  "task_version": "0.3.0",
+  "n_questions": 15,
+  "n_passed": 11,
+  "pass_rate": 0.7333,
+  "metrics": {
+    "overall_avg": 0.7039,
+    "syntax_ok_rate": 0.3333,
+    "contains_avg": 0.9113,
+    "unique_avg": 0.8667
+  },
+  "by_category": {
+    "passive": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "regulator": {
+      "avg": 0.571,
+      "n": 1
+    },
+    "led": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "rc-filter": {
+      "avg": 0.238,
+      "n": 1
+    },
+    "transistor-amplifier": {
+      "avg": 0.963,
+      "n": 1
+    },
+    "i2c-pullup": {
+      "avg": 0.25,
+      "n": 1
+    },
+    "h-bridge": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "decoupling": {
+      "avg": 0.571,
+      "n": 1
+    },
+    "esd-protection": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "opamp-buffer": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "spice-pure-rc": {
+      "avg": 1.0,
+      "n": 1
+    },
+    "spice-pure-rlc": {
+      "avg": 1.0,
+      "n": 1
+    },
+    "spice-pure-divider": {
+      "avg": 1.0,
+      "n": 1
+    },
+    "spice-pure-bias": {
+      "avg": 0.63,
+      "n": 1
+    },
+    "spice-pure-lc-tank": {
+      "avg": 1.0,
+      "n": 1
+    }
+  },
+  "model_id": "/Users/electron/Projets/KIKI-Mac_tunner/models/Qwen3.6-35B-A3B-4bit",
+  "base_url": "http://127.0.0.1:8873/v1",
+  "task_path": "tasks/kiki_native/kicad_dsl_v3.json",
+  "answers_path": "results/2026-05-04/qwen36-35b-4bit-base-on-kicad-dsl-v3/kiki_kicad_dsl_v3/answers.jsonl",
+  "evaluated_at": "2026-05-05T02:08:38+0200"
+}
