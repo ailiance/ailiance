@@ -40,12 +40,12 @@ use `kicad_dsl_v3.json`.
 | reasoning | +30 | +13 | win confirmed, magnitude inflated on v1 |
 | math | +10 | +7 | win confirmed |
 | chat-fr | +10 | 0 | **artifact**: v1 win was test-set-specific |
-| security | +10 | (TBD) | retest pending |
-| kicad-pcb | 0 | (TBD) | retest pending |
+| security | +10 | +6.7 | win confirmed, partly test-set-amplified |
+| kicad-pcb | 0 | -6.7 | hidden negative-transfer revealed on SPICE-pure |
 | embedded | -10 | (TBD) | retest pending |
 | electronics | -20 | (TBD) | retest pending |
 | spice-sim | -30 | -20 | partial artifact, real degradation reduced |
-| components | -30 | (TBD) | retest pending |
+| components | -30 | -20 | partial artifact, real degradation reduced |
 | kicad-dsl | -30 | -27 | confirmed, slight reduction |
 
 → The v1 test set inflated both wins and losses. v3 is more honest.
