@@ -134,7 +134,10 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
 
         worker_url = WORKER_URLS[worker_port]
         headers = {"X-Lora-Domain": domain}
-        body = req.model_dump()
+        # exclude_none so optional ChatMessage fields (tool_calls, name,
+        # tool_call_id) don't reach llama.cpp workers as `null` and trip
+        # their JSON schema validation.
+        body = req.model_dump(exclude_none=True)
 
         # Streaming path: pipe SSE chunks back to the client without buffering.
         if body.get("stream"):
