@@ -163,3 +163,23 @@ Reported metrics in §1 should reproduce within ±0.5 percentage points.
 Issues with router routing decisions, data-quality reports, or right to
 opt out: `postmaster@saillant.cc`. We aim to respond within 7 working
 days.
+
+## Encoder migration decision (2026-05-05)
+
+After running scripts/router_benchmark.py --full on the v5 clean corpus
+and training a Jina-conditioned head (router-v6, 512 hidden, 30 epochs):
+
+- MiniLM L6 v2 (active, router-v5): top-1 = 87.6 %, encode = 1.6 ms/prompt, Δ separation = 0.345
+- Jina v3 (candidate, router-v6, task=separation): top-1 = 87.4 %, encode = 9.7 ms/prompt, Δ separation = 0.150
+  - (task=classification variant: encode = 16.6 ms/prompt, Δ separation = 0.152)
+- Δ top-1: -0.2 pp
+- Δ latency: +8.1 ms
+
+Decision: KEEP MiniLM.
+
+Rationale: the migration rule requires Jina-trained-head top-1 to beat
+MiniLM by at least +3 pp. Jina v3 actually under-performs MiniLM by
+0.2 pp on the same v5 clean corpus, while costing ~6x more encode
+latency per prompt. The encoder-only Δ separation is also lower for
+Jina (0.15 vs 0.34), suggesting Jina's high-dimensional space is less
+linearly separable for our 9-domain taxonomy. No reason to migrate.
