@@ -1,0 +1,2067 @@
+FULL VALIDATION MODE: 1978 prompts
+
+=== MiniLM L6 v2 ===  (sentence-transformers/all-MiniLM-L6-v2)
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 18775.02it/s]
+[1mBertModel LOAD REPORT[0m from: sentence-transformers/all-MiniLM-L6-v2
+Key                     | Status     |  | 
+------------------------+------------+--+-
+embeddings.position_ids | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+  load       : 3.1s
+  encode 1978 prompts: 3202ms total, 1.6ms/prompt   dim=384
+  cos same-domain pairs: mean=0.389  diff-domain: mean=0.044  separation Δ=0.345
+
+--- MiniLM head predictions ---
+prompt                                               | top-1 (score)        | target ok?
+Calcul du courant de court-circuit selon BS 7671 —   | web-frontend       0.98 | ✗ (target=calcul-normatif)
+Conformité RGPD pour traitement de données IoT       | music-audio        0.93 | ✗ (target=calcul-normatif)
+Calcul de couverture MC/DC selon DO-178C niveau A    | chat-fr            0.98 | ✗ (target=calcul-normatif)
+Quel circuit de protection ESD selon IEC 61000-4-2   | emc                0.98 | ✗ (target=calcul-normatif)
+Norme NEMA TS-2 pour contrôleurs de signalisation    | dsp                1.00 | ✗ (target=calcul-normatif)
+Article 25 RGPD — privacy by design pour produit c   | security           0.92 | ✗ (target=calcul-normatif)
+Calcul de l'immunité conduite selon IEC 61000-4-6    | kicad-dsl          0.88 | ✗ (target=calcul-normatif)
+Calcul du PUE — Power Usage Effectiveness            | power              1.00 | ✗ (target=calcul-normatif)
+Différence Cat I, II, III, IV selon EN 61010 pour    | typescript         0.89 | ✗ (target=calcul-normatif)
+Comment vérifier la conformité CE d'un produit éle   | chat-fr            0.99 | ✗ (target=calcul-normatif)
+Calcul du retard de coupure d'un disjoncteur selon   | chat-fr            1.00 | ✗ (target=calcul-normatif)
+Calcul du score RPN selon AMDEC processus            | math               0.97 | ✗ (target=calcul-normatif)
+Norme EN ISO 14644-1 — classes de salles blanches    | typescript         0.98 | ✗ (target=calcul-normatif)
+Norme ISO 20022 pour échange de messages financier   | chat-fr            0.99 | ✗ (target=calcul-normatif)
+Norme UL 50E vs NEMA 4X — différence ?               | reasoning          0.95 | ✗ (target=calcul-normatif)
+Calcul du niveau de signal selon CISPR 22 / EN 550   | music-audio        0.99 | ✗ (target=calcul-normatif)
+Norme EN 50600 pour facilités de data center         | chat-fr            0.99 | ✗ (target=calcul-normatif)
+Calcul du temps de réverbération selon Sabine        | chat-fr            1.00 | ✗ (target=calcul-normatif)
+Procédure de qualification sismique selon GR-63-CO   | chat-fr            0.99 | ✗ (target=calcul-normatif)
+Distance d'air et de fuite — calcul selon IEC 6066   | dsp                0.83 | ✗ (target=calcul-normatif)
+Norme EN 71-3 sur la migration des éléments dans j   | chat-fr            1.00 | ✗ (target=calcul-normatif)
+Procédure de qualification selon AEC-Q100 grade 1    | math               0.90 | ✗ (target=calcul-normatif)
+Norme NF P 01-012 pour garde-corps de bâtiments      | power              0.98 | ✗ (target=calcul-normatif)
+Conformité directive ErP 2009/125/CE — eco-design    | math               0.94 | ✗ (target=calcul-normatif)
+Calcul de dose de rayonnement selon IEC 62117        | kicad-dsl          0.96 | ✗ (target=calcul-normatif)
+Conformité MID 2014/32/UE pour compteurs d'énergie   | chat-fr            1.00 | ✗ (target=calcul-normatif)
+Évaluation SIL selon IEC 61508 sur un système de s   | kicad-dsl          0.90 | ✗ (target=calcul-normatif)
+Quelle CEM appliquer à un produit IoT vendu en UE    | chat-fr            1.00 | ✗ (target=calcul-normatif)
+Tolérance dimensionnelle ISO 2768 pour pièces méca   | typescript         0.92 | ✗ (target=calcul-normatif)
+Calcul de l'effort axial sur une vis selon ISO 898   | chat-fr            1.00 | ✗ (target=calcul-normatif)
+Norme EN 13501 pour réaction au feu — classes A1 à   | power              1.00 | ✗ (target=calcul-normatif)
+Norme EN ISO 13849 pour la sécurité des machines —   | chat-fr            0.99 | ✗ (target=calcul-normatif)
+Procédure de validation selon IEC 60601-2-2 — bist   | yaml-json          0.94 | ✗ (target=calcul-normatif)
+Norme SAE J2602 pour LIN bus auto                    | kicad-dsl          0.93 | ✗ (target=calcul-normatif)
+Calcul de l'atténuation Cat6A selon TIA-568          | chat-fr            0.88 | ✗ (target=calcul-normatif)
+AUTOSAR vs OSEK pour un ECU automobile               | shell              0.99 | ✗ (target=calcul-normatif)
+Norme IEC 62305 pour protection foudre — niveaux L   | typescript         0.90 | ✗ (target=calcul-normatif)
+Décalage de fréquence d'une horloge — limite EN 55   | music-audio        0.98 | ✗ (target=calcul-normatif)
+ITU-T G.703 pour interface E1 télécom                | typescript         0.98 | ✗ (target=calcul-normatif)
+Quelle harmonisation EN 50549 pour onduleur photov   | chat-fr            1.00 | ✗ (target=calcul-normatif)
+Norme EN 14604 pour détecteur de fumée domestique    | chat-fr            1.00 | ✗ (target=calcul-normatif)
+Calcul de la zone protégée selon IEC 62305-3         | kicad-dsl          0.96 | ✗ (target=calcul-normatif)
+Test de surtension selon IEC 61000-4-5 sur une ali   | emc                0.93 | ✗ (target=calcul-normatif)
+Norme EN 50121-3-2 pour CEM ferroviaire embarquée    | chat-fr            0.90 | ✗ (target=calcul-normatif)
+Norme EN ISO 4628 pour évaluation des défauts de p   | chat-fr            0.99 | ✗ (target=calcul-normatif)
+Entiendo, ¿puedes poner ejemplos de aplicaciones a   | chat-fr            1.00 | ✓
+¿Puedes explicarme el porqué de la expansión del U   | chat-fr            1.00 | ✓
+Imagina que eres un docente de química con muchos    | typescript         0.99 | ✗ (target=chat-fr)
+¿Cuáles han sido los videojuegos mas importantes d   | chat-fr            1.00 | ✓
+Come costruisco in generale la forma in trapassato   | docker             0.98 | ✗ (target=chat-fr)
+Prends soin de toi                                   | docker             0.97 | ✗ (target=chat-fr)
+Dame un resumen de la primera guerra mundial, come   | chat-fr            1.00 | ✓
+¿Cuál es el mejor método para ordenar una habitaci   | reasoning          1.00 | ✗ (target=chat-fr)
+Estoy pensando en comprarme una planta de interior   | chat-fr            1.00 | ✓
+Crea un poema de tres estrofas de cuatro versos qu   | math               0.99 | ✗ (target=chat-fr)
+crea un plan de área para la signatura de informát   | chat-fr            0.99 | ✓
+À demain                                             | music-audio        1.00 | ✗ (target=chat-fr)
+Fes un llistat de les 10 religions amb més seguido   | chat-fr            1.00 | ✓
+No estoy en España estoy en Colombia, más específi   | chat-fr            0.95 | ✓
+Hablando de teoría musical, cuál es el sentido o s   | music-audio        1.00 | ✗ (target=chat-fr)
+C'est génial                                         | power              1.00 | ✗ (target=chat-fr)
+Método del Perceptrón biclásico: definición y vari   | reasoning          0.95 | ✗ (target=chat-fr)
+What model are you?                                  | yaml-json          0.96 | ✗ (target=chat-fr)
+Bonjour !                                            | chat-fr            1.00 | ✓
+En que estadio se jugara el partido del Real Madri   | chat-fr            0.98 | ✓
+Hello, I need some help                              | docker             1.00 | ✗ (target=chat-fr)
+En que plataformas online podría desplegar gratis    | web-backend        1.00 | ✗ (target=chat-fr)
+No entenc què vols dir amb "departament" o "compta   | chat-fr            0.99 | ✓
+¿Cual sería una forma adecuada de desarrollar una    | chat-fr            1.00 | ✓
+Estás en una situación limite y tienes que elegir    | chat-fr            1.00 | ✓
+Qué cosas importantes tengo que hacer este mes, qu   | chat-fr            1.00 | ✓
+¿Quién llegó primero al mundo, la gallina o el hue   | chat-fr            1.00 | ✓
+Tailandia se encuentra en la zona horaria GMT+7 y    | lua-upy            0.97 | ✗ (target=chat-fr)
+El superpoder de volar indicaria el desig d'accedi   | chat-fr            1.00 | ✓
+et quel pourcentage de ces financements reçoit les   | chat-fr            1.00 | ✓
+Hi there                                             | reasoning          1.00 | ✗ (target=chat-fr)
+¿Quién es el director de la película "Inception"?    | chat-fr            1.00 | ✓
+Eso no es lo que pedí, ¿Puedes darme ejemplos de s   | chat-fr            1.00 | ✓
+Cual es la mejor forma de calentar una habitación?   | chat-fr            1.00 | ✓
+En que se diferencia Open Assistant de ChatGPT?      | chat-fr            0.99 | ✓
+Y de todas ellas, ¿por cuál que debería empezar?     | reasoning          0.99 | ✗ (target=chat-fr)
+¿Cómo puedo hacer para que el vídeo deje un mensaj   | chat-fr            1.00 | ✓
+D'accord                                             | reasoning          1.00 | ✗ (target=chat-fr)
+¿Cuál es el impacto de la tecnología en la cultura   | chat-fr            1.00 | ✓
+Tu peux te présenter ?                               | chat-fr            1.00 | ✓
+¿Cuál es la esperanza de vida de una persona en Bo   | chat-fr            1.00 | ✓
+Hi, who are you?                                     | reasoning          1.00 | ✗ (target=chat-fr)
+en que fecha del año me es conveniente viajar a Es   | web-frontend       0.91 | ✗ (target=chat-fr)
+¿Has tenido que tomar una decisión difícil en algú   | chat-fr            1.00 | ✓
+¿Qué cosas hay que tener en cuenta a la hora de ir   | chat-fr            1.00 | ✓
+Parmi les applications que tu as listé, quelles so   | chat-fr            0.99 | ✓
+Para que sirve una tarjeta postal?                   | chat-fr            1.00 | ✓
+Cuales son las leyes de Newton y un breve ejemplo    | lua-upy            1.00 | ✗ (target=chat-fr)
+¿Cómo puedo empezar una introducción en mi TFG ace   | dsp                0.99 | ✗ (target=chat-fr)
+Con la misma biblioteca NumPy me gustaría calcular   | chat-fr            0.98 | ✓
+Me gustaría que me dieras alguna receta con las fr   | python             0.98 | ✗ (target=chat-fr)
+en que link puedo verlo en tiempo real               | reasoning          0.99 | ✗ (target=chat-fr)
+¿Qué significa la F en argot fotográfico?            | chat-fr            0.99 | ✓
+Y en lo referente a notas, que hace falta para pas   | chat-fr            0.99 | ✓
+¿Como puedes comprobarme lo que mencionas?           | chat-fr            0.99 | ✓
+Escriu una cançó d'amor sobre un dimoni i un àngel   | chat-fr            1.00 | ✓
+Ordena las técnicas de Jiu Jitsu de mayor a menor    | chat-fr            1.00 | ✓
+Quiero que me crees una carta para san Valentín      | chat-fr            0.99 | ✓
+¿Puedes ser más específica? ¿Si la manzana no es u   | chat-fr            1.00 | ✓
+Crea un script en Bash que recorra todos los fiche   | shell              1.00 | ✗ (target=chat-fr)
+Gracias por la ayuda, trataré de poner estos conse   | chat-fr            0.99 | ✓
+List your features                                   | docker             0.99 | ✗ (target=chat-fr)
+Crea una poesía acerca de la luna.                   | chat-fr            1.00 | ✓
+¿De que trata la primera opción?                     | reasoning          0.99 | ✗ (target=chat-fr)
+¿Podrías describir el funcionamiento de los mercad   | chat-fr            1.00 | ✓
+Merci per la resposta, crec que ja ho tinc clar      | chat-fr            1.00 | ✓
+nan c'est pas possible, la Lune ne se déplace pas    | chat-fr            1.00 | ✓
+Comment puis-je t'appeler ?                          | web-frontend       1.00 | ✗ (target=chat-fr)
+Me refiero a que respondas cómo creas que lo haría   | chat-fr            1.00 | ✓
+las variantes del español que se hablan en los dif   | chat-fr            0.98 | ✓
+¿Cuánta distancia hay entre los dos lugares que me   | chat-fr            1.00 | ✓
+estoy eligiendo mi outfit para la boda de mi mejor   | chat-fr            1.00 | ✓
+Peux-tu me donner d'autres images ou proverbes qui   | chat-fr            1.00 | ✓
+C'est sympa                                          | chat-fr            1.00 | ✓
+Escribe un ensayo persuasivo que defienda los bene   | chat-fr            1.00 | ✓
+Hablame más sobre la biografía de Francisco Umbral   | chat-fr            1.00 | ✓
+¿Me podrías decir en una frase, que intenta defend   | chat-fr            1.00 | ✓
+Bonne chance                                         | docker             1.00 | ✗ (target=chat-fr)
+Necesito que me des tres definiciones sobre qué es   | chat-fr            1.00 | ✓
+Un amigo me ha recomendado un par de webs que cont   | spice-sim          0.99 | ✗ (target=chat-fr)
+Quiero que me cuentes 5 curiosidades sobre star tr   | chat-fr            1.00 | ✓
+No mencionaste cuáles funciones en particular te g   | lua-upy            0.97 | ✗ (target=chat-fr)
+Entiendo. ¿Podrías ahora escribir el inicio de una   | chat-fr            1.00 | ✓
+Tenint en compte les dades proporcionades, Quina s   | chat-fr            1.00 | ✓
+Sérieux ?                                            | chat-fr            0.99 | ✓
+¿Es importante tener acceso a hablantes nativos de   | chat-fr            1.00 | ✓
+Escríbeme un poema que rime con las palabras, tije   | chat-fr            1.00 | ✓
+¿Como agrupar datos de un DataFrame por varias col   | python             0.99 | ✗ (target=chat-fr)
+¿Qué es la astronomía y cuáles son algunos de sus    | chat-fr            1.00 | ✓
+Me has dicho sus títulos, los equipos en los que h   | reasoning          0.99 | ✗ (target=chat-fr)
+I don't know                                         | dsp                0.99 | ✗ (target=chat-fr)
+Explique detalhadamente de que modo você chegou a    | chat-fr            1.00 | ✓
+Soc un gran apassionat de Mercè Rodoreda, però no    | chat-fr            1.00 | ✓
+Bonne soirée à toi aussi                             | chat-fr            0.99 | ✓
+Eso es cierto. Por tanto, cual puede ser una buena   | chat-fr            1.00 | ✓
+Mi vida no es muy saludable, me gustaría saber que   | chat-fr            0.97 | ✓
+Liste de tes fonctions                               | power              0.96 | ✗ (target=chat-fr)
+Bonjour, comment vas-tu ?                            | chat-fr            1.00 | ✓
+¿Me podrías indicar por qué la trayectoria de la T   | chat-fr            1.00 | ✓
+cual es el sentido de la vida?                       | chat-fr            1.00 | ✓
+Puedes crear un programa en c++ dónde dependiendo    | cpp                1.00 | ✗ (target=chat-fr)
+Hazme un juego del ahogado en python que cumpla co   | python             1.00 | ✗ (target=chat-fr)
+Escribe un poema sobre la paz, este tiene que rima   | chat-fr            1.00 | ✓
+Hi, can we speak in French?                          | power              0.99 | ✗ (target=chat-fr)
+Explica'm per què la frase "alls secs mai couen" s   | chat-fr            1.00 | ✓
+Mi madre está envejeciendo y tengo miedo de que mu   | chat-fr            0.99 | ✓
+Si pudieras viajar en el tiempo a cualquier moment   | chat-fr            1.00 | ✓
+Bonjour, dis-moi qui tu es                           | music-audio        1.00 | ✗ (target=chat-fr)
+What's today's date?                                 | docker             1.00 | ✗ (target=chat-fr)
+quiero que me expliques como funciona tu codigo      | chat-fr            0.99 | ✓
+Podrias proporcionarme la fuente de la información   | chat-fr            1.00 | ✓
+Tiens, salut, ça fait plaisir de te voir             | chat-fr            1.00 | ✓
+Dame un ejemplo de uso en el que sea mejor utiliza   | chat-fr            1.00 | ✓
+Recomiéndame una extensión de Chrome que me ayude    | chat-fr            1.00 | ✓
+Pues puedes explicarme diferentes cosas, como los    | chat-fr            1.00 | ✓
+S'il te plaît                                        | music-audio        1.00 | ✗ (target=chat-fr)
+¿Me puedes ayudar con un programa de Python? Neces   | python             1.00 | ✗ (target=chat-fr)
+¿Puedes buscar en internet lo último que ha dicho    | chat-fr            1.00 | ✓
+Hay algún detalle mas que deba conocer               | chat-fr            1.00 | ✓
+Good luck                                            | docker             1.00 | ✗ (target=chat-fr)
+Gracias, pero me gustaría que se tratara sobre ani   | chat-fr            0.97 | ✓
+Tu es disponible ?                                   | chat-fr            0.99 | ✓
+That's crazy                                         | docker             1.00 | ✗ (target=chat-fr)
+Merci, c'est gentil                                  | chat-fr            1.00 | ✓
+¡Juguemos! Elige secretamente un número del 1 al 1   | lua-upy            0.99 | ✗ (target=chat-fr)
+¿Qué tipo de música me recomiendas para el momento   | music-audio        1.00 | ✗ (target=chat-fr)
+¿Puedes genera palabras claves de este párrafo?
+
+"   | chat-fr            1.00 | ✓
+Anem a jugar al tres en ratlla, començo possant la   | chat-fr            1.00 | ✓
+Présente ton fonctionnement                          | python             0.99 | ✗ (target=chat-fr)
+Acabo de cumplir la edad suficiente para beber alc   | power              0.98 | ✗ (target=chat-fr)
+Cuales son los puntos más importantes, sobre la se   | web-backend        0.99 | ✗ (target=chat-fr)
+He estado sintiéndome triste durante las últimas s   | chat-fr            1.00 | ✓
+¿Y cómo podría, una vez ya he interesado a la clas   | reasoning          0.99 | ✗ (target=chat-fr)
+le puedes agregar un parte dedicada a la teoría M    | chat-fr            1.00 | ✓
+What time is it?                                     | reasoning          1.00 | ✗ (target=chat-fr)
+Quines són les millors dates per visitar el Penedè   | chat-fr            1.00 | ✓
+Porqué los cables coaxiales son usados en sistemas   | electronics        0.95 | ✗ (target=chat-fr)
+Continúa con su historia hasta que llega a ser cam   | chat-fr            1.00 | ✓
+Tu fais quoi ?                                       | chat-fr            1.00 | ✓
+Bonne nuit                                           | chat-fr            1.00 | ✓
+Mi puoi per favore spiegare il significato di feno   | chat-fr            1.00 | ✓
+¿De qué manera está constituida la conexión de un    | chat-fr            0.99 | ✓
+Explica la suma de vectores de manera simple expli   | math               1.00 | ✗ (target=chat-fr)
+Me gustaría crear un sistema de magia para un vide   | chat-fr            0.99 | ✓
+Quiero que, al final, la gente tenga los conocimie   | chat-fr            0.97 | ✓
+¿Podrías describirme cuales son las leyes de la fí   | chat-fr            1.00 | ✓
+¿Cuáles son las mejores películas de la historia d   | chat-fr            1.00 | ✓
+puedes escribir en negrita todos los verbos, subra   | chat-fr            1.00 | ✓
+¿Que es el número gugol y que relación tiene con G   | chat-fr            0.98 | ✓
+Cuál es la distancia más larga a la que un cable c   | chat-fr            1.00 | ✓
+Comment se passe ta semaine ?                        | web-frontend       0.99 | ✗ (target=chat-fr)
+Escribe un articulo hablando sobre el sistema sola   | chat-fr            1.00 | ✓
+Continúa escribiendo una canción de Namie dedicada   | chat-fr            0.98 | ✓
+Compara el tamaño de la Gran Colombia en su máxima   | spice-sim          0.99 | ✗ (target=chat-fr)
+Dime diez características que tangan los líderes c   | math               0.99 | ✗ (target=chat-fr)
+¿Cual es el sentido del universo en el que vivimos   | chat-fr            1.00 | ✓
+¿Puedes escribirme una página web html que cuente    | html-css           0.99 | ✗ (target=chat-fr)
+Mio cugino dice che le padelle antiaderenti, i col   | chat-fr            1.00 | ✓
+Menjar pastanaga ajuda a la digestió                 | power              0.99 | ✗ (target=chat-fr)
+¿Que carrera recomendarias estudiar y con que hobb   | chat-fr            1.00 | ✓
+¿Cuál es la diferencia de un IDE y un editor de có   | chat-fr            1.00 | ✓
+Merci beaucoup                                       | power              0.99 | ✗ (target=chat-fr)
+Hello, can I ask a question?                         | docker             1.00 | ✗ (target=chat-fr)
+Bonjour, comment allez-vous ?                        | chat-fr            1.00 | ✓
+Porque no existe la raíz cuadrada de un número neg   | chat-fr            1.00 | ✓
+Quiero hacer un viaje en bicicleta por Argentina,    | chat-fr            0.96 | ✓
+Dame ejemplos de aplicaciones del grafeno en el ca   | electronics        0.97 | ✗ (target=chat-fr)
+¿Podrías darme recomendaciones para destapar un in   | chat-fr            0.99 | ✓
+C'est incroyable                                     | power              1.00 | ✗ (target=chat-fr)
+¿cuanto tiempo toma cocinar la pechuga?, le tengo    | chat-fr            0.99 | ✓
+Perfecto gracias por toda la información.            | chat-fr            0.98 | ✓
+¿Cuáles son las principales diferencias entre el m   | chat-fr            1.00 | ✓
+Podes explicarme que es la plataforma de twitch co   | music-audio        1.00 | ✗ (target=chat-fr)
+Tengo una hija de 5 años sin conocimientos informá   | chat-fr            0.97 | ✓
+¿Y qué tipo de auriculares hay sin cables de gama    | music-audio        1.00 | ✗ (target=chat-fr)
+¿Podrías escribirme una historia en la que el prot   | chat-fr            1.00 | ✓
+Quiero hacer una bufanda para mi tío ¿Me puedes de   | chat-fr            1.00 | ✓
+Qué dice Antonio Turiel sobre la crisis de energét   | chat-fr            1.00 | ✓
+Tu parles plusieurs langues ?                        | chat-fr            1.00 | ✓
+Recomiéndame una lista de música en idioma japonés   | music-audio        0.99 | ✗ (target=chat-fr)
+Discutons un peu                                     | chat-fr            1.00 | ✓
+Ok. Entonces cuanto mayor sea el número de entrena   | chat-fr            1.00 | ✓
+Tu connais la météo ?                                | music-audio        1.00 | ✗ (target=chat-fr)
+Qué opinas de otras inteligencias artificiales com   | chat-fr            0.98 | ✓
+¿La línea ecuatorial de la Tierra se encuentra ali   | chat-fr            1.00 | ✓
+¿Podría darme algunas ideas para algunos pasatiemp   | chat-fr            1.00 | ✓
+Haz un resumen de la biografía de Pelé               | chat-fr            1.00 | ✓
+¿Quién descubrió América? ¿Porqué se dice que en r   | spice-sim          0.99 | ✗ (target=chat-fr)
+Mejores cantantes de la historia?                    | chat-fr            1.00 | ✓
+Dame instrucciones más detalladas sobre como elabo   | chat-fr            0.95 | ✓
+Puedes decirme tres animales que tengan el color v   | chat-fr            1.00 | ✓
+Comment je répond poliment que franchement ca ne m   | chat-fr            1.00 | ✓
+Compile a C++ program, called "my_program", with t   | cpp                1.00 | ✓
+Create a C++ class Student which contains name, ag   | cpp                1.00 | ✓
+Design a while loop in C++ that prints every third   | cpp                1.00 | ✓
+Write a C++ program to print out a multiplication    | cpp                1.00 | ✓
+Write a C++ program to determine the greatest comm   | cpp                1.00 | ✓
+Write a C++ program that calculates the area of a    | cpp                1.00 | ✓
+Compile the following code in C++ and check for an   | cpp                1.00 | ✓
+Write a function in C++ that takes an integer arra   | cpp                1.00 | ✓
+Write C++ code to create a class 'Fruit' that has    | cpp                1.00 | ✓
+Write an optimization problem in C++ to minimize t   | cpp                1.00 | ✓
+Compile the example program that prints "Hello, Wo   | cpp                1.00 | ✓
+Write a C++ program to apply a Caesar cipher to a    | cpp                1.00 | ✓
+How to clear the console screen in C++?              | cpp                1.00 | ✓
+Create a C++ function that takes in an array and a   | cpp                1.00 | ✓
+Implement a sorting algorithm in C++.                | cpp                1.00 | ✓
+Create a C++ program for printing a pyramid patter   | cpp                1.00 | ✓
+Write a C++ code that implements the selection sor   | cpp                1.00 | ✓
+Create a for loop in C++ to traverse a list of str   | cpp                1.00 | ✓
+Generate a valid C++ code to implement a linked li   | cpp                1.00 | ✓
+Write a C++ code to find the average of an array o   | cpp                1.00 | ✓
+What is the output of this C++ code for n = 3?       | cpp                1.00 | ✓
+Describe the differences between the stack and the   | cpp                1.00 | ✓
+Create a C++ code to display the following pattern   | cpp                1.00 | ✓
+Replace all vowels in a given string with the char   | cpp                1.00 | ✓
+Write a C++ code to generate the Fibonacci sequenc   | cpp                1.00 | ✓
+Change the following string to lowercase using C++   | cpp                1.00 | ✓
+Compile and execute the following C++ program        | cpp                1.00 | ✓
+Write C++ code to implement a stack data structure   | cpp                1.00 | ✓
+Write a C++ program to sort an array in ascending    | cpp                1.00 | ✓
+Find the lowest common ancestor in a binary tree i   | cpp                1.00 | ✓
+Write a C++ program to print out the first 5 lines   | cpp                1.00 | ✓
+How is data stored in a binary tree in C++?          | cpp                1.00 | ✓
+Create a C++ program to input two numbers and prin   | cpp                1.00 | ✓
+Update the C++ code below to generate a Fibonacci    | cpp                1.00 | ✓
+Create a C++ program to concatenate two string var   | cpp                1.00 | ✓
+Construct the following C++ class.                   | cpp                1.00 | ✓
+Create a C++ program to output the Fibonacci Seque   | cpp                1.00 | ✓
+Create a program in C++ to print the first 10 numb   | cpp                1.00 | ✓
+TGiven the following C++ code, implement a functio   | cpp                1.00 | ✓
+Create a C++ function to determine the number of i   | cpp                1.00 | ✓
+Write a C++ program to make an average of given 10   | cpp                1.00 | ✓
+Explain what a constructor is and how it is used i   | typescript         1.00 | ✗ (target=cpp)
+Create a C++ program to calculate the median of th   | cpp                1.00 | ✓
+Implement an algorithm in C++ for finding the larg   | cpp                1.00 | ✓
+What is a Hash Table in C++?                         | cpp                1.00 | ✓
+Explain static and dynamic dispatch in C++.          | cpp                1.00 | ✓
+Design a C++ program to convert a given number fro   | cpp                1.00 | ✓
+Create an array in C++ with 4 elements.              | cpp                1.00 | ✓
+Explain in your own words what is a pointer in C++   | cpp                1.00 | ✓
+Write a C++ program to read and print an array of    | cpp                1.00 | ✓
+Sort an array of integers in C++.                    | cpp                1.00 | ✓
+Use C++ to implement the bubble sort algorithm.      | cpp                1.00 | ✓
+Define a class in C++ to represent a movie theater   | cpp                1.00 | ✓
+Write a C++ code snippet to search for a given val   | cpp                1.00 | ✓
+Create a C++ code to find the average of n numbers   | cpp                1.00 | ✓
+What are the key differences between C and C++?      | cpp                1.00 | ✓
+Create a function in C++ that will sort a given ar   | cpp                1.00 | ✓
+Create a C++ program that takes a string as input    | cpp                1.00 | ✓
+Rewrite this C++ function in Python                  | cpp                1.00 | ✓
+Create a C++ function to print all possible paths    | cpp                1.00 | ✓
+Create a function in C++ to print the Fibonacci nu   | cpp                1.00 | ✓
+Formulate an algorithm in C++ to find the maximum    | cpp                1.00 | ✓
+Write an algorithm in C++ for linear search.         | cpp                1.00 | ✓
+Create a function in C++ that capitalizes the firs   | cpp                1.00 | ✓
+Write a C++ program to print the following sequenc   | cpp                1.00 | ✓
+Create a C++ object class that stores information    | cpp                1.00 | ✓
+Compute the square root of 150 using C++.            | cpp                1.00 | ✓
+Explain the difference between a variable and a co   | cpp                1.00 | ✓
+Write a class in C++ to represent a person with th   | cpp                1.00 | ✓
+Create a C++ program that uses command line argume   | cpp                1.00 | ✓
+Create a C++ class called "TV".                      | cpp                1.00 | ✓
+In C++, create a class called 'Point' that stores    | cpp                1.00 | ✓
+Write a C++ program to print out the sum of the fi   | cpp                1.00 | ✓
+Add the two following numbers in C++.                | cpp                1.00 | ✓
+Create a C++ program to calculate the sum of numbe   | cpp                1.00 | ✓
+Write a function in C++ to check if the given arra   | cpp                1.00 | ✓
+Generate a C++ code with a loop from 0 to 20 which   | cpp                1.00 | ✓
+Develop a C++ program to find the volume of a cyli   | cpp                1.00 | ✓
+Write a C++ statement to create an array of 10 ele   | cpp                1.00 | ✓
+Create a function in C++ that takes in two integer   | cpp                1.00 | ✓
+Design a C++ class to count the occurrences of a c   | cpp                1.00 | ✓
+Identify all the variables in this C++ program.      | cpp                1.00 | ✓
+Write code to evaluate the following expression in   | cpp                1.00 | ✓
+Write a C++ method to calculate the Fibonacci seri   | cpp                1.00 | ✓
+Implement a function in C++ to return the inverse    | cpp                1.00 | ✓
+Generate code in C++ for performing Bubble Sort      | cpp                1.00 | ✓
+Write a C++ program to generate a Fibonacci sequen   | cpp                1.00 | ✓
+Correct the following C++ code by adding missing s   | cpp                1.00 | ✓
+Suppose you are given an array of active processes   | cpp                1.00 | ✓
+Construct a C++ class to store a matrix.             | cpp                1.00 | ✓
+Explain what are pointers in C++.                    | cpp                1.00 | ✓
+Declare a C++ structure that stores data about emp   | cpp                1.00 | ✓
+Format a given date as mm/dd/yyyy using C++.         | cpp                1.00 | ✓
+Determine the output of this code snippet in C++:    | cpp                1.00 | ✓
+Change the following C++ program so that it return   | cpp                1.00 | ✓
+Write a function in C++ which takes a string as an   | cpp                1.00 | ✓
+Compose a query to find the titles of the movies r   | docker             1.00 | ✗ (target=devops)
+Compose a for loop in Java to print the numbers fr   | docker             1.00 | ✗ (target=devops)
+Deploy a basic HTML page to a server.                | html-css           1.00 | ✗ (target=devops)
+Set up Prometheus alert rules pour high CPU et low   | devops             0.99 | ✓
+Create a regular expression pattern to match a str   | python             1.00 | ✗ (target=devops)
+Compose a program to reverse a list of numbers       | python             1.00 | ✗ (target=devops)
+Compose a JavaScript code to sum all odd numbers i   | lua-upy            1.00 | ✗ (target=devops)
+Compose a SQL query that returns the total number    | sql                1.00 | ✗ (target=devops)
+Compose a CSS code to make all the text elements b   | html-css           1.00 | ✗ (target=devops)
+Compose an HTML webpage with a title and two parag   | html-css           1.00 | ✗ (target=devops)
+Compose a CSS code to display a textbox with a wid   | html-css           1.00 | ✗ (target=devops)
+Create a virtual machine using Terraform.            | docker             0.99 | ✗ (target=devops)
+Compose a new CSS class to give the text element a   | python             1.00 | ✗ (target=devops)
+Compose a regular expression to extract the first    | docker             1.00 | ✗ (target=devops)
+Create a dockerfile to deploy a python app.          | shell              1.00 | ✗ (target=devops)
+Compose a PHP code to store the data entered by th   | sql                1.00 | ✗ (target=devops)
+Docker 4-stage build for a Go binary < 10 MB         | shell              1.00 | ✗ (target=docker)
+Comment limiter la RAM d'un container Docker ?       | shell              0.99 | ✗ (target=docker)
+Use SSH agent forwarding inside docker run for git   | math               0.99 | ✗ (target=docker)
+Pin base image by digest for reproducibility         | kicad-pcb          1.00 | ✗ (target=docker)
+Set up healthcheck on a Postgres container in comp   | yaml-json          1.00 | ✗ (target=docker)
+Pourquoi Docker met si longtemps à pull une layer    | chat-fr            0.98 | ✗ (target=docker)
+Reduce log volume — set max-size and max-file in d   | shell              1.00 | ✗ (target=docker)
+Network mode host vs bridge vs none — quel choisir   | typescript         0.97 | ✗ (target=docker)
+Comment mesurer le démarrage d'un container (entry   | chat-fr            0.95 | ✗ (target=docker)
+Comment passer la timezone Europe/Paris à un conta   | chat-fr            0.99 | ✗ (target=docker)
+How to handle multiple compose files (-f flag chai   | shell              0.97 | ✗ (target=docker)
+Différence entre Docker volume et bind mount         | chat-fr            0.99 | ✗ (target=docker)
+Comment passer une variable d'env au build (ARG vs   | chat-fr            0.99 | ✗ (target=docker)
+Set up HEALTHCHECK CMD in alpine slim image          | shell              1.00 | ✗ (target=docker)
+How to run X11 GUI app in Docker with display forw   | math               0.99 | ✗ (target=docker)
+Set up Loki + Promtail + Grafana for Docker logs     | shell              0.98 | ✗ (target=docker)
+Run docker compose with override file for dev        | shell              1.00 | ✗ (target=docker)
+Comment gérer logging multiline en Docker (Java st   | shell              0.97 | ✗ (target=docker)
+Why does my container have no /tmp space (overlay    | reasoning          0.98 | ✗ (target=docker)
+How to add a CA cert to a Debian-based image         | math               0.98 | ✗ (target=docker)
+How to inspect layers of a Docker image (dive tool   | yaml-json          0.99 | ✗ (target=docker)
+Use STOPSIGNAL to override default SIGTERM           | kicad-dsl          0.89 | ✗ (target=docker)
+Comment design un FIR filter avec scipy et plot fr   | dsp                1.00 | ✓
+How does a coupling capacitor such as C7 determine   | emc                1.00 | ✗ (target=electronics)
+How does changing the value of a coupling capacito   | spice-sim          0.91 | ✗ (target=electronics)
+How does a battery supply power to an analog pedal   | electronics        1.00 | ✓
+How can a hobbyist improve their understanding of    | music-audio        0.98 | ✗ (target=electronics)
+What are the key factors to consider when choosing   | electronics        0.97 | ✓
+How can industry-specific journals and publication   | kicad-pcb          0.98 | ✗ (target=electronics)
+How can resistor ratios in an op‑amp based fuzz be   | docker             0.98 | ✗ (target=electronics)
+What is a capacitor in analog circuits?              | electronics        1.00 | ✓
+**
+I’m building my first guitar distortion pedal a   | electronics        0.97 | ✓
+How do precision resistors impact the performance    | electronics        1.00 | ✓
+How does increasing a resistor value in a gain sta   | electronics        0.98 | ✓
+How does a voltage-controlled voltage source (VCVS   | electronics        0.99 | ✓
+How do analogue electronic systems address issues    | electronics        0.98 | ✓
+What is the purpose of the capacitor that sits bet   | electronics        0.98 | ✓
+What are the practical benefits of adding an LED c   | power              0.96 | ✗ (target=electronics)
+Are there strategies to mitigate component degrada   | electronics        0.98 | ✓
+How do analogue electronic systems address issues    | electronics        0.99 | ✓
+What are the primary differences between current l   | kicad-pcb          0.99 | ✗ (target=electronics)
+What is the importance of phase shift in electroni   | docker             0.92 | ✗ (target=electronics)
+** Can an LED clipping upgrade be combined with ot   | power              0.89 | ✗ (target=electronics)
+What is a current-controlled voltage source (CCVS)   | power              0.99 | ✗ (target=electronics)
+How does a coupling capacitor like C7 influence th   | emc                0.97 | ✗ (target=electronics)
+What are the key differences between using silicon   | electronics        0.99 | ✓
+In what ways does component placement—particularly   | emc                0.98 | ✗ (target=electronics)
+How can one stay safe while working with electrica   | electronics        0.98 | ✓
+How does the value of R8 influence the dynamic ran   | electronics        0.99 | ✓
+Can analogue electronic systems process both analo   | electronics        0.99 | ✓
+How do capacitors function in analog electronics?    | electronics        1.00 | ✓
+Can analogue electronic systems be used for medica   | electronics        0.96 | ✓
+What are the trade‑offs when selecting a 100 kΩ po   | electronics        0.98 | ✓
+What role do capacitors play in shaping the charac   | typescript         0.99 | ✗ (target=electronics)
+What limitations exist when working with high-freq   | kicad-pcb          1.00 | ✗ (target=electronics)
+How does the choice of coupling capacitor values a   | spice-sim          0.96 | ✗ (target=electronics)
+What are the most effective strategies for a hobby   | rust               0.99 | ✗ (target=electronics)
+What are the key steps to follow when designing an   | electronics        1.00 | ✓
+How do analogue and digital circuits address issue   | electronics        0.98 | ✓
+What are the key factors in choosing components fo   | electronics        0.99 | ✓
+I noticed that C8 works with R11 to shape bass res   | electronics        0.96 | ✓
+How does changing a single resistor in a classic f   | electronics        0.93 | ✓
+What are the primary roles of resistors, capacitor   | electronics        1.00 | ✓
+In what ways does inherent noise influence the dyn   | electronics        0.96 | ✓
+How can I integrate a three‑pole switching selecto   | electronics        0.98 | ✓
+Can analogue electronic systems incorporate memory   | electronics        0.98 | ✓
+Why do many guitar pedals use a logarithmic (audio   | dsp                0.96 | ✗ (target=electronics)
+How can I modify a basic fuzz circuit to emulate c   | spice-sim          0.96 | ✗ (target=electronics)
+What are some common types of ohmmeters?             | typescript         1.00 | ✗ (target=electronics)
+How do you design an analog electronic circuit?      | electronics        1.00 | ✓
+Can analogue electronic systems incorporate feedba   | electronics        0.99 | ✓
+Explain how an RC (resistor-capacitor) circuit beh   | electronics        0.99 | ✓
+How does the intrinsic gain (β) of a bipolar junct   | kicad-pcb          1.00 | ✗ (target=electronics)
+I’m new to footswitches—how does a basic on/off sw   | electronics        1.00 | ✓
+What are some key considerations when selecting co   | music-audio        0.98 | ✗ (target=electronics)
+What considerations should be made when integratin   | electronics        0.94 | ✓
+How can I use a frequency sweep and spectral analy   | spice-sim          0.96 | ✗ (target=electronics)
+How do precision circuits contribute to energy eff   | electronics        1.00 | ✓
+What role does the resistor network play in shapin   | electronics        0.94 | ✓
+In practice, how can I build a tone‑control sectio   | electronics        0.99 | ✓
+What are some common challenges when transitioning   | spice-sim          0.99 | ✗ (target=electronics)
+How do you recycle analogue electronic components?   | electronics        0.98 | ✓
+What types of analogue electronic systems are best   | dsp                1.00 | ✗ (target=electronics)
+How can a hobbyist safely handle and store sensiti   | emc                1.00 | ✗ (target=electronics)
+How might we optimize signal processing within ana   | spice-sim          0.98 | ✗ (target=electronics)
+How do you ensure signal integrity in high-speed P   | kicad-pcb          0.99 | ✗ (target=electronics)
+How can I improve my ability to analyze and unders   | spice-sim          0.99 | ✗ (target=electronics)
+When a user turns down a gain pot in an op‑amp amp   | electronics        0.99 | ✓
+How do circuit classifications help in designing a   | electronics        0.99 | ✓
+How do analogue electronic circuits handle signal    | electronics        1.00 | ✓
+How can a hobbyist safely handle potentially hazar   | emc                1.00 | ✗ (target=electronics)
+Can analogue electronic systems be used for data e   | electronics        0.98 | ✓
+How do you handle signal integrity issues caused b   | emc                1.00 | ✗ (target=electronics)
+How do analogue electronic systems address issues    | electronics        0.99 | ✓
+Why does adding a decoupling capacitor across the    | emc                1.00 | ✗ (target=electronics)
+How can high-frequency signals be effectively hand   | kicad-pcb          1.00 | ✗ (target=electronics)
+What specific circuit modifications or component s   | typescript         0.93 | ✗ (target=electronics)
+Why is a “virtual ground” necessary when using a s   | electronics        1.00 | ✓
+What are some common design considerations when in   | spice-sim          0.97 | ✗ (target=electronics)
+How does component tolerance affect the design and   | emc                0.97 | ✗ (target=electronics)
+How do analogue electronic circuits classify, part   | dsp                0.97 | ✗ (target=electronics)
+How do transistors facilitate the realization of c   | dsp                0.99 | ✗ (target=electronics)
+How can one recognize and interpret feedback confi   | spice-sim          0.99 | ✗ (target=electronics)
+How do component tolerance specifications affect t   | spice-sim          0.99 | ✗ (target=electronics)
+How does an operational amplifier (op-amp) work in   | electronics        1.00 | ✓
+How does resistor R8 influence the overall gain wh   | electronics        0.99 | ✓
+What are the key considerations when selecting com   | electronics        0.99 | ✓
+How can one effectively learn to read and interpre   | electronics        0.98 | ✓
+How can adding a small bypass capacitor across the   | emc                1.00 | ✗ (target=electronics)
+What are the specific techniques used in analogue    | electronics        1.00 | ✓
+How can one safely handle and test components in a   | emc                0.99 | ✗ (target=electronics)
+How do temperature variations influence the perfor   | kicad-pcb          0.95 | ✗ (target=electronics)
+What role does the MOSFET play in a basic distorti   | electronics        1.00 | ✓
+How does one effectively use reference designs to    | spice-sim          0.99 | ✗ (target=electronics)
+What are the most common RC filter topologies used   | electronics        0.87 | ✓
+How can I effectively learn to read and interpret    | spice-sim          0.98 | ✗ (target=electronics)
+How can I adjust the high‑frequency roll‑off on a    | emc                0.99 | ✗ (target=electronics)
+What are the best practices for grounding and PCB    | emc                0.99 | ✗ (target=electronics)
+How can I leverage differential pairs of transisto   | spice-sim          0.97 | ✗ (target=electronics)
+How does poor shielding of a pedal’s enclosure con   | emc                0.96 | ✗ (target=electronics)
+What are some common types of amplifiers used in e   | electronics        0.99 | ✓
+How does LED clipping in a fuzz pedal affect the h   | docker             0.95 | ✗ (target=electronics)
+How can a hobbyist safely dispose of or recycle ol   | emc                0.99 | ✗ (target=electronics)
+How do operational amplifiers (op-amps) contribute   | electronics        0.99 | ✓
+How might artists leverage the inherent non-linear   | docker             0.98 | ✗ (target=electronics)
+What role do operational amplifiers (op-amps) play   | electronics        0.99 | ✓
+Are there established methods for addressing non-l   | spice-sim          0.96 | ✗ (target=electronics)
+What is a feedback loop in an electronic system?     | kicad-pcb          0.97 | ✗ (target=electronics)
+What considerations must be taken when selecting c   | electronics        0.99 | ✓
+I want to add a 3‑position switch that also drives   | kicad-dsl          0.98 | ✗ (target=electronics)
+How can I layout the PCB so that noisy, high‑gain    | emc                0.99 | ✗ (target=electronics)
+What is the importance of analyzing power supply r   | power              0.99 | ✗ (target=electronics)
+How can one develop a personal schematic interpret   | docker             0.98 | ✗ (target=electronics)
+What are the best practices for verifying componen   | kicad-dsl          1.00 | ✗ (target=electronics)
+How do analogue electronic systems handle signal a   | electronics        1.00 | ✓
+How does increasing the value of C5 affect the bas   | docker             0.96 | ✗ (target=electronics)
+What are some common methods used to enhance signa   | electronics        0.98 | ✓
+Can analogue signals be used in cryptographic tech   | dsp                0.99 | ✗ (target=electronics)
+Can analogue electronic systems play a role in pow   | electronics        1.00 | ✓
+What are discrete components in analogue electroni   | electronics        0.98 | ✓
+How do electronic filters work in signal processin   | dsp                0.98 | ✗ (target=electronics)
+How can LTSpice simulations account for real-world   | spice-sim          1.00 | ✗ (target=electronics)
+What filtering and shielding techniques can I empl   | emc                0.99 | ✗ (target=electronics)
+What is a current-controlled current source (CCCS)   | kicad-pcb          0.96 | ✗ (target=electronics)
+Comment tuner le BSP d'un STM32 pour low-power dee   | power              0.99 | ✗ (target=embedded)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | kicad-dsl          0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | kicad-dsl          0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | kicad-dsl          0.96 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.98 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | kicad-dsl          0.97 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.96 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.97 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | kicad-dsl          0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.98 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | kicad-dsl          0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | kicad-dsl          0.96 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.98 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | kicad-dsl          1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | kicad-dsl          0.95 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | kicad-dsl          0.97 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | math               0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             1.00 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | kicad-dsl          0.98 | ✗ (target=freecad)
+Generate a parametric FreeCAD sketch in Python for   | python             0.99 | ✗ (target=freecad)
+Edit this HTML document so the <h1> tag at the top   | html-css           1.00 | ✓
+Create a CSS style that makes a given text slightl   | html-css           1.00 | ✓
+Explain how to use selectors and filters in CSS.     | html-css           1.00 | ✓
+Write an HTML code snippet for creating a <button>   | html-css           1.00 | ✓
+Modify the following HTML to open the page with a    | html-css           1.00 | ✓
+Print the following string in HTML.                  | python             1.00 | ✗ (target=html-css)
+Construct a HTML code which opens a popup window.    | html-css           1.00 | ✓
+Modify the given CSS code to display the given HTM   | html-css           1.00 | ✓
+Edit the following HTML form to add the required a   | html-css           1.00 | ✓
+Edit a given HTML code to make the font size of 1s   | python             1.00 | ✗ (target=html-css)
+Edit this HTML snippet such that it displays 'Hell   | html-css           1.00 | ✓
+Create an HTML page with a table and list 3 books    | html-css           1.00 | ✓
+Update the following CSS to center align the text    | html-css           1.00 | ✓
+Create a HTML form with three text fields (First N   | html-css           1.00 | ✓
+Code a HTML form that collects the user's first na   | html-css           1.00 | ✓
+Create a HTML form containing 5 input fields - two   | html-css           1.00 | ✓
+Create an HTML form for entering a user's age.       | html-css           1.00 | ✓
+Write an HTML page to display a table of products    | html-css           1.00 | ✓
+Write a CSS selector to target all paragraphs.       | html-css           1.00 | ✓
+Write a python script to print 'Hello World' in HT   | python             1.00 | ✗ (target=html-css)
+Create an HTML page with 4 sections containing tex   | html-css           1.00 | ✓
+Create a simple HTML webpage without using any ext   | html-css           1.00 | ✓
+Create a HTML form with three input fields for tak   | html-css           1.00 | ✓
+Edit the given HTML structure to add a container e   | html-css           1.00 | ✓
+Edit the HTML code snippet below to add the attrib   | html-css           1.00 | ✓
+Create an HTML page to display the attendance of s   | html-css           1.00 | ✓
+Write a CSS rule to hide the first two rows of a t   | html-css           1.00 | ✓
+Write an HTML form to collect a user's name, email   | html-css           1.00 | ✓
+Create an HTML table to visualize the following li   | html-css           1.00 | ✓
+Create an HTML element that prints "Hello, World!"   | html-css           1.00 | ✓
+Create an HTML page that displays "Welcome to our    | html-css           1.00 | ✓
+Add a border to the first element of a list in CSS   | html-css           1.00 | ✓
+Create a HTML form which includes a dropdown list    | sql                1.00 | ✗ (target=html-css)
+Combine these two CSS selectors using combinators    | html-css           1.00 | ✓
+Create a CSS class to override page text style.      | html-css           1.00 | ✓
+Create a HTML page that displays the top 5 countri   | sql                1.00 | ✗ (target=html-css)
+Write an HTML page that takes an email address as    | html-css           1.00 | ✓
+Create the HTML component for a form field.          | html-css           1.00 | ✓
+Convert the following line of HTML code to lowerca   | python             1.00 | ✗ (target=html-css)
+Write a CSS rule to display a paragraph in italic    | html-css           1.00 | ✓
+Construct an HTML page to display a table with 10    | html-css           1.00 | ✓
+Create a new button using HTML.                      | html-css           1.00 | ✓
+Create a web page that displays a greeting using H   | html-css           1.00 | ✓
+Create a HTML page displaying a table of the 10 mo   | docker             0.99 | ✗ (target=html-css)
+Create a CSS class which defines a black border wi   | html-css           1.00 | ✓
+Create a basic HTML structure to show a blog post    | html-css           1.00 | ✓
+Design an HTML form with 2 input fields: name and    | html-css           1.00 | ✓
+Create a HTML page with a form containing two inpu   | lua-upy            1.00 | ✗ (target=html-css)
+What is the HTML code to create a link to a websit   | html-css           1.00 | ✓
+Suggest a suitable HTML tag to display the followi   | html-css           1.00 | ✓
+Modify the following CSS Code so that it will targ   | html-css           1.00 | ✓
+Using HTML, create a simple table showing a list o   | html-css           1.00 | ✓
+Write CSS code to style a web page with a white ba   | html-css           1.00 | ✓
+Use HTML to create a basic web page which displays   | html-css           1.00 | ✓
+Create an HTML form with a submit button that will   | html-css           1.00 | ✓
+Create an HTML form that has two input fields, fir   | html-css           1.00 | ✓
+Rewrite the following HTML code in valid XML synta   | html-css           1.00 | ✓
+Create an HTML form with two inputs, one to enter    | html-css           1.00 | ✓
+Can you generate CSS for a div with an id of "cont   | html-css           1.00 | ✓
+Create an HTML5 document with an h1 tag containing   | html-css           1.00 | ✓
+Create an HTML form to take user input with two fi   | html-css           1.00 | ✓
+Write HTML code to create a webpage that has two p   | html-css           1.00 | ✓
+Convert the following string of HTML into a DOM tr   | lua-upy            1.00 | ✗ (target=html-css)
+Generate a JS code snippet to switch between two c   | html-css           1.00 | ✓
+Construct an HTML page with a title "My Website" a   | html-css           1.00 | ✓
+Change the CSS style of the paragraph element belo   | html-css           1.00 | ✓
+Create an HTML table with 3 rows and 4 columns.      | html-css           1.00 | ✓
+Write a CSS style sheet for displaying a two-colum   | html-css           1.00 | ✓
+Create a CSS class called "black-background" that    | html-css           1.00 | ✓
+Using CSS, write a code snippet to display a text    | html-css           1.00 | ✓
+Write an HTML code snippet to create a checkbox wi   | html-css           0.99 | ✓
+Create a proper HTML string that presents a table    | html-css           1.00 | ✓
+Edit the given code snippet to generate a table in   | html-css           1.00 | ✓
+Write an HTML code snippet to override the default   | html-css           1.00 | ✓
+Design an HTML form with the following fields: fir   | html-css           1.00 | ✓
+Create an HTML page that displays an alert when a    | html-css           1.00 | ✓
+Write a CSS code to make an element's background c   | html-css           1.00 | ✓
+Given the following HTML structure, write a CSS se   | html-css           1.00 | ✓
+Edit a given HTML page and add a new link.           | lua-upy            1.00 | ✗ (target=html-css)
+Edit the following HTML code snippet to change the   | html-css           1.00 | ✓
+Create an HTML page to display a table of students   | html-css           1.00 | ✓
+What is the name of the attribute for creating a h   | html-css           1.00 | ✓
+Change the following line of HTML code so that the   | html-css           1.00 | ✓
+Identify the HTML element and its attributes used    | html-css           1.00 | ✓
+Write an HTML table with two columns for 'name' an   | html-css           1.00 | ✓
+Edit this HTML form to make sure that the input da   | html-css           1.00 | ✓
+Update the following HTML element with a new backg   | html-css           1.00 | ✓
+Write an HTML link tag to open a link in a new tab   | html-css           1.00 | ✓
+Change the HTML code to open a link in a new tab w   | html-css           1.00 | ✓
+Create a CSS rule to make the text of an element b   | html-css           1.00 | ✓
+Generate a css code block to create a white text s   | html-css           1.00 | ✓
+How to write a CSS style to make a text larger?      | html-css           1.00 | ✓
+Create a HTML page to display the top 5 scores fro   | html-css           1.00 | ✓
+Create a HTML page with a table with three columns   | html-css           1.00 | ✓
+Create an HTML page where the main content area ha   | html-css           1.00 | ✓
+Write a CSS rule that changes the font-family of t   | html-css           1.00 | ✓
+Create a css class to center the text in a given d   | python             1.00 | ✗ (target=html-css)
+How to write an HTML page that displays the number   | html-css           1.00 | ✓
+Write a CSS code to align the text within a `<div>   | html-css           1.00 | ✓
+Edit this HTML code so it uses classes instead of    | html-css           1.00 | ✓
+Edit the following CSS code to update the color to   | html-css           0.99 | ✓
+Create an HTML page with a text box that stores en   | html-css           1.00 | ✓
+Create an HTML page that prints "Hello World!" and   | html-css           0.99 | ✓
+Build an HTML form containing 3 input elements (na   | html-css           1.00 | ✓
+Convert the following HTML to CSS.                   | html-css           1.00 | ✓
+Write CSS code to change the background color of a   | html-css           1.00 | ✓
+Write a HTML tag to create an ordered list.          | html-css           1.00 | ✓
+Write a basic HTML structure with two navigation l   | html-css           1.00 | ✓
+Write a function to parse a string of HTML and rep   | python             1.00 | ✗ (target=html-css)
+Construct an HTML table with two columns and 4 row   | html-css           1.00 | ✓
+Analyze the following CSS code for possible errors   | html-css           1.00 | ✓
+Create a CSS rule to make all elements in the page   | html-css           1.00 | ✓
+Create a web page with a CSS style to hide all par   | html-css           1.00 | ✓
+Create a web page that uses CSS to style a given p   | html-css           1.00 | ✓
+Construct this HTML table including the table head   | html-css           1.00 | ✓
+Write an HTML page that displays a single line of    | html-css           1.00 | ✓
+Write an HTML code snippet to display a blue heart   | html-css           1.00 | ✓
+Create a HTML page that contains the following tex   | html-css           1.00 | ✓
+Create an HTML form that, when submitted, displays   | html-css           1.00 | ✓
+Augment the following HTML structure to include a    | html-css           1.00 | ✓
+What attribute in HTML is used to completely hide    | html-css           1.00 | ✓
+Implement an MQTT publisher en MicroPython pour ES   | iot                1.00 | ✓
+Generate a PCB layout avec atopile DSL pour rapid    | dsp                0.86 | ✗ (target=kicad-dsl)
+Calculate impedance d'une trace différentielle 100   | math               0.90 | ✗ (target=kicad-pcb)
+Comment compute embeddings batch avec Jina v3 sur    | llm-orch           0.99 | ✓
+[[------------------------------------- REMOTE FUN   | lua-upy            1.00 | ✓
+[ KEYBOARD FUNCTIONS ]----------------------------   | lua-upy            0.99 | ✓
+[ SETTINGS ] --                                      | llm-orch           0.95 | ✗ (target=lua-upy)
+// Use the below table to set command permissions;   | shell              1.00 | ✗ (target=lua-upy)
+How many times per second the gun can fire           | reasoning          0.96 | ✗ (target=lua-upy)
+For R15 avatars                                      | docker             0.99 | ✗ (target=lua-upy)
+--------------------=[ OUTROS ]=------------------   | docker             0.99 | ✗ (target=lua-upy)
+Number of lines used to draw axis circles            | reasoning          1.00 | ✗ (target=lua-upy)
+[[ The Module ]]                                     | kicad-dsl          1.00 | ✗ (target=lua-upy)
+//////////////////////////////////////////////////   | docker             1.00 | ✗ (target=lua-upy)
+[[
+	Render the child component so that ExternalEve   | web-frontend       1.00 | ✗ (target=lua-upy)
+Import relevant references                           | docker             0.98 | ✗ (target=lua-upy)
+edit the function below to return true when you wa   | typescript         1.00 | ✗ (target=lua-upy)
+Función para desaparecer el bloque                   | chat-fr            0.99 | ✗ (target=lua-upy)
+Use entrance-easing when adding elements to the vi   | sql                0.99 | ✗ (target=lua-upy)
+Bookkeeping of all active GlobalDataStore/OrderedD   | reasoning          0.98 | ✗ (target=lua-upy)
+-- returns current 'pc' and marks it as a jump tar   | rust               0.93 | ✗ (target=lua-upy)
+Get points and listen for changes:                   | power              0.98 | ✗ (target=lua-upy)
+Roblox character sound script                        | music-audio        1.00 | ✗ (target=lua-upy)
+Initialization                                       | rust               0.98 | ✗ (target=lua-upy)
+--[[
+	--Main anchor point is the DriveSeat <car.Dr   | rust               0.95 | ✗ (target=lua-upy)
+Called when character is added                       | typescript         0.98 | ✗ (target=lua-upy)
+Movement mode standardized to Enum.ComputerCameraM   | platformio         0.95 | ✗ (target=lua-upy)
+Game services                                        | typescript         0.99 | ✗ (target=lua-upy)
+Connect 'Blocked' event to the 'onPathBlocked' fun   | typescript         0.97 | ✗ (target=lua-upy)
+p.Ground(part"because cframe and position", zone s   | shell              0.99 | ✗ (target=lua-upy)
+[[Mobile Support]]                                   | docker             0.88 | ✗ (target=lua-upy)
+[[ Settings Changed Connections ]]                   | devops             0.90 | ✗ (target=lua-upy)
+ROBLOX deviation END                                 | shell              0.94 | ✗ (target=lua-upy)
+Made by Luckymaxer                                   | docker             1.00 | ✗ (target=lua-upy)
+Handle joining general channel first.                | power              0.94 | ✗ (target=lua-upy)
+return to idle if finishing an emote                 | rust               0.97 | ✗ (target=lua-upy)
+[[ By: Brutez. ]]                                    | docker             0.99 | ✗ (target=lua-upy)
+TableUtil
+-- Stephen Leitnick
+-- September 13, 201   | reasoning          1.00 | ✗ (target=lua-upy)
+Libraries                                            | docker             1.00 | ✗ (target=lua-upy)
+Register touched events.                             | kicad-dsl          0.97 | ✗ (target=lua-upy)
+local REGEX_BACKSLASH, REGEX_REMOVE_BACKSLASH, REG   | yaml-json          0.99 | ✗ (target=lua-upy)
+RUNNING SCRIPT--
+-------------------------------     | shell              1.00 | ✗ (target=lua-upy)
+Récupérez le joueur local                            | chat-fr            1.00 | ✗ (target=lua-upy)
+FEATURE METHODS                                      | rust               1.00 | ✗ (target=lua-upy)
+@Description Return true if the specified instance   | kicad-dsl          1.00 | ✗ (target=lua-upy)
+[=[
+	Alias for [Subscription.Destroy].
+]=]           | python             0.96 | ✗ (target=lua-upy)
+[=[
+	Removes a prefix from a string if it exists
+	   | python             1.00 | ✗ (target=lua-upy)
+// Remote                                            | reasoning          1.00 | ✗ (target=lua-upy)
+Concatenate these two tables, return result.         | sql                1.00 | ✗ (target=lua-upy)
+[[**
+	ensures value is a number where min <= value   | lua-upy            0.99 | ✓
+play particles + w/ custom                           | yaml-json          0.98 | ✗ (target=lua-upy)
+Write a MicroPython driver pour SHT4x sensor         | shell              0.95 | ✗ (target=lua-upy)
+Function to simulate day-night cycle                 | lua-upy            0.98 | ✓
+[[BodyColors.HeadColor=BrickColor.new("Grime")
+loc   | python             1.00 | ✗ (target=lua-upy)
+<< Variables >> --                                   | math               0.99 | ✗ (target=lua-upy)
+[[Output Scaling Factor]]                            | math               0.94 | ✗ (target=lua-upy)
+-- You DO NOT need to add yourself to any of these   | sql                1.00 | ✗ (target=lua-upy)
+--| Script Logic |--
+--------------------            | shell              1.00 | ✗ (target=lua-upy)
+<< VARIABLES >>                                      | math               0.98 | ✗ (target=lua-upy)
+Takes an array and flips its values into dictionar   | python             1.00 | ✗ (target=lua-upy)
+[[**
+	ensures Roblox RaycastParams type
+
+	@param v   | kicad-dsl          0.96 | ✗ (target=lua-upy)
+Made by Shea from RTWS on YouTube - If you haven't   | docker             1.00 | ✗ (target=lua-upy)
+CONFIGURABLE VARIABLES]]--------------------------   | kicad-dsl          0.99 | ✗ (target=lua-upy)
+Variables--                                          | reasoning          1.00 | ✗ (target=lua-upy)
+simple if statements, decides where the Tool will    | kicad-dsl          1.00 | ✗ (target=lua-upy)
+ROBLOX FIXME Luau: doesn't see `if element` as nil   | typescript         0.99 | ✗ (target=lua-upy)
+Define the function to open or close the window wi   | lua-upy            1.00 | ✓
+Import into an entire datastore type:                | typescript         1.00 | ✗ (target=lua-upy)
+[[**
+	<description>
+	Increment the cached result b   | yaml-json          0.97 | ✗ (target=lua-upy)
+print("building and not player")                     | rust               0.95 | ✗ (target=lua-upy)
+If a reason was non-blank, the following is concat   | reasoning          1.00 | ✗ (target=lua-upy)
+[[ Last synced 10/14/2020 09:33 || RoSync Loader ]   | docker             0.97 | ✗ (target=lua-upy)
+Changes made from EchoReaper's version:              | docker             0.99 | ✗ (target=lua-upy)
+Local private variables and constants                | kicad-dsl          0.99 | ✗ (target=lua-upy)
+[[
+    Creates a new controller associated with th   | kicad-dsl          0.99 | ✗ (target=lua-upy)
+[[ Channel Settings ]]                               | dsp                0.99 | ✗ (target=lua-upy)
+END BACKLIGHTS--------                               | docker             0.97 | ✗ (target=lua-upy)
+[[Steering]]                                         | reasoning          0.99 | ✗ (target=lua-upy)
+int rd_int_le(string src, int s, int e)
+-- @src -    | typescript         0.99 | ✗ (target=lua-upy)
+[[**
+	ensures Roblox Random type
+
+	@param value Th   | typescript         0.93 | ✗ (target=lua-upy)
+Note, arguments do not match the new math.clamp
+--   | reasoning          0.99 | ✗ (target=lua-upy)
+[=[
+	Initializes the service bag and ensures recur   | kicad-dsl          0.99 | ✗ (target=lua-upy)
+Internal function that finds an existing hitbox fr   | kicad-dsl          0.99 | ✗ (target=lua-upy)
+[[
+	When the player plays a chord, this method wil   | typescript         0.97 | ✗ (target=lua-upy)
+Checks for conditions for enabling/disabling the a   | kicad-dsl          0.99 | ✗ (target=lua-upy)
+Brake Lights On ----------                           | docker             0.97 | ✗ (target=lua-upy)
+[[ Window Settings ]]                                | docker             0.98 | ✗ (target=lua-upy)
+[[Engine]]                                           | docker             0.99 | ✗ (target=lua-upy)
+declarations                                         | reasoning          0.99 | ✗ (target=lua-upy)
+Loop through all players when model added            | music-audio        0.99 | ✗ (target=lua-upy)
+//Main Function                                      | lua-upy            1.00 | ✓
+bp.Position = shelly.PrimaryPart.Position            | reasoning          0.99 | ✗ (target=lua-upy)
+Remove with FFlagUserClickToMoveFollowPathRefactor   | dsp                1.00 | ✗ (target=lua-upy)
+scripting level 1000000: go
+-- if you type 2 dashe   | typescript         1.00 | ✗ (target=lua-upy)
+init chat bubble tables                              | sql                0.93 | ✗ (target=lua-upy)
+Roblox User Input Control Modules - each returns a   | kicad-dsl          0.99 | ✗ (target=lua-upy)
+message recieved, delete StringValue                 | sql                0.97 | ✗ (target=lua-upy)
+Slider sizes (Fast)                                  | sql                0.98 | ✗ (target=lua-upy)
+[[Misc]]                                             | reasoning          0.98 | ✗ (target=lua-upy)
+Left lean                                            | reasoning          1.00 | ✗ (target=lua-upy)
+Handle event fire                                    | typescript         0.96 | ✗ (target=lua-upy)
+CONFIG VARIABLES                                     | kicad-dsl          0.99 | ✗ (target=lua-upy)
+[=[
+	Observes for the key
+	@param key TKey
+	@retur   | reasoning          0.92 | ✗ (target=lua-upy)
+print("Keyframe : ".. frameName)                     | rust               1.00 | ✗ (target=lua-upy)
+The registry keeps track of all the commands and t   | typescript         0.98 | ✗ (target=lua-upy)
+print("Wha " .. pose)                                | python             0.98 | ✗ (target=lua-upy)
+Make NPC jump                                        | power              0.95 | ✗ (target=lua-upy)
+AUDIENCE BACK LEFT--------                           | docker             1.00 | ✗ (target=lua-upy)
+Collision checking--                                 | security           0.96 | ✗ (target=lua-upy)
+<< SETUP >>                                          | iot                1.00 | ✗ (target=lua-upy)
+This local script will run only for the player who   | music-audio        1.00 | ✗ (target=lua-upy)
+sink plug handler -----                              | emc                0.99 | ✗ (target=lua-upy)
+rbxthumb://type=Asset&id=00000000&w=420&h=420 -- u   | rust               0.97 | ✗ (target=lua-upy)
+Module 3                                             | kicad-dsl          1.00 | ✗ (target=lua-upy)
+[[
+	UI to select the surface art to place onto the   | sql                0.99 | ✗ (target=lua-upy)
+-- parse function declaration body
+-- * used in si   | lua-upy            1.00 | ✓
+Automatic Gauge Scaling                              | shell              0.95 | ✗ (target=lua-upy)
+Stuff (do not edit below)                            | docker             0.99 | ✗ (target=lua-upy)
+Left Leg                                             | reasoning          1.00 | ✗ (target=lua-upy)
+[[
+	A simplistic spring implementation.
+]]           | typescript         0.95 | ✗ (target=lua-upy)
+[=[
+	@param fn (player: Player, ...: any) -> nil -   | music-audio        0.99 | ✗ (target=lua-upy)
+Where it says Volume 0 is where you change the vol   | sql                0.97 | ✗ (target=lua-upy)
+Stickmasterluke                                      | reasoning          0.99 | ✗ (target=lua-upy)
+[[ FUNCTIONS ]]                                      | lua-upy            1.00 | ✓
+body.HB.BrickColor = bool and BrickColor.new("Pear   | rust               0.97 | ✗ (target=lua-upy)
+An unusual bicycle has 20 spokes on the front whee   | math               0.99 | ✓
+James joins a football team and becomes the star.    | reasoning          1.00 | ✗ (target=math)
+If Clover goes for a 1.5-mile walk in the morning    | reasoning          1.00 | ✗ (target=math)
+Cupcakes are sold in packages of 10 and 15. Jean b   | reasoning          1.00 | ✗ (target=math)
+Connie is trying to remember when her grandmother    | reasoning          1.00 | ✗ (target=math)
+Karen is packing her backpack for a long-distance    | reasoning          1.00 | ✗ (target=math)
+Steve wanted to make a total of $100 within four d   | reasoning          1.00 | ✗ (target=math)
+Tom uses 10 weight plates each weighing 30 pounds    | docker             1.00 | ✗ (target=math)
+There are six chairs in each row in a church. If t   | math               1.00 | ✓
+Troy had 300 straws. He fed 3/5 of the straws to t   | reasoning          1.00 | ✗ (target=math)
+Lily has 5 lottery tickets to sell.  She sells the   | reasoning          1.00 | ✗ (target=math)
+John puts $25 in his piggy bank every month for 2    | reasoning          1.00 | ✗ (target=math)
+Ping pong balls sell for $.10 each.  Johnny buys 1   | reasoning          1.00 | ✗ (target=math)
+John orders food for a massive restaurant.  He ord   | reasoning          1.00 | ✗ (target=math)
+The owner of a Turkish restaurant wanted to prepar   | reasoning          1.00 | ✗ (target=math)
+Nadia walked 18 kilometers, which was twice as far   | reasoning          1.00 | ✗ (target=math)
+Eve wants to buy her 3 nieces cooking gear that's    | reasoning          0.99 | ✗ (target=math)
+It is recommended that men should consume no more    | reasoning          1.00 | ✗ (target=math)
+Jeanne wants to ride the Ferris wheel, the roller    | reasoning          1.00 | ✗ (target=math)
+Dean ordered 2 large pizzas that were each cut int   | reasoning          1.00 | ✗ (target=math)
+Jeff committed to run for an hour a day during wee   | reasoning          1.00 | ✗ (target=math)
+James creates a media empire.  He creates a movie    | reasoning          1.00 | ✗ (target=math)
+Herman likes to feed the birds in December, Januar   | reasoning          1.00 | ✗ (target=math)
+During the holidays, Lance works as a merchandiser   | reasoning          1.00 | ✗ (target=math)
+Nadia was sent to the flower shop to buy 20 roses    | math               1.00 | ✓
+To let Ruth know how long her fish will live, her    | lua-upy            1.00 | ✗ (target=math)
+Last year Dallas was 3 times the age of his sister   | reasoning          1.00 | ✗ (target=math)
+Mike can type 65 words per minute. Due to a minor    | typescript         1.00 | ✗ (target=math)
+Catriona has 8 goldfish in her aquarium. She has 4   | reasoning          1.00 | ✗ (target=math)
+Abe finds 4 ants on the sidewalk.  Beth sees 50% m   | reasoning          1.00 | ✗ (target=math)
+At a garage sale, Tish bought 4 items: a red horse   | lua-upy            1.00 | ✗ (target=math)
+Betty is saving money for a new wallet which costs   | reasoning          1.00 | ✗ (target=math)
+Stella and Twinkle are filling up a truck with a c   | reasoning          1.00 | ✗ (target=math)
+Teddy has 7 dogs and 8 cats. Ben has 9 more dogs t   | reasoning          1.00 | ✗ (target=math)
+Tony has to run several errands in a day.  He need   | reasoning          1.00 | ✗ (target=math)
+Chang's Garden has two kinds of apples. Sweet ones   | reasoning          1.00 | ✗ (target=math)
+Bella bought stamps at the post office. Some of th   | reasoning          1.00 | ✗ (target=math)
+Cary is an engineer in charge of designing an irri   | reasoning          1.00 | ✗ (target=math)
+John drinks 2 energy drinks. 1 of them is a 12-oun   | reasoning          1.00 | ✗ (target=math)
+Sam memorized six more digits of pi than Carlos me   | reasoning          1.00 | ✗ (target=math)
+A store sells 20 packets of 100 grams of sugar eve   | reasoning          1.00 | ✗ (target=math)
+The town’s annual budget totals $32 million. If ha   | reasoning          1.00 | ✗ (target=math)
+A library cabinet houses five ancient scrolls. The   | math               1.00 | ✓
+In a northwestern town, it rained 4 inches per day   | reasoning          1.00 | ✗ (target=math)
+Utopia National Park hosted 30,000 elephants on Fr   | reasoning          1.00 | ✗ (target=math)
+Julia has $40. She spends half of her money to buy   | reasoning          1.00 | ✗ (target=math)
+Faith went to a baking shop and bought flour that    | reasoning          1.00 | ✗ (target=math)
+Valerie needs to put stamps on the envelopes she i   | reasoning          1.00 | ✗ (target=math)
+At a roller derby, 4 teams are competing. Each tea   | reasoning          1.00 | ✗ (target=math)
+Julia is performing in her high school musical thi   | reasoning          1.00 | ✗ (target=math)
+Michael has a lot of matchsticks at home and decid   | reasoning          1.00 | ✗ (target=math)
+Ronald can grill 15 hamburgers per session on his    | reasoning          1.00 | ✗ (target=math)
+Patrick is half the age of his elder brother Rober   | reasoning          1.00 | ✗ (target=math)
+Patsy is gearing up for this weekend’s graduation.   | reasoning          1.00 | ✗ (target=math)
+Rachel and Sara want to attend a beauty and modeli   | reasoning          1.00 | ✗ (target=math)
+Lavinia’s daughter is 10 years younger than Katie’   | reasoning          1.00 | ✗ (target=math)
+Mike and Ted planted tomatoes.  In the morning, Mi   | reasoning          1.00 | ✗ (target=math)
+Brandon sold 86 geckos last year. He sold twice th   | reasoning          1.00 | ✗ (target=math)
+Larry and Barry want to pick apples out of the tre   | reasoning          1.00 | ✗ (target=math)
+Alexis is applying for a new job and bought a new    | kicad-pcb          1.00 | ✗ (target=math)
+The age difference between Asaf and Alexander's ag   | reasoning          1.00 | ✗ (target=math)
+Randy has $30. He spent $10 buying his lunch. He s   | reasoning          1.00 | ✗ (target=math)
+Joy is winding balls of yarn for her cat to play w   | reasoning          1.00 | ✗ (target=math)
+While cultivating a small farm, a farmer spent $50   | reasoning          1.00 | ✗ (target=math)
+A package of candy has 3 servings with 120 calorie   | reasoning          1.00 | ✗ (target=math)
+If seven more rabbits are added to the thirteen in   | reasoning          1.00 | ✗ (target=math)
+In a compound, the number of cats is 20% less than   | math               1.00 | ✓
+Basil gets 1/2 of a  dog cookie in the morning and   | reasoning          1.00 | ✗ (target=math)
+James takes 20 units per semester at community col   | reasoning          1.00 | ✗ (target=math)
+An auto shop has a part that Clark needs for $80.    | reasoning          1.00 | ✗ (target=math)
+Jay & Gloria were hosting a 4th of July party at t   | reasoning          1.00 | ✗ (target=math)
+A year ago, the total cost of buying a lawnmower w   | reasoning          1.00 | ✗ (target=math)
+James buys 3 CDs.  Two of them are 1.5 hours each.   | reasoning          1.00 | ✗ (target=math)
+In a classroom, 10 children have 7 books each. The   | reasoning          1.00 | ✗ (target=math)
+There are six unicorns in the Enchanted Forest. Ev   | reasoning          1.00 | ✗ (target=math)
+An 18-month magazine subscription is normally $34.   | reasoning          0.99 | ✗ (target=math)
+Gary manages two Amazon distribution centers. The    | reasoning          1.00 | ✗ (target=math)
+Joe plays a soccer tournament with his team. Match   | reasoning          1.00 | ✗ (target=math)
+Bianca worked for 12.5 hours last weekend. Celeste   | reasoning          1.00 | ✗ (target=math)
+Chad saves 40% of the money he earns/receives in a   | reasoning          1.00 | ✗ (target=math)
+Jillian, Savannah, and Clayton were collecting she   | reasoning          1.00 | ✗ (target=math)
+TJ ran a 10K race last Saturday. He ran the first    | reasoning          0.99 | ✗ (target=math)
+Yolanda leaves home for work at 7:00 AM, riding he   | reasoning          1.00 | ✗ (target=math)
+Nate got lost looking for his car in the airport p   | reasoning          1.00 | ✗ (target=math)
+Bryan starts exercising at home during quarantine.   | reasoning          1.00 | ✗ (target=math)
+Tom Sawyer has tricked his friends into whitewashi   | reasoning          1.00 | ✗ (target=math)
+Josh had 100 gummy bear candies. He decided to giv   | reasoning          1.00 | ✗ (target=math)
+Michelangelo has 28 ceilings to paint. This week,    | reasoning          1.00 | ✗ (target=math)
+Tim's cat bit him.  He decided to get himself and    | reasoning          1.00 | ✗ (target=math)
+A couple with two children, ages 6 and 10 years ol   | reasoning          1.00 | ✗ (target=math)
+The school band has 30 songs in their repertoire.    | reasoning          0.99 | ✗ (target=math)
+A boxer weighs 97 kg at 4 months from a fight. He    | reasoning          1.00 | ✗ (target=math)
+Joey studies for his SAT exams 2 hours per night 5   | reasoning          1.00 | ✗ (target=math)
+Daniel has a collection of 346 video games. 80 of    | reasoning          1.00 | ✗ (target=math)
+The ratio of coins that Elsa has to that which Ama   | reasoning          1.00 | ✗ (target=math)
+Ken created a care package to send to his brother,   | reasoning          1.00 | ✗ (target=math)
+Miriam spent 30 minutes doing laundry, 15 minutes    | reasoning          1.00 | ✗ (target=math)
+Bailey needs to buy 2 new sets of towels for the g   | reasoning          1.00 | ✗ (target=math)
+Kimberley, Ela, and Houston all are sent to collec   | reasoning          1.00 | ✗ (target=math)
+Gail has two fish tanks. The first tank is twice t   | reasoning          1.00 | ✗ (target=math)
+James buys $3000 worth of stuff from Amazon.  He h   | reasoning          1.00 | ✗ (target=math)
+Anne's female cat weighs 2 kilograms. Her male cat   | reasoning          1.00 | ✗ (target=math)
+John has five more roommates than twice as many as   | reasoning          1.00 | ✗ (target=math)
+James decides to replace his car.  He sold his $20   | reasoning          1.00 | ✗ (target=math)
+Arnel had ten boxes of pencils with the same numbe   | reasoning          1.00 | ✗ (target=math)
+Comment compute eigenvalues d'une matrice 1000x100   | dsp                1.00 | ✗ (target=math)
+Maggie picked 40 apples. Kelsey picked 28 apples.    | reasoning          1.00 | ✗ (target=math)
+Scarlet saved $80 to spend on jewelry. She bought    | reasoning          1.00 | ✗ (target=math)
+Hansel makes $30,000 a year and just received a 10   | reasoning          1.00 | ✗ (target=math)
+Tobias is buying a new pair of shoes that costs $9   | reasoning          1.00 | ✗ (target=math)
+A family of 12 monkeys collected 10 piles of banan   | reasoning          1.00 | ✗ (target=math)
+A paper company decides to operate their business    | reasoning          1.00 | ✗ (target=math)
+Brandon has a collection of 20 baseball cards.  Ma   | reasoning          1.00 | ✗ (target=math)
+Angie bought three times as many pretzels at the m   | reasoning          1.00 | ✗ (target=math)
+A flagpole is 12 feet tall. It breaks, folding ove   | reasoning          1.00 | ✗ (target=math)
+One barnyard owl makes 5 hoot sounds per minute.     | reasoning          0.99 | ✗ (target=math)
+Silvia’s bakery is offering 10% on advanced orders   | reasoning          1.00 | ✗ (target=math)
+Mary used 15 gallons of fuel this week. Last week    | reasoning          1.00 | ✗ (target=math)
+Keaton climbed a 30 feet ladder twenty times while   | reasoning          1.00 | ✗ (target=math)
+Cappuccinos cost $2, iced teas cost $3, cafe latte   | reasoning          1.00 | ✗ (target=math)
+At a gym, the blue weights are 2 pounds each, and    | reasoning          1.00 | ✗ (target=math)
+Tara has been planning to buy a laptop which costs   | reasoning          1.00 | ✗ (target=math)
+A choir was singing a song that involved 30 singer   | reasoning          1.00 | ✗ (target=math)
+The batting cage sells golf balls by the dozen. Th   | reasoning          1.00 | ✗ (target=math)
+Yuan is 7 years older than his brother David and t   | reasoning          1.00 | ✗ (target=math)
+Carla is taking attendance for her sixth-grade cla   | reasoning          1.00 | ✗ (target=math)
+Ian is looking to lose some weight.  He decides to   | reasoning          0.99 | ✗ (target=math)
+A Statistics student wants to find out the average   | reasoning          1.00 | ✗ (target=math)
+Angie is part of a household with shared expenses    | reasoning          1.00 | ✗ (target=math)
+With one mighty blow, Maria cracked open the pinat   | reasoning          1.00 | ✗ (target=math)
+A washing machine uses 20 gallons of water for a h   | reasoning          1.00 | ✗ (target=math)
+Georgia has 25 pieces of stationery while Lorene h   | reasoning          1.00 | ✗ (target=math)
+Stephanie is decorating 24 cupcakes for a birthday   | reasoning          1.00 | ✗ (target=math)
+Nick has 35 quarters.  2/5 of the quarters are sta   | reasoning          1.00 | ✗ (target=math)
+Maisie and Donna dropped off flyers for a neighbor   | reasoning          1.00 | ✗ (target=math)
+Jack is running a bake sale to help pay for his ba   | reasoning          1.00 | ✗ (target=math)
+Johns goes to the gym 3 times a week.  He spends 1   | reasoning          1.00 | ✗ (target=math)
+The electricity price in Coco's town is $0.10 per    | reasoning          0.99 | ✗ (target=math)
+John's cow weighs 400 pounds.  It increased its we   | reasoning          1.00 | ✗ (target=math)
+Studying for her test, Mitchell had read ten chapt   | reasoning          1.00 | ✗ (target=math)
+Joy can read 8 pages of a book in 20 minutes. How    | web-backend        1.00 | ✗ (target=math)
+John is holding a poker night with his friends and   | reasoning          1.00 | ✗ (target=math)
+The seats of a bus are arranged in 23 rows of 4 se   | reasoning          1.00 | ✗ (target=math)
+Last year Jessica paid $1000 for rent, $200 for fo   | reasoning          1.00 | ✗ (target=math)
+The math questions in a contest are divided into t   | reasoning          1.00 | ✗ (target=math)
+Tim has 30 toads. Jim has 20 more toads than Tim d   | reasoning          1.00 | ✗ (target=math)
+Larry spends half an hour twice a day walking and    | reasoning          1.00 | ✗ (target=math)
+Rosie runs 6 miles per hour. She runs for 1 hour o   | reasoning          0.99 | ✗ (target=math)
+The house is 20.5 feet by 10 feet. The porch measu   | reasoning          1.00 | ✗ (target=math)
+A trader made a profit of $960 after a week of sal   | reasoning          1.00 | ✗ (target=math)
+Caleb bought 10 cartons of ice cream and 4 cartons   | reasoning          1.00 | ✗ (target=math)
+At football tryouts, the coach wanted to see who c   | reasoning          1.00 | ✗ (target=math)
+Bella has two times as many marbles as frisbees. S   | reasoning          1.00 | ✗ (target=math)
+There is a 5,200 sq. ft. house and a 7,300 sq. ft.   | reasoning          1.00 | ✗ (target=math)
+John climbs 3 staircases.  The first staircase has   | reasoning          1.00 | ✗ (target=math)
+There are 20 students in the class. Half of them p   | reasoning          1.00 | ✗ (target=math)
+Hannah sold 40 pieces of cookies for $0.8 each and   | reasoning          1.00 | ✗ (target=math)
+Lisa is looking to attempt a World Record. She has   | reasoning          1.00 | ✗ (target=math)
+Suraya picked 12 apples more than Caleb, and Caleb   | reasoning          1.00 | ✗ (target=math)
+Austin bought his seven friends each a robot. Each   | reasoning          1.00 | ✗ (target=math)
+Frank needs to meet a quota at work for his sales.   | reasoning          1.00 | ✗ (target=math)
+Comment quantifier un modèle PyTorch en INT8 pour    | chat-fr            1.00 | ✗ (target=ml-training)
+Comment générer un MIDI file programmatiquement en   | music-audio        1.00 | ✓
+Comment créer un projet PlatformIO pour ESP32-S3 a   | chat-fr            1.00 | ✗ (target=platformio)
+What safety precautions should I keep in mind when   | power              0.98 | ✓
+How can impedance mismatch between a signal source   | electronics        0.99 | ✗ (target=power)
+How does the use of 'and' influence circuit design   | electronics        0.97 | ✗ (target=power)
+What are the key considerations when selecting com   | power              0.99 | ✓
+How can I design a clean boost pedal that doesn’t    | power              0.99 | ✓
+What is the purpose of adding a capacitor to the v   | electronics        1.00 | ✗ (target=power)
+How can a designer use pulsed or dimming technique   | power              0.98 | ✓
+How can I balance rail‑to‑rail output capability w   | emc                1.00 | ✗ (target=power)
+How can I design a simple voltage regulator circui   | power              0.99 | ✓
+**
+How can I create a single, low‑impedance refere   | kicad-pcb          1.00 | ✗ (target=power)
+How does a simple voltage divider with two equal r   | electronics        1.00 | ✗ (target=power)
+How do you calculate the power factor of a circuit   | math               0.98 | ✗ (target=power)
+What role does a footswitch play in a power‑on/off   | electronics        1.00 | ✗ (target=power)
+How do engineers optimize power consumption in ana   | electronics        1.00 | ✗ (target=power)
+What role do digital-to-analogue converters (DACs)   | electronics        0.99 | ✗ (target=power)
+How do I choose the right power supply for a low-n   | electronics        0.99 | ✗ (target=power)
+How can a hobbyist optimize the power supply for a   | power              0.99 | ✓
+When designing analog circuits using transistors,    | electronics        1.00 | ✗ (target=power)
+When implementing a Butterworth low‑pass filter in   | dsp                0.97 | ✗ (target=power)
+How do you optimize power delivery in high-frequen   | power              0.99 | ✓
+Can analogue electronic systems play a role in pow   | electronics        1.00 | ✗ (target=power)
+What are the design considerations for analogue po   | power              1.00 | ✓
+How can I build a simple voltage regulator using a   | power              0.99 | ✓
+What role does the on/off switch resistor (R9) pla   | electronics        1.00 | ✗ (target=power)
+How do the power supply requirements for audio amp   | power              0.99 | ✓
+**
+When I add a status LED to the gate of a JFET‑b   | kicad-pcb          0.97 | ✗ (target=power)
+How do I calculate power dissipation in a resistor   | electronics        0.98 | ✗ (target=power)
+How do analogue and digital circuits approach powe   | electronics        0.99 | ✗ (target=power)
+What are the key design considerations when using    | electronics        1.00 | ✗ (target=power)
+How can I ensure my custom circuit is stable under   | spice-sim          0.98 | ✗ (target=power)
+What are the implications of impedance mismatch in   | kicad-pcb          0.97 | ✗ (target=power)
+How does knowledge of analogue electronics contrib   | electronics        1.00 | ✗ (target=power)
+How can I design a simple, low‑power LED driver th   | electronics        0.97 | ✗ (target=power)
+How do you approach designing a power supply for a   | electronics        1.00 | ✗ (target=power)
+How can an engineer use impedance matching techniq   | electronics        0.99 | ✗ (target=power)
+What are the key factors in selecting a power supp   | power              1.00 | ✓
+Can analogue electronic systems be used in applica   | electronics        1.00 | ✗ (target=power)
+How does grounding impact the design of power supp   | emc                1.00 | ✗ (target=power)
+**
+What thermal issues should I watch for when mou   | electronics        0.92 | ✗ (target=power)
+In what scenarios does a switching regulator’s hig   | spice-sim          0.87 | ✗ (target=power)
+Implement a binary search algorithm using Python.    | python             1.00 | ✓
+How can you create a class in python?                | python             1.00 | ✓
+Create a Python function that takes a list of stri   | python             1.00 | ✓
+Explain how to create a custom exception in Python   | python             0.99 | ✓
+What is the correct code for looping through a lis   | rust               1.00 | ✗ (target=python)
+Create a quick-sort algorithm in Python.             | python             1.00 | ✓
+Develop Python code to print out all the divisors    | python             1.00 | ✓
+Write a function to concatenate two strings in Pyt   | python             1.00 | ✓
+Create a list comprehension in Python to extract a   | python             1.00 | ✓
+Describe how to use a while loop in python.          | rust               1.00 | ✗ (target=python)
+Generate a random 8 digit string composed of numbe   | python             1.00 | ✓
+Write a Python function to generate a dictionary w   | python             1.00 | ✓
+Create a Python code that takes in two strings and   | python             1.00 | ✓
+Create a recursive Python function to generate the   | python             1.00 | ✓
+Build a neural network using Python                  | python             1.00 | ✓
+Write a code to convert an integer to a float in P   | python             1.00 | ✓
+Generate a Python code to convert list of strings    | python             1.00 | ✓
+Write a function in Python that takes a string and   | python             1.00 | ✓
+How to find the number of elements within a list i   | python             1.00 | ✓
+write a piece of code to print out the first n Fib   | python             1.00 | ✓
+What is the maximum number of parameters that a fu   | lua-upy            1.00 | ✗ (target=python)
+Suggest a modification to the following python cod   | python             1.00 | ✓
+Write a Python script to sort a given list of numb   | python             1.00 | ✓
+Write a code snippet to convert a list in Python t   | python             1.00 | ✓
+Using the given code, create a function "calculate   | python             1.00 | ✓
+Write a Python program that finds the most common    | python             1.00 | ✓
+Write a Python function to find all pairs in a giv   | python             1.00 | ✓
+Call a user-defined function in Python.              | python             1.00 | ✓
+Remove all duplicates from this list using Python    | python             1.00 | ✓
+You need to create a Python class to represent a 3   | python             1.00 | ✓
+Generate a 5-element tuple of random numbers betwe   | python             1.00 | ✓
+Write a Python script to print out the max and min   | python             1.00 | ✓
+Design a Python class to represent a 3 x 3 chess b   | python             1.00 | ✓
+Write a Python function to replace all the occurre   | python             1.00 | ✓
+Using Python, create a list containing the first 2   | python             1.00 | ✓
+Create a Python function to print out the last n i   | python             1.00 | ✓
+You need to write code for adding a column to a pa   | python             1.00 | ✓
+Create a python function that takes in a list and    | python             1.00 | ✓
+Using the Python library `pygame`, create a simple   | rust               1.00 | ✗ (target=python)
+Create a Python code to find all uncommon characte   | python             1.00 | ✓
+Create a Python program that takes a given list of   | python             1.00 | ✓
+Write a Python function to normalize a given list    | python             1.00 | ✓
+Write a Python function to generate the powerset o   | python             1.00 | ✓
+Update the following code, to use Python's modern    | python             1.00 | ✓
+Add two numbers using Python.                        | python             1.00 | ✓
+Create a Python class with the same content as a J   | python             1.00 | ✓
+What type of object is "None" in Python?             | python             1.00 | ✓
+Write a Python program to check if a given number    | python             1.00 | ✓
+Write a Python code to generate a random password    | python             1.00 | ✓
+Use python to call a API to get the current temper   | python             1.00 | ✓
+Write a Python function to compute the maximum val   | python             1.00 | ✓
+Given a String and a list of words, write a Python   | python             1.00 | ✓
+Name three built-in Python data types.               | typescript         1.00 | ✗ (target=python)
+Identify two coding languages used by Python devel   | python             0.98 | ✓
+Given the following list, create a Python dictiona   | python             1.00 | ✓
+Modify the following Python code to make it run fa   | python             0.99 | ✓
+Write a Python script to find all the numbers whic   | python             1.00 | ✓
+Generate a Python code to remove the given substri   | python             1.00 | ✓
+Develop a Python program to find the most frequent   | python             1.00 | ✓
+Write a Python function to print out the squares o   | python             1.00 | ✓
+Write a Python program to print a dictionary where   | docker             1.00 | ✗ (target=python)
+You are provided with a list of integers and a giv   | python             1.00 | ✓
+Design a class with 3 data members in Python.        | python             1.00 | ✓
+Write a Python script to validate the following in   | python             1.00 | ✓
+Create a function in python that takes a string as   | python             1.00 | ✓
+Generate a random number between 0-100 in Python.    | python             1.00 | ✓
+Create a class in Python called 'Rectangle' to sto   | python             1.00 | ✓
+Write a Python program to concatenate all elements   | python             1.00 | ✓
+Edit the Python code block below to print the text   | python             1.00 | ✓
+Write a python program to find all anagrams in a g   | python             1.00 | ✓
+Write a Python program to iterate the given list a   | python             1.00 | ✓
+Create a Python program to generate the Fibonacci    | python             1.00 | ✓
+Compute the maximum value of a List in Python.       | python             1.00 | ✓
+Code a Python algorithm to reverse a given string.   | python             1.00 | ✓
+Given a list of numbers, write code using Python t   | python             1.00 | ✓
+Write a Python script to find the prime factors of   | python             1.00 | ✓
+Implement bubble sort in Python.                     | python             1.00 | ✓
+Write a function in Python that takes a number and   | python             1.00 | ✓
+Implement a quick-sort algorithm in Python to sort   | python             1.00 | ✓
+Create a python class to manage a sports team.       | python             1.00 | ✓
+Using Python, find the number of unique characters   | python             1.00 | ✓
+Provide an example of a recursive Python function    | python             1.00 | ✓
+Create a function in Python that will print out a    | python             1.00 | ✓
+Write code in python to find the biggest number in   | python             1.00 | ✓
+Create a list comprehension statement in Python th   | docker             1.00 | ✗ (target=python)
+Write a Python script to create a webserver that c   | python             1.00 | ✓
+What is the purpose of an immutable object in Pyth   | typescript         0.99 | ✗ (target=python)
+Compare two Python objects to check if they have t   | python             1.00 | ✓
+Write a Python program to print the following patt   | python             1.00 | ✓
+Create a search algorithm in Python to find an ele   | python             1.00 | ✓
+Name four significant members of the Python commun   | docker             1.00 | ✗ (target=python)
+Generate a Python function that takes 'string' as    | python             1.00 | ✓
+How can a string be converted to a list in Python?   | python             1.00 | ✓
+Given two strings, write a Python code to delete a   | python             1.00 | ✓
+Generate a 15-digit random number using Python.      | python             1.00 | ✓
+Define a class in Python that takes a string and r   | python             1.00 | ✓
+You are given an array of strings. Write a Python    | python             1.00 | ✓
+Write a Python program to split special characters   | python             1.00 | ✓
+Using the given list, create a function in Python    | python             1.00 | ✓
+Given the following array of dictionaries, write a   | python             1.00 | ✓
+Write a Python program to generate a dictionary th   | python             1.00 | ✓
+Create a Python program to remove the characters f   | python             1.00 | ✓
+How do you convert a string to an integer in Pytho   | python             1.00 | ✓
+Write a Python program that prints all numbers fro   | python             1.00 | ✓
+Write an expression to verify the validity of a gi   | python             1.00 | ✓
+Create a while loop in Python to print all odd num   | python             1.00 | ✓
+Write a Python program to find out the common item   | python             1.00 | ✓
+Write a Python function to filter a given list of    | python             1.00 | ✓
+Create a Python class to represent a 3 x 3 matrix    | python             1.00 | ✓
+Create a Python dictionary with the following elem   | python             1.00 | ✓
+Change the variable names in the following Python    | python             1.00 | ✓
+Write a Python code snippet to print the minimum v   | python             1.00 | ✓
+Comment faire un mock async en pytest avec pytest-   | chat-fr            1.00 | ✗ (target=python)
+Write a code to get the current time in Python       | python             1.00 | ✓
+Translate the following code from Java to Python.    | python             1.00 | ✓
+Write a Python program to convert all strings in a   | python             1.00 | ✓
+Write Python code to return all indices of substri   | python             1.00 | ✓
+Drop all duplicates from a NumPy array.              | python             1.00 | ✓
+Write a Python program to sort the list of diction   | python             1.00 | ✓
+Create a single line program in Python to check if   | python             1.00 | ✓
+Write a Python function to compare two strings and   | python             1.00 | ✓
+Develop an algorithm in Python to calculate the fa   | python             1.00 | ✓
+Write a Python code snippet that creates a diction   | docker             1.00 | ✗ (target=python)
+Develop a Python code to replace all occurrences o   | python             1.00 | ✓
+Write a for loop in Python to print the first 10 e   | docker             1.00 | ✗ (target=python)
+Create a method in Python to generate all the prim   | python             1.00 | ✓
+Create a Python class that accepts a name and an a   | python             1.00 | ✓
+Suggest a Pandas DataFrame command to remove eleme   | python             1.00 | ✓
+Write a function in Python to shuffle an array.      | python             1.00 | ✓
+Add functionality to a given Python class to retri   | python             1.00 | ✓
+Write a Python Evaluator to evaluate Python expres   | python             1.00 | ✓
+How can we encrypt a string in Python?               | python             1.00 | ✓
+Describe in Python a custom exception for handling   | python             1.00 | ✓
+Develop a python code to sort an array of numbers    | python             1.00 | ✓
+Create a function in Python that takes a string as   | python             1.00 | ✓
+Use the re module in Python to extract the numbers   | python             1.00 | ✓
+Write Python code to generate a random integer bet   | python             1.00 | ✓
+Solve this math problem using Python code.           | python             1.00 | ✓
+Write a Python function to find the most common el   | python             1.00 | ✓
+Write a script in Python to find the longest word    | python             1.00 | ✓
+Create a recursive function in Python which return   | python             1.00 | ✓
+Replace all the ``None`` in the following code to    | python             1.00 | ✓
+Create a Python class that encodes a given number    | python             1.00 | ✓
+What is the syntax to create a list of numbers fro   | python             1.00 | ✓
+Take input of a Python list and return its reverse   | python             1.00 | ✓
+Generate a code to execute a block of code 10 time   | python             1.00 | ✓
+Parse the following HTML code and store the data i   | python             1.00 | ✓
+Write a Python function that validates a given cre   | python             1.00 | ✓
+How can you convert a given list of integers into    | python             1.00 | ✓
+Determine the output of the given Python code.       | python             1.00 | ✓
+How to generate a random string of a given length    | python             1.00 | ✓
+Develop an algorithm to find the greatest common f   | python             1.00 | ✓
+Create an empty set in Python and add the followin   | python             1.00 | ✓
+Write a function to perform regex match in Python.   | python             1.00 | ✓
+Create a function in Python to generate all possib   | python             1.00 | ✓
+Create a Python code snippet to create a line char   | python             1.00 | ✓
+Create a function in Python that returns all permu   | python             1.00 | ✓
+Develop a Python class for handling the API calls.   | python             1.00 | ✓
+Convert the following Python dictionary to a JSON    | python             1.00 | ✓
+Write a Python program to print the combination of   | python             1.00 | ✓
+Given 3 lists a, b, and c, write a Python code to    | python             1.00 | ✓
+Write a code in Python to find the subsequence of    | python             1.00 | ✓
+The real numbers \( x_{1}, x_{2}, \ldots, x_{1996}   | sql                1.00 | ✗ (target=reasoning)
+Heather compares the price of a new computer at tw   | reasoning          1.00 | ✓
+Let  $ABCD$  be a tetrahedron and let  $S$  be its   | reasoning          1.00 | ✓
+The racing magic takes 60 seconds to circle the ra   | reasoning          1.00 | ✓
+Given the function sequence ${{f}_{0}}(x)=\frac{1}   | reasoning          0.97 | ✓
+Let  $S$  be the set of the reciprocals of the fir   | reasoning          1.00 | ✓
+a positive integer , which when added to 1000 , gi   | reasoning          1.00 | ✓
+Determine the smallest positive integer $n$ such t   | python             0.98 | ✗ (target=reasoning)
+Paul made forty-four dollars mowing lawns and some   | reasoning          1.00 | ✓
+A hexadecagon (16-sided polygon) is inscribed in a   | reasoning          1.00 | ✓
+During the Lamplight South Mountain Folk Culture t   | reasoning          1.00 | ✓
+In the cyclic quadrilateral \(ABCD\), \(\odot O_1,   | reasoning          1.00 | ✓
+A jacket is originally priced at \$50 and is on sa   | reasoning          1.00 | ✓
+In year $N$, the $250^{\text{th}}$ day of the year   | reasoning          0.99 | ✓
+Each day, Jenny ate $30\%$ of the jellybeans that    | reasoning          1.00 | ✓
+Given real numbers $x \gt 0$ and $y \gt 0$, find t   | rust               0.99 | ✗ (target=reasoning)
+The number of solutions to the equation \(\sin 12    | reasoning          1.00 | ✓
+Find the value of $k$ such that all roots of the p   | docker             0.99 | ✗ (target=reasoning)
+Determine all pairs of integers \((x, y)\) satisfy   | typescript         1.00 | ✗ (target=reasoning)
+Find the maximum value of $3 \cos x + 4 \sin x$ ov   | web-backend        0.91 | ✗ (target=reasoning)
+in a bag of small balls 1 / 4 are green , 1 / 8 ar   | reasoning          1.00 | ✓
+A regular polygon has exterior angles each measuri   | reasoning          1.00 | ✓
+Let \[g(x) =
+\begin{cases}
+4x^2 - 5 & \text{if } x   | math               0.99 | ✗ (target=reasoning)
+Let the function $f(x)=\log_{2}(2^{x}+1)$, $g(x)=\   | lua-upy            0.99 | ✗ (target=reasoning)
+Let $f(x)=px- \frac {p}{x}-2\ln x$.  
+(I) If $f(x)   | docker             0.99 | ✗ (target=reasoning)
+Someone observed that $7! = 7 \cdot 8 \cdot 9 \cdo   | reasoning          1.00 | ✓
+To earn money for her new computer, Tina sells han   | reasoning          0.99 | ✓
+The terminal side of the angle $-870^{\circ}$ is i   | math               0.96 | ✗ (target=reasoning)
+Let $a$ and $b$ be the roots of the equation $x^2    | math               1.00 | ✗ (target=reasoning)
+Let the sequence \\(\{a_n\}\) have a sum of the fi   | reasoning          1.00 | ✓
+As shown in the figure, \( AC = BC \). The tangent   | reasoning          1.00 | ✓
+Given the equations $\frac{xy}{x+y}= a, \frac{xz}{   | math               0.99 | ✗ (target=reasoning)
+What is the least positive multiple of 25 that is    | reasoning          0.99 | ✓
+Among the following functions, the one with the sm   | lua-upy            0.98 | ✗ (target=reasoning)
+Find all real numbers $x$ so that the product $(x    | docker             0.99 | ✗ (target=reasoning)
+The equation of the line $l: x - y + 1 = 0$ reflec   | reasoning          1.00 | ✓
+The negation of the statement "All honor students    | reasoning          1.00 | ✓
+Suppose that $a * b$ means $4a - 2b$. What is the    | reasoning          1.00 | ✓
+Find all solutions to the equation $\displaystyle\   | math               0.98 | ✗ (target=reasoning)
+Eugene has 51.0 pencils. He gives some pencils to    | reasoning          1.00 | ✓
+At Northstar High School, the 120 students who par   | reasoning          1.00 | ✓
+In a mini-football tournament, bets are accepted o   | html-css           0.99 | ✗ (target=reasoning)
+On a board, nine quadratic trinomials are written:   | reasoning          1.00 | ✓
+Let $r$ and $s$ denote the two real roots of $x^2    | math               1.00 | ✗ (target=reasoning)
+Given that $i$ is the imaginary unit, the complex    | math               1.00 | ✗ (target=reasoning)
+Given the function $f(x)=ax^{2}+bx+c$, where $a\in   | lua-upy            0.98 | ✗ (target=reasoning)
+Suppose $x^{5}=a\_n+a\_1(x-1)+a\_2(x-1)^{2}+a\_3(x   | math               1.00 | ✗ (target=reasoning)
+Let \(a, b,\) and \(c\) be strictly positive real    | docker             0.99 | ✗ (target=reasoning)
+Given a positive arithmetic sequence $\{a_n\}$, wh   | reasoning          1.00 | ✓
+Let \( n \in \mathbb{N}^{*} \). Show that for all    | docker             0.99 | ✗ (target=reasoning)
+Arrange the numbers $1,2,3, \cdots, 37$ in a seque   | reasoning          0.99 | ✓
+Bianca earned 5 points for each bag of cans she re   | reasoning          1.00 | ✓
+Given that the inequality $x^2 - ax + 2a > 0$ is a   | docker             0.99 | ✗ (target=reasoning)
+\( n \) is an integer greater than 2 and \(\phi =    | python             0.99 | ✗ (target=reasoning)
+In acute triangle $\triangle ABC$, the sides oppos   | kicad-pcb          0.98 | ✗ (target=reasoning)
+Suppose that $g(x) = 5x - 3$. What is $g^{-1}(g^{-   | math               1.00 | ✗ (target=reasoning)
+If an arc of $60^{\circ}$ on circle $C$ has the sa   | reasoning          0.99 | ✓
+The number of positive integers $k$ for which the    | reasoning          1.00 | ✓
+A soccer store typically sells replica jerseys at    | lua-upy            0.99 | ✗ (target=reasoning)
+Two standard dice are rolled. What is the expected   | reasoning          1.00 | ✓
+Given the universal set U={x|x≥0}, A={x|x≥1}, find   | reasoning          1.00 | ✓
+Arrange the positive integers according to the pat   | math               1.00 | ✗ (target=reasoning)
+Given the function $f(x) = x^2 - 2x + 2$, where $x   | docker             0.99 | ✗ (target=reasoning)
+We want to mix Colombian coffee beans with Peruvia   | kicad-pcb          1.00 | ✗ (target=reasoning)
+In the diagram, a newly built city's roads form a    | reasoning          1.00 | ✓
+For Halloween, Sarah received 66 pieces of candy f   | reasoning          1.00 | ✓
+During the baseball season, Judy had $50$ hits. Am   | reasoning          0.99 | ✓
+Edward was trying to expand his game collection. H   | reasoning          1.00 | ✓
+How many three-digit numbers have at least one $3$   | reasoning          1.00 | ✓
+A triangular prism has vertical edges parallel to    | math               1.00 | ✗ (target=reasoning)
+Two pipes A and B can fill a tank in 10 hours and    | reasoning          1.00 | ✓
+**i.)** Consider a circle  $K$  with diameter  $AB   | reasoning          0.99 | ✓
+In triangle $ABC$, it is known that $AB=2$, $AC=3$   | reasoning          0.97 | ✓
+Find all polynomials with integer coefficients  $P   | docker             0.98 | ✗ (target=reasoning)
+Let $f(x)=\begin{cases}{(x-a)}^{2}, & x\leqslant 0   | docker             1.00 | ✗ (target=reasoning)
+Given the function $f(x)=\ln x+ \frac{1-x}{ax}$, w   | docker             0.98 | ✗ (target=reasoning)
+Find the product of all constants $t$ such that th   | math               1.00 | ✗ (target=reasoning)
+Find the value of the expression \(\frac{a^{2}}{b    | web-backend        1.00 | ✗ (target=reasoning)
+Three fair coins are to be tossed once. For each t   | reasoning          1.00 | ✓
+Find the solutions to \( z^3 = 1 \).                 | reasoning          0.99 | ✓
+Ken created a care package to send to his brother,   | reasoning          1.00 | ✓
+A new regulation requires that all truck licenses    | reasoning          1.00 | ✓
+Given $a > b > 0$, which of the following systems    | reasoning          0.99 | ✓
+Initially, a full container holds water. One third   | reasoning          1.00 | ✓
+If the point \(P(\sin\theta\cos\theta, 2\cos\theta   | reasoning          0.98 | ✓
+In the figure, point \( A \) is at \( (15, 0) \) a   | reasoning          0.99 | ✓
+Solution X contains 20% of material A and 80% of m   | reasoning          1.00 | ✓
+Eric has a chicken farm with some chickens. His ch   | reasoning          1.00 | ✓
+The tax on a commodity is diminished by 40%, but i   | reasoning          1.00 | ✓
+A soft drink company had 6000 small and some big b   | reasoning          1.00 | ✓
+It is known that all 'krakozyabrs' have either hor   | reasoning          1.00 | ✓
+What is the remainder when $4032$ is divided by $1   | reasoning          0.98 | ✓
+Find the number greater than 1.1 among the five nu   | docker             1.00 | ✗ (target=reasoning)
+Rebecca runs a hair salon. She charges $30 for hai   | reasoning          1.00 | ✓
+If "$8$ in row $4$" is denoted as $\left(8,4\right   | reasoning          1.00 | ✓
+Given that all terms of a geometric sequence $\{a_   | reasoning          1.00 | ✓
+In a right triangle ABC with sides 9, 12, and 15,    | reasoning          1.00 | ✓
+How many four-digit numbers satisfy the property t   | docker             1.00 | ✗ (target=reasoning)
+Simplify first, then evaluate: $\left(a+2\right)^{   | docker             0.99 | ✗ (target=reasoning)
+In another hyperbola, the center is at $(1, -3),$    | math               0.99 | ✗ (target=reasoning)
+Marvin's birthday was on Friday, October 15th in t   | reasoning          1.00 | ✓
+Phoebe eats 1 serving and gives her dog 1 serving    | reasoning          0.99 | ✓
+Dan spent $32 buying a new backpack, 1 pack of pen   | reasoning          1.00 | ✓
+In a 6 by 6 grid, each of the 36 small squares mea   | reasoning          1.00 | ✓
+Let \( S_{n} \) be the number of sequences \((a_{1   | reasoning          1.00 | ✓
+A chef served 3 different foods for a banquet: 25    | reasoning          1.00 | ✓
+In an isosceles trapezoid with bases \(a = 21\), \   | docker             0.99 | ✗ (target=reasoning)
+Expand $(3t^3 + 2t^2 - 4t + 3)(-2t^2 + 3t - 4)$.     | math               1.00 | ✗ (target=reasoning)
+Prove that if \( \frac{a}{b} = \frac{b}{c} \), the   | docker             1.00 | ✗ (target=reasoning)
+Given points A(1, -1) and B(1, 2), then $\overrigh   | reasoning          1.00 | ✓
+The amount of time that three people worked on a s   | reasoning          1.00 | ✓
+What is the smallest prime number dividing the sum   | reasoning          0.99 | ✓
+Given a quadratic function $f(x)=ax^2+bx+c$, its d   | math               1.00 | ✗ (target=reasoning)
+Melissa scored 120.0 points in all her games total   | reasoning          1.00 | ✓
+Elena rolls two six-sided dice. What is the probab   | reasoning          1.00 | ✓
+Sue borrowed some books and 6 movies. She returned   | reasoning          1.00 | ✓
+Some of the 10% intensity red paint is replaced wi   | reasoning          1.00 | ✓
+Find all real numbers \( x, y, z \) such that
+
+\[    | python             1.00 | ✗ (target=reasoning)
+Let set $A = \{-1, 0, 1\}$, and set $B = \{x | x =   | reasoning          1.00 | ✓
+Let $l$, $m$, $n$ be three different lines, and $\   | reasoning          1.00 | ✓
+Given a positive integer \( m \), for a positive i   | reasoning          0.98 | ✓
+Jackson is making dinner. He makes a salad out of    | reasoning          1.00 | ✓
+How many positive divisors of $180$ are not divisi   | reasoning          1.00 | ✓
+Let  $k<<n$  denote that  $k<n$  and  $k\mid n$ .    | lua-upy            1.00 | ✗ (target=reasoning)
+Let \( a, b, c \) be given complex numbers, with \   | reasoning          0.99 | ✓
+How many positive factors of 200 are perfect squar   | reasoning          1.00 | ✓
+Find the remainder when $$123456 + 123457 + 123458   | docker             1.00 | ✗ (target=reasoning)
+Factorize: $x^{3}-6x^{2}+9x=\_\_\_\_\_\_.$           | math               1.00 | ✗ (target=reasoning)
+A team of 60 workers constructed a bridge in 5 day   | reasoning          1.00 | ✓
+a , b and c enter into partnership . a invests som   | reasoning          1.00 | ✓
+In the sequence
+\[..., p, q, r, s, 50, 63, 113, 17   | math               1.00 | ✗ (target=reasoning)
+How many sets of exactly four consecutive positive   | reasoning          1.00 | ✓
+Marcy keeps a certain amount of water by her desk.   | reasoning          1.00 | ✓
+In a class of 54 students, a systematic sample of    | reasoning          1.00 | ✓
+I'm going to a new restaurant that boasts a divers   | reasoning          0.99 | ✓
+Using the digits 1, 2, 3, 0, and a decimal point,    | reasoning          1.00 | ✓
+Given the universal set $U = \mathbb{R}$, set $A=\   | docker             1.00 | ✗ (target=reasoning)
+How many positive divisors do 9240 and 10800 have    | reasoning          0.99 | ✓
+Addison's age is four times Brenda's age. Janet is   | math               1.00 | ✗ (target=reasoning)
+If 40% of the students at a certain college are en   | reasoning          1.00 | ✓
+The circumference of the circle with center $O$ is   | reasoning          1.00 | ✓
+A unit has 200 employees. Now, 40 employees need t   | sql                0.98 | ✗ (target=reasoning)
+What is the smallest integer that can be placed in   | reasoning          1.00 | ✓
+Given real numbers $x$ and $y$ satisfy the conditi   | reasoning          1.00 | ✓
+Let $S_{n}$ be the sum of the first $n$ terms of t   | reasoning          1.00 | ✓
+All of Emma's telephone numbers have the form $555   | reasoning          0.98 | ✓
+Given that $a$, $b$, and $c$ represent the three s   | reasoning          1.00 | ✓
+Given $p$: $|4x-3|\leqslant 1$ and $q$: $x^{2}-(2a   | math               0.91 | ✗ (target=reasoning)
+Let  $a$  and  $b$  be two positive reals such tha   | reasoning          0.99 | ✓
+What is the coefficient of $x^4$ in the expansion    | math               0.99 | ✗ (target=reasoning)
+Given a circle \( \odot O \), point \( A \) lies o   | reasoning          1.00 | ✓
+Given real numbers \( x \) and \( y \) that satisf   | docker             1.00 | ✗ (target=reasoning)
+The least integer that is greater than \((2+\sqrt{   | reasoning          0.99 | ✓
+The graph of the function $y=a^{x-4}+1$ always pas   | reasoning          0.99 | ✓
+Find all positive integers \( n \) such that the s   | python             1.00 | ✗ (target=reasoning)
+The angle that has the same terminal side as a $40   | reasoning          0.99 | ✓
+Casey is going to stay at a motel while she works    | reasoning          1.00 | ✓
+Let \( f(m, n) \) satisfy the condition
+$$
+f(m, n)   | python             1.00 | ✗ (target=reasoning)
+How many rational terms are in the expansion of
+
+a   | reasoning          1.00 | ✓
+Given $i$ is the imaginary unit, the value of $(1+   | docker             1.00 | ✗ (target=reasoning)
+Every day, Lou works out by running three miles on   | reasoning          1.00 | ✓
+Implement a function which adds two numbers in Rus   | rust               1.00 | ✓
+Aide-moi à porter ce snippet Python en Rust pour l   | rust               0.98 | ✓
+Write a Rust program to convert a string to title    | rust               1.00 | ✓
+Write a Rust program to take an array of integers    | rust               1.00 | ✓
+Write Python code to generate a random password of   | python             1.00 | ✗ (target=security)
+Write a SQL query to retrieve the author and title   | sql                1.00 | ✗ (target=security)
+How can we encrypt a string in Python?               | python             1.00 | ✗ (target=security)
+Write an algorithm for the Caesar Cipher encryptio   | kicad-dsl          0.99 | ✗ (target=security)
+Write an HTML & CSS code to create a login form wi   | html-css           1.00 | ✗ (target=security)
+Implement a method to generate a random password w   | python             1.00 | ✗ (target=security)
+Write a query to find the author with the highest    | sql                1.00 | ✗ (target=security)
+Who is the author of the book "Alice in Wonderland   | docker             1.00 | ✗ (target=security)
+Develop a program to encrypt a text                  | security           1.00 | ✓
+Write a sql query to retrieve the title and the da   | sql                1.00 | ✗ (target=security)
+Write a Python program to create a Caesar Cipher e   | kicad-dsl          0.99 | ✗ (target=security)
+Generate a 10 character random user password with    | python             1.00 | ✗ (target=security)
+Generate an HTML page with the following data fiel   | html-css           1.00 | ✗ (target=security)
+Write a Kotlin class to represent a book. It shoul   | python             1.00 | ✗ (target=security)
+Generate a random password.                          | python             1.00 | ✗ (target=security)
+Create a custom encryption algorithm to encode a s   | python             1.00 | ✗ (target=security)
+Create a class in jQuery to handle user authentica   | html-css           1.00 | ✗ (target=security)
+Design a SQL table to store user information such    | sql                1.00 | ✗ (target=security)
+Write a code to generate a random password with a    | python             1.00 | ✗ (target=security)
+Implement OAuth2 PKCE flow en TypeScript pour SPA    | typescript         1.00 | ✗ (target=security)
+Create a table with two columns that stores a user   | python             1.00 | ✗ (target=security)
+Design a function to generate the random password    | python             1.00 | ✗ (target=security)
+Generate a random password with 8 characters long    | python             1.00 | ✗ (target=security)
+Generate a random password with at least 8 charact   | python             1.00 | ✗ (target=security)
+Write a SQL query to select records from the 'book   | sql                1.00 | ✗ (target=security)
+Design a MongoDB schema for a collection to store    | rust               0.99 | ✗ (target=security)
+Write a code to generate a random password contain   | python             1.00 | ✗ (target=security)
+Encrypt a given string using a Caesar cipher.        | lua-upy            0.99 | ✗ (target=security)
+Write an SQL query to find all books with the auth   | sql                1.00 | ✗ (target=security)
+Suggest a way of encrypting text using a Caesar ci   | rust               0.99 | ✗ (target=security)
+Write an HTML table to show a list of 3 books and    | html-css           1.00 | ✗ (target=security)
+Create a JavaScript object representing a book, wi   | html-css           1.00 | ✗ (target=security)
+Write an HTML page with a form which takes the inp   | html-css           1.00 | ✗ (target=security)
+Construct a SQL query to select all articles where   | sql                1.00 | ✗ (target=security)
+Create an API endpoint in Python with Flask that r   | python             1.00 | ✗ (target=security)
+Comment implementer un JWT validator en Python ave   | typescript         0.98 | ✗ (target=security)
+Generate a random password of length 16 using the    | python             1.00 | ✗ (target=security)
+Create an SQL query to return the titles of all bo   | sql                1.00 | ✗ (target=security)
+Parse the given XML document using an XSLT transfo   | math               1.00 | ✗ (target=security)
+Write a bash script to find the sum of two integer   | shell              1.00 | ✓
+Write a Bash shell script to print all argument va   | shell              1.00 | ✓
+Develop a machine learning model in Python to pred   | python             1.00 | ✗ (target=shell)
+Write a shell script to detect the internet speed    | shell              1.00 | ✓
+Create a Bash script to find the sum of all the nu   | shell              1.00 | ✓
+Write a shell command to print the system IP addre   | shell              1.00 | ✓
+What method is used to add an element to a stack i   | typescript         0.99 | ✗ (target=shell)
+What command can you use in a Linux terminal to fi   | shell              1.00 | ✓
+Write a shell script which prints “Hello World” 5    | shell              1.00 | ✓
+Write an SQL query that displays a table of the te   | sql                1.00 | ✗ (target=shell)
+Execute the following code in a Python Shell and e   | python             1.00 | ✗ (target=shell)
+Print a message based on the given age.              | python             1.00 | ✗ (target=shell)
+Generate a token based on the given parameters.      | python             1.00 | ✗ (target=shell)
+Write a shell script to monitor the usages of CPU    | shell              1.00 | ✓
+Write a shell script to print the longest word in    | shell              1.00 | ✓
+How many arguments can be passed to a JavaScript f   | lua-upy            1.00 | ✗ (target=shell)
+Write a PowerShell script to list all the installe   | math               1.00 | ✗ (target=shell)
+Write a SQL query to get the titles and release da   | sql                1.00 | ✗ (target=shell)
+What MySQL query can be used to retrieve the most    | docker             1.00 | ✗ (target=shell)
+Create a function to calculate the exponent of a g   | python             1.00 | ✗ (target=shell)
+Write a class in JavaScript that can be used to cr   | python             1.00 | ✗ (target=shell)
+Write a shell script to create a directory if it d   | shell              1.00 | ✓
+Design a class in Python that creates objects base   | python             1.00 | ✗ (target=shell)
+Write a bash script that prints out the current wo   | shell              1.00 | ✓
+Create a new Bash script and print "This is my fir   | shell              1.00 | ✓
+Write a Bash command to list all the subdirectorie   | shell              1.00 | ✓
+Develop a Python function to calculate a Fibonacci   | python             1.00 | ✗ (target=shell)
+Angular 5 is a popular JavaScript framework used f   | typescript         0.99 | ✗ (target=shell)
+Which keyword is used to define a function in Pyth   | python             1.00 | ✗ (target=shell)
+Write a SQL query to list all customers who have p   | sql                1.00 | ✗ (target=shell)
+Develop a code to identify the most commonly used    | python             1.00 | ✗ (target=shell)
+Write a shell script that exits with a status code   | shell              1.00 | ✓
+Update the given code to sort an array of strings    | python             1.00 | ✗ (target=shell)
+Complete the following function to output a revers   | python             1.00 | ✗ (target=shell)
+Based on the following list, create a dictionary o   | python             1.00 | ✗ (target=shell)
+Describe the programming language used for the giv   | typescript         0.99 | ✗ (target=shell)
+Write a code that prints the reversed version of a   | python             1.00 | ✗ (target=shell)
+Given a string, the task is to output a new string   | python             0.99 | ✗ (target=shell)
+Write code to convert a given number expressed in    | python             1.00 | ✗ (target=shell)
+Create an SQL query to find the total cost of the    | sql                1.00 | ✗ (target=shell)
+Generate a timestamp based on the current date.      | python             1.00 | ✗ (target=shell)
+Sort the following array of objects based on the '   | python             1.00 | ✗ (target=shell)
+Write a Bash script which will retrieve system inf   | shell              1.00 | ✓
+Write a Bash script to check if the directory exis   | shell              1.00 | ✓
+Create a shell script which takes two filenames as   | shell              1.00 | ✓
+What algorithm should be used for predicting the o   | python             1.00 | ✗ (target=shell)
+Write a function that takes a sentence and returns   | lua-upy            1.00 | ✗ (target=shell)
+Edit a JavaScript function to perform an action ba   | lua-upy            1.00 | ✗ (target=shell)
+Write a Bash script that prints out all the argume   | shell              1.00 | ✓
+Write an SQL query to calculate the sum of all pri   | sql                1.00 | ✗ (target=shell)
+Write a Bash command to list the top 20 processes    | shell              1.00 | ✓
+Create a bash script that prints out a block of te   | shell              1.00 | ✓
+Use SQL to return the names of customers who have    | sql                1.00 | ✗ (target=shell)
+How would you write a for loop to iterate over an    | shell              1.00 | ✓
+Identify the type of object-oriented programming p   | typescript         1.00 | ✗ (target=shell)
+Write a function to generate a random password bas   | python             1.00 | ✗ (target=shell)
+Define a command line application that prints “Hel   | shell              0.99 | ✓
+Sort an array of strings based on their length.      | python             1.00 | ✗ (target=shell)
+Write a code to define a function to multiply two    | python             1.00 | ✗ (target=shell)
+Create a bash script to print the name of the dire   | shell              1.00 | ✓
+Explain the concept of permission levels in Linux.   | docker             0.98 | ✗ (target=shell)
+Explain what supervised learning is.                 | typescript         1.00 | ✗ (target=shell)
+Output a string that is the reversed version of a    | reasoning          1.00 | ✗ (target=shell)
+Create a bash script that takes a path argument an   | shell              1.00 | ✓
+What language is used in HTML documents?             | html-css           1.00 | ✗ (target=shell)
+Given a n x n matrix where each element is 0 or 1,   | math               1.00 | ✗ (target=shell)
+Create a shell script that prints out the day of t   | shell              1.00 | ✓
+Modify the program to accept user input of two num   | python             1.00 | ✗ (target=shell)
+give an example of a natural language processing t   | typescript         1.00 | ✗ (target=shell)
+Transform the following function definition so it    | typescript         1.00 | ✗ (target=shell)
+Analyze the output of the following shell command.   | shell              1.00 | ✓
+Assign a value to a variable based on the value of   | typescript         1.00 | ✗ (target=shell)
+Write a C++ class called Vector3D which can be use   | cpp                1.00 | ✗ (target=shell)
+Find the most commonly used element in a given lis   | rust               1.00 | ✗ (target=shell)
+Name a specific package that can be used to implem   | web-backend        1.00 | ✗ (target=shell)
+Generate a valid HTML tag that can be used to link   | html-css           1.00 | ✗ (target=shell)
+Create a shell script to list all available printe   | shell              0.99 | ✓
+Design a struct in C that can be used to store per   | typescript         0.99 | ✗ (target=shell)
+What data structure would be best used to store a    | rust               0.99 | ✗ (target=shell)
+Write a Python function to calculate the power of    | python             1.00 | ✗ (target=shell)
+Identify the type of join used in the following SQ   | typescript         1.00 | ✗ (target=shell)
+Create a shell script that will run a specified co   | shell              1.00 | ✓
+Develop a C# function to check if a given number i   | lua-upy            1.00 | ✗ (target=shell)
+Create a regular expression pattern to match a str   | python             1.00 | ✗ (target=shell)
+Output a random sentence based on the given gramma   | reasoning          1.00 | ✗ (target=shell)
+Write a bash script for displaying "Hello World"!    | shell              1.00 | ✓
+Create a shell script to print the version of a gi   | shell              1.00 | ✓
+Understand the parameters used in the following co   | typescript         0.97 | ✗ (target=shell)
+Write a shell script to perform a binary search of   | shell              1.00 | ✓
+How can you check the memory used by a Python obje   | python             1.00 | ✗ (target=shell)
+Create a switch statement in JavaScript to print d   | typescript         0.99 | ✗ (target=shell)
+Modify a given shell script to generate a text-bas   | shell              1.00 | ✓
+Build a bash script that prints out a string of ch   | shell              1.00 | ✓
+Write a JavaScript program to group an array of ob   | lua-upy            1.00 | ✗ (target=shell)
+Generate a random 8 digit string composed of numbe   | python             1.00 | ✗ (target=shell)
+Write a JavaScript code to sort an array of employ   | lua-upy            1.00 | ✗ (target=shell)
+Write a Bash script to evaluate whether a provided   | shell              1.00 | ✓
+What is the proper way to check if a variable of t   | typescript         1.00 | ✗ (target=shell)
+Proposition some ideas for a C++ program to calcul   | cpp                1.00 | ✗ (target=shell)
+Write a Bash script that prints the numbers 1 to 1   | shell              1.00 | ✓
+Write a shell script to print out the number of th   | shell              1.00 | ✓
+Write a SQL query to list the top 3 most used lang   | sql                1.00 | ✗ (target=shell)
+How would you write a query in SQL to return the n   | sql                1.00 | ✗ (target=shell)
+Create a function "getGrade" to get a grade based    | python             1.00 | ✗ (target=shell)
+Rank the following algorithms based on time comple   | python             0.98 | ✗ (target=shell)
+Suggest a better data structure that can be used t   | rust               0.99 | ✗ (target=shell)
+Based on the given input, generate a new list with   | python             1.00 | ✗ (target=shell)
+Name the Java abstract class used for user-defined   | typescript         0.98 | ✗ (target=shell)
+Design a SQL query to select the top 5 movies base   | sql                1.00 | ✗ (target=shell)
+Identify the Python statement used for looping.      | reasoning          1.00 | ✗ (target=shell)
+Suggest a Python code for sorting a list of dictio   | python             1.00 | ✗ (target=shell)
+Write a command line program in C++ which takes a    | cpp                1.00 | ✗ (target=shell)
+Edit the following code to return the elements in    | python             1.00 | ✗ (target=shell)
+Write a simple Bash script to display a welcome me   | shell              1.00 | ✓
+Analyze and improve the following basic shell scri   | shell              1.00 | ✓
+Write a JavaScript function that takes a number as   | lua-upy            1.00 | ✗ (target=shell)
+Complete the following code to print a 2D array pa   | python             1.00 | ✗ (target=shell)
+Create a C program to read in a 3x3 matrix compose   | math               1.00 | ✗ (target=shell)
+What is the maximum size of a virtual memory addre   | reasoning          0.97 | ✗ (target=shell)
+Write a shell script to print all the environment    | shell              1.00 | ✓
+What are some common applications of analogue elec   | electronics        0.99 | ✗ (target=spice)
+What are some challenges in designing high-perform   | electronics        0.98 | ✗ (target=spice)
+Comment modéliser un transformateur idéal vs réel    | typescript         0.97 | ✗ (target=spice)
+How does noise affect analogue circuits compared t   | electronics        0.99 | ✗ (target=spice)
+How do engineers handle bandwidth limitations in a   | kicad-pcb          0.99 | ✗ (target=spice)
+What are some common types of amplifiers used in e   | electronics        0.99 | ✗ (target=spice)
+What are some common applications of current mirro   | docker             1.00 | ✗ (target=spice)
+What are the advantages of using a 4‑pole active f   | rust               0.90 | ✗ (target=spice)
+What role does gate‑to‑source threshold voltage (V   | kicad-pcb          1.00 | ✗ (target=spice)
+How does an op‑amp configured as a non‑inverting a   | spice-sim          0.98 | ✗ (target=spice)
+What are some common types of feedback loops used    | typescript         0.96 | ✗ (target=spice)
+How do analogue and digital circuits approach powe   | electronics        0.99 | ✗ (target=spice)
+What are some key considerations when designing an   | electronics        1.00 | ✗ (target=spice)
+How does an operational amplifier (op-amp) work in   | electronics        1.00 | ✗ (target=spice)
+Where should I place a footswitch in a simple dist   | electronics        1.00 | ✗ (target=spice)
+What is the purpose of the capacitor that sits bet   | electronics        0.98 | ✗ (target=spice)
+How to plot the locus of poles vs a swept paramete   | lua-upy            0.98 | ✗ (target=spice)
+What are some potential future applications of pre   | electronics        0.99 | ✗ (target=spice)
+How can I troubleshoot more complex circuits that    | kicad-pcb          1.00 | ✗ (target=spice)
+What circuit techniques can be used to preserve lo   | docker             0.87 | ✗ (target=spice)
+What are some common issues you encounter when des   | electronics        1.00 | ✗ (target=spice)
+What are some ethical considerations when designin   | emc                0.99 | ✗ (target=spice)
+How can I add a simple LED indicator that lights u   | electronics        0.91 | ✗ (target=spice)
+How does temperature affect the performance of a M   | spice-sim          0.99 | ✗ (target=spice)
+How do you reduce noise in an analogue circuit?      | electronics        1.00 | ✗ (target=spice)
+Why would an audio designer choose a voltage follo   | kicad-pcb          0.99 | ✗ (target=spice)
+How does a current-controlled current source (CCCS   | kicad-pcb          0.99 | ✗ (target=spice)
+How does noise affect analogue versus digital circ   | dsp                0.99 | ✗ (target=spice)
+In a single‑supply non‑inverting amplifier, how do   | electronics        0.99 | ✗ (target=spice)
+What role does input impedance play when connectin   | kicad-pcb          0.93 | ✗ (target=spice)
+What safety precautions should I observe when sold   | spice-sim          0.98 | ✗ (target=spice)
+How does an op-amp work?                             | electronics        1.00 | ✗ (target=spice)
+What is a differential amplifier?                    | docker             0.97 | ✗ (target=spice)
+Modèle SPICE pour câble coaxial 50 Ω — transmissio   | kicad-pcb          0.96 | ✗ (target=spice)
+When using a tube amplifier, how does its own impe   | docker             0.94 | ✗ (target=spice)
+How do amplifiers work?                              | electronics        1.00 | ✗ (target=spice)
+How do amplifiers affect signal quality in analogu   | electronics        0.99 | ✗ (target=spice)
+What is a voltage-controlled oscillator (VCO)?       | electronics        0.99 | ✗ (target=spice)
+What specific circuit modifications or component s   | typescript         0.93 | ✗ (target=spice)
+How do you design an analogue circuit for a simple   | electronics        1.00 | ✗ (target=spice)
+What is a current-controlled current source (CCCS)   | kicad-pcb          0.96 | ✗ (target=spice)
+What role does a footswitch play in a power‑on/off   | electronics        1.00 | ✗ (target=spice)
+What is a voltage divider bias?                      | electronics        0.98 | ✗ (target=spice)
+What is the role of a transistor in analog electro   | electronics        1.00 | ✗ (target=spice)
+What is the difference between open circuit voltag   | electronics        1.00 | ✗ (target=spice)
+When designing a non‑inverting stage powered from    | electronics        1.00 | ✗ (target=spice)
+Can you explain how operational amplifiers (op-amp   | electronics        0.99 | ✗ (target=spice)
+In what ways do active filters enhance the functio   | dsp                1.00 | ✗ (target=spice)
+What factors contribute to design difficulty in an   | electronics        0.98 | ✗ (target=spice)
+How does a band-stop filter work?                    | electronics        0.95 | ✗ (target=spice)
+How do engineers handle thermal stability in analo   | electronics        0.99 | ✗ (target=spice)
+What factors affect the performance of an amplifie   | electronics        0.98 | ✗ (target=spice)
+How does the shape of the output waveform change a   | kicad-pcb          0.99 | ✗ (target=spice)
+How can I experimentally compare the clipping beha   | electronics        0.99 | ✗ (target=spice)
+What are the most effective techniques for maximiz   | electronics        1.00 | ✗ (target=spice)
+How do analog circuits handle precision?             | electronics        1.00 | ✗ (target=spice)
+What role do operational amplifiers (op-amps) play   | electronics        0.99 | ✗ (target=spice)
+How can op-amps be configured for different functi   | electronics        0.99 | ✗ (target=spice)
+How does a voltage follower work?                    | electronics        1.00 | ✗ (target=spice)
+Adjust .options reltol abstol vntol pour convergen   | power              0.97 | ✗ (target=spice)
+What techniques can be used to ensure that the res   | spice-sim          0.99 | ✗ (target=spice)
+How does a filter circuit work?                      | electronics        0.99 | ✗ (target=spice)
+What are some common types of transistors used in    | electronics        1.00 | ✗ (target=spice)
+**
+What gain architecture should I use if I want t   | math               0.98 | ✗ (target=spice)
+**
+When designing a pedal that will be used in par   | kicad-pcb          0.99 | ✗ (target=spice)
+How does the choice of component values affect the   | typescript         0.94 | ✗ (target=spice)
+How do you design an analogue circuit for a simple   | electronics        0.99 | ✗ (target=spice)
+How does component tolerance affect the design and   | emc                0.97 | ✗ (target=spice)
+How does a current-controlled voltage source (CCVS   | kicad-pcb          0.99 | ✗ (target=spice)
+How do I accurately determine if my DIY circuit re   | spice-sim          0.99 | ✗ (target=spice)
+I just finished wiring a simple distortion circuit   | emc                0.97 | ✗ (target=spice)
+How do temperature variations influence the perfor   | kicad-pcb          0.95 | ✗ (target=spice)
+How does the presence of noise affect the performa   | electronics        0.99 | ✗ (target=spice)
+Comment paramétrer une simulation de durée variabl   | chat-fr            1.00 | ✗ (target=spice)
+How do active components, particularly operational   | electronics        0.95 | ✗ (target=spice)
+What is a voltage follower?                          | electronics        0.99 | ✗ (target=spice)
+What are the practical implications of using a sil   | sql                0.98 | ✗ (target=spice)
+How can I fine‑tune the *amount* of distortion my    | emc                1.00 | ✗ (target=spice)
+How do analogue electronic circuits handle compone   | electronics        0.98 | ✗ (target=spice)
+2) What are the primary applications of analog cir   | electronics        1.00 | ✗ (target=spice)
+What is the interaction between coupling capacitor   | typescript         0.98 | ✗ (target=spice)
+How do analogue circuits compare to digital circui   | dsp                1.00 | ✗ (target=spice)
+What is the role of a coupling capacitor in shapin   | kicad-pcb          0.99 | ✗ (target=spice)
+Simulation harmonic balance en SPICE RF              | spice              0.91 | ✓
+How do you classify analogue circuits?               | dsp                1.00 | ✗ (target=spice)
+How do you design an analogue integrator circuit?    | electronics        0.99 | ✗ (target=spice)
+How can I design the power architecture of a multi   | emc                0.99 | ✗ (target=spice)
+What is the importance of precision circuits in mo   | electronics        0.98 | ✗ (target=spice)
+How do engineers handle signal integrity issues in   | kicad-pcb          1.00 | ✗ (target=spice)
+How can I identify if a polarized capacitor or dio   | electronics        0.96 | ✗ (target=spice)
+What is an inverting amplifier?                      | electronics        1.00 | ✗ (target=spice)
+How has automation impacted the design process of    | electronics        0.97 | ✗ (target=spice)
+What is the purpose of adding a capacitor to the v   | electronics        1.00 | ✗ (target=spice)
+How does a non-inverting amplifier work?             | electronics        1.00 | ✗ (target=spice)
+What impact does each diode type have on the harmo   | kicad-pcb          0.97 | ✗ (target=spice)
+How does feedback affect the precision of an analo   | kicad-pcb          0.98 | ✗ (target=spice)
+How do you design an analogue circuit for a simple   | electronics        1.00 | ✗ (target=spice)
+Simulate a low-pass filter en NGSPICE avec corner    | dsp                1.00 | ✗ (target=spice)
+Use XSPICE code models pour signal mixé              | dsp                0.99 | ✗ (target=spice)
+How does the choice of op‑amp affect the bandwidth   | reasoning          0.98 | ✗ (target=spice)
+What is a filter circuit?                            | electronics        0.98 | ✗ (target=spice)
+How to perform Monte Carlo analysis in SPICE for t   | spice-sim          1.00 | ✗ (target=spice)
+Comment ajouter un bruit blanc gaussien en source    | chat-fr            1.00 | ✗ (target=spice)
+What are some common applications of transimpedanc   | docker             0.96 | ✗ (target=spice)
+How can I experiment with different transistor typ   | electronics        0.99 | ✗ (target=spice)
+What specific challenges do analogue circuits face   | electronics        0.99 | ✗ (target=spice)
+How do digital circuits differ in handling noise c   | dsp                0.99 | ✗ (target=spice)
+What role do precision circuits play in industrial   | electronics        0.99 | ✗ (target=spice)
+How do circuit simulators like SPICE contribute to   | spice-sim          1.00 | ✗ (target=spice)
+How does the intrinsic gain (β) of a bipolar junct   | kicad-pcb          1.00 | ✗ (target=spice)
+**
+In what scenarios might a designer choose not t   | music-audio        0.96 | ✗ (target=spice)
+What are the detailed thermal considerations when    | spice-sim          0.97 | ✗ (target=spice)
+**
+I’m trying to add a switch that lets me toggle    | electronics        0.99 | ✗ (target=spice)
+What is a voltage-controlled voltage source (VCVS)   | power              0.99 | ✗ (target=spice)
+What is the significance of signal amplitude in an   | web-frontend       0.96 | ✗ (target=spice)
+How does voltage divider bias work?                  | electronics        0.99 | ✗ (target=spice)
+Use a behavioral source (B element) in NGSPICE for   | dsp                0.97 | ✗ (target=spice)
+Pourquoi ma simulation NGSPICE ne converge pas ?     | spice-sim          1.00 | ✗ (target=spice)
+How does an op-amp achieve high open-loop voltage    | docker             1.00 | ✗ (target=spice)
+How do active elements like transistors influence    | electronics        0.99 | ✗ (target=spice)
+How can I minimize noise in an analogue circuit?     | electronics        0.99 | ✗ (target=spice)
+How do analogue electronic circuits handle multipl   | electronics        1.00 | ✗ (target=spice)
+Comment écrire un .subckt pour un AOP TL081 en NGS   | chat-fr            0.99 | ✗ (target=spice)
+What is a voltage divider?                           | power              1.00 | ✗ (target=spice)
+Modèle SPICE Berkeley BSIM4 pour MOSFET 65nm         | electronics        0.97 | ✗ (target=spice)
+**
+I’m building an effects pedal that uses an LED    | electronics        0.99 | ✗ (target=spice)
+How do we classify analogue electronic circuits? A   | dsp                0.99 | ✗ (target=spice)
+What are some common challenges in designing analo   | electronics        0.98 | ✗ (target=spice)
+How does the LED forward voltage affect the point    | power              0.98 | ✗ (target=spice)
+Run a worst-case analysis with min/max parameters    | math               0.99 | ✗ (target=spice)
+What are some common applications of voltage divid   | power              0.98 | ✗ (target=spice)
+What role does the output coupling capacitor play    | kicad-pcb          0.98 | ✗ (target=spice)
+How are analogue circuits designed and analyzed?     | electronics        0.99 | ✗ (target=spice)
+SPICE batch run — multiple .cir files via Python w   | spice-sim          1.00 | ✗ (target=spice)
+What are some common challenges in designing high-   | dsp                0.99 | ✗ (target=spice)
+I’d like to experiment with different clipping cha   | rust               0.95 | ✗ (target=spice)
+Mesure de THD avec .four 1k 9 — interpréter résult   | shell              1.00 | ✗ (target=spice)
+Can adding an RC snubber across the output stage o   | electronics        0.99 | ✗ (target=spice)
+How can I choose the right transistor for building   | sql                0.97 | ✗ (target=spice)
+Modélisation IBIS-SPICE d'un buffer DDR              | spice-sim          0.93 | ✗ (target=spice)
+4) What is an operational amplifier (op-amp), and    | electronics        1.00 | ✗ (target=spice)
+Show origin and destination for flights with price   | kicad-pcb          0.98 | ✗ (target=sql)
+How many trips started from Mountain View city and   | docker             1.00 | ✗ (target=sql)
+What is the name of the youngest editor?             | reasoning          1.00 | ✗ (target=sql)
+List every album whose title starts with A in alph   | sql                1.00 | ✓
+Show the draft pick numbers and draft classes of p   | sql                1.00 | ✓
+Find the first name and major of the students who    | docker             1.00 | ✗ (target=sql)
+Find the name and salary of instructors whose sala   | math               1.00 | ✗ (target=sql)
+Find the day in which the difference between the m   | reasoning          1.00 | ✗ (target=sql)
+List the countries that have more than one mountai   | docker             0.99 | ✗ (target=sql)
+Show card type codes with at least 5 cards.          | typescript         0.99 | ✗ (target=sql)
+Show all customer ids and the number of accounts f   | sql                1.00 | ✓
+How many different advisors are listed?              | reasoning          0.99 | ✗ (target=sql)
+What is the first name, last name, and phone of th   | docker             0.98 | ✗ (target=sql)
+List the titles of all items in alphabetic order .   | python             1.00 | ✗ (target=sql)
+List all player names who have an overall rating h   | sql                1.00 | ✓
+Return all the apartment numbers sorted by the roo   | python             1.00 | ✗ (target=sql)
+Show order ids and the number of products in each    | sql                1.00 | ✓
+Find the names of all artists that have "a" in the   | music-audio        0.99 | ✗ (target=sql)
+What is the customer first, last name and id with    | sql                1.00 | ✓
+Show all card type codes and the number of custome   | typescript         1.00 | ✗ (target=sql)
+For each city, return the highest latitude among i   | docker             1.00 | ✗ (target=sql)
+List the names of mountains that do not have any c   | docker             0.98 | ✗ (target=sql)
+Find the name and email of the users who have more   | sql                1.00 | ✓
+How many games are free of injury accidents?         | docker             0.99 | ✗ (target=sql)
+What is the entry name of the most expensive catal   | docker             1.00 | ✗ (target=sql)
+Show the flight number of flights with three lowes   | python             1.00 | ✗ (target=sql)
+Find the accreditation level that more than 3 phon   | docker             0.93 | ✗ (target=sql)
+Hom many albums does the artist "Metallica" have?    | reasoning          0.99 | ✗ (target=sql)
+List the total number of horses on farms in ascend   | docker             1.00 | ✗ (target=sql)
+List title of albums have the number of tracks gre   | sql                1.00 | ✓
+Show student ids for all male students.              | sql                1.00 | ✓
+List the name of albums that are released by ariti   | docker             0.98 | ✗ (target=sql)
+Show the status of the city that has hosted the gr   | docker             1.00 | ✗ (target=sql)
+Show all card type codes.                            | typescript         0.99 | ✗ (target=sql)
+Please show the different statuses, ordered by the   | reasoning          1.00 | ✗ (target=sql)
+Find the name and id of the good with the highest    | sql                1.00 | ✓
+Give me ids for all the trip that took place in a    | docker             0.99 | ✗ (target=sql)
+What is the theme and artist name for the exhibiti   | docker             0.99 | ✗ (target=sql)
+Show origins of all flights with destination Honol   | docker             0.97 | ✗ (target=sql)
+Find the id of instructors who taught a class in F   | python             0.99 | ✗ (target=sql)
+Show the id and salary of Mark Young.                | docker             1.00 | ✗ (target=sql)
+List all church names in descending order of openi   | docker             1.00 | ✗ (target=sql)
+What is title of album which track Balls to the Wa   | docker             0.99 | ✗ (target=sql)
+Find the number and averaged salary of all instruc   | sql                1.00 | ✓
+List the name and residence for players whose occu   | docker             1.00 | ✗ (target=sql)
+What is the theme, date, and attendance for the ex   | docker             0.99 | ✗ (target=sql)
+Show the season, the player, and the name of the c   | docker             1.00 | ✗ (target=sql)
+Find the name of tracks which are in both Movies a   | power              0.99 | ✗ (target=sql)
+List every album ordered by album title in ascendi   | sql                1.00 | ✓
+Show the name of employees with three lowest salar   | sql                1.00 | ✓
+List the most common type of Status across cities.   | typescript         0.99 | ✗ (target=sql)
+Find names of instructors with salary greater than   | docker             1.00 | ✗ (target=sql)
+What are the hosts of competitions whose theme is    | docker             0.99 | ✗ (target=sql)
+Show names for all aircrafts with distances more t   | python             1.00 | ✗ (target=sql)
+Find the name and email for the users who have mor   | sql                1.00 | ✓
+Show the start dates and end dates of all the apar   | python             1.00 | ✗ (target=sql)
+List all of the player ids with a height of at lea   | yaml-json          0.98 | ✗ (target=sql)
+List the names of all music genres.                  | music-audio        1.00 | ✗ (target=sql)
+Show names for all employees with salary more than   | sql                1.00 | ✓
+What is the primary conference of the school that    | reasoning          0.99 | ✗ (target=sql)
+What are all the customer phone numbers under the    | docker             0.99 | ✗ (target=sql)
+List the names of all players who have a crossing    | rust               0.95 | ✗ (target=sql)
+What is Astrid Gruber's email and phone number?      | python             0.99 | ✗ (target=sql)
+What is the total and minimum enrollment of all sc   | sql                1.00 | ✓
+Find the number of followers for each user.          | python             1.00 | ✗ (target=sql)
+Which catalog publisher has published the most cat   | sql                1.00 | ✓
+Find out 5 customers who most recently purchased s   | sql                1.00 | ✓
+Find the pixels of the screen modes that are used    | kicad-pcb          0.94 | ✗ (target=sql)
+Find the name of the user who has the largest numb   | docker             1.00 | ✗ (target=sql)
+Find the names of all the catalog entries.           | docker             1.00 | ✗ (target=sql)
+Show the customer id and number of accounts with m   | sql                1.00 | ✓
+Find out the top 10 customers by total number of o   | sql                1.00 | ✓
+List the states where both the secretary of 'Treas   | python             0.98 | ✗ (target=sql)
+Show the invoice number and the number of transact   | math               0.99 | ✗ (target=sql)
+What is the name of the artist who joined latest?    | music-audio        0.99 | ✗ (target=sql)
+List the nominees that have been nominated more th   | docker             1.00 | ✗ (target=sql)
+List the names and buildings of all departments so   | docker             0.99 | ✗ (target=sql)
+Show flight number for all flights with more than    | sql                0.99 | ✓
+Show the most common apartment type code among apa   | python             1.00 | ✗ (target=sql)
+Please list all album titles in alphabetical order   | docker             1.00 | ✗ (target=sql)
+What is the average latitude and longitude of stat   | docker             1.00 | ✗ (target=sql)
+Which enzyme names have the substring "ALA"?         | reasoning          0.95 | ✗ (target=sql)
+Which destination has least number of flights?       | sql                1.00 | ✓
+Find the name of the user who tweeted more than on   | docker             1.00 | ✗ (target=sql)
+List the snatch score and clean jerk score of body   | docker             1.00 | ✗ (target=sql)
+Show name and distance for all aircrafts.            | python             0.99 | ✗ (target=sql)
+What are the ids of stations that are located in S   | docker             0.97 | ✗ (target=sql)
+Show the players and years played for players from   | python             0.99 | ✗ (target=sql)
+What are the names of body builders whose total sc   | docker             1.00 | ✗ (target=sql)
+List the name of tracks belongs to genre Rock or m   | music-audio        1.00 | ✗ (target=sql)
+Show names of musicals and the number of actors wh   | reasoning          1.00 | ✗ (target=sql)
+What are the id of students who registered courses   | docker             0.96 | ✗ (target=sql)
+Comment faire un git rebase interactive en SQL mig   | sql                1.00 | ✓
+Find the names of all instructors in computer scie   | python             0.99 | ✗ (target=sql)
+List the top 5 genres by number of tracks. List ge   | docker             0.99 | ✗ (target=sql)
+Show the product ids and the number of unique orde   | sql                1.00 | ✓
+List in alphabetic order the names of all distinct   | python             1.00 | ✗ (target=sql)
+How many debates are there?                          | reasoning          1.00 | ✗ (target=sql)
+List the names of all left-footed players who have   | docker             0.98 | ✗ (target=sql)
+List the hardware model name for the phons that we   | typescript         0.95 | ✗ (target=sql)
+Show different locations and the number of perform   | music-audio        0.98 | ✗ (target=sql)
+Return the apartment number with the largest numbe   | python             1.00 | ✗ (target=sql)
+Show the facility codes of apartments with more th   | python             0.97 | ✗ (target=sql)
+What is the maximum and minimum height of all play   | docker             0.99 | ✗ (target=sql)
+Show the season, the player, and the name of the t   | docker             1.00 | ✗ (target=sql)
+Find the semester and year which has the least num   | python             1.00 | ✗ (target=sql)
+What is the average unit price of all the tracks?    | docker             0.99 | ✗ (target=sql)
+Find the total and average amount of settlements.    | math               1.00 | ✗ (target=sql)
+Find the names of the products with length smaller   | python             0.99 | ✗ (target=sql)
+How many transaction does each account have? Show    | reasoning          1.00 | ✗ (target=sql)
+Show the id, the account name, and other account d   | sql                1.00 | ✓
+What is the average duration in milliseconds of tr   | music-audio        0.99 | ✗ (target=sql)
+Show the locations that have at least two performa   | docker             0.96 | ✗ (target=sql)
+What is the id of the trip that has the shortest d   | docker             0.99 | ✗ (target=sql)
+What are the title and issues of the books?          | docker             0.99 | ✗ (target=sql)
+What is the name of the customer who has made the    | reasoning          1.00 | ✗ (target=sql)
+What are the booking start and end dates of the ap   | docker             0.99 | ✗ (target=sql)
+Find the name and salary of instructors who are ad   | math               1.00 | ✗ (target=sql)
+List the phone numbers of all employees.             | docker             0.99 | ✗ (target=sql)
+Find the total number of students and total number   | python             1.00 | ✗ (target=sql)
+What is the last name of the youngest student?       | docker             1.00 | ✗ (target=sql)
+Find all phones that have word 'Full' in their acc   | dsp                0.95 | ✗ (target=sql)
+Please show the most common age of editors.          | docker             0.99 | ✗ (target=sql)
+How many different courses offered by Physics depa   | docker             0.99 | ✗ (target=sql)
+How many different kinds of information sources ar   | typescript         1.00 | ✗ (target=sql)
+Show the first name and last name for the customer   | sql                1.00 | ✓
+List the name of playlist which has number of trac   | docker             0.99 | ✗ (target=sql)
+What is the total and maximum duration of trips wi   | math               0.97 | ✗ (target=sql)
+Show the enrollment and primary_conference of the    | sql                1.00 | ✓
+Find the ids and names of members who are under ag   | sql                1.00 | ✓
+Show all information about each body builder.        | docker             1.00 | ✗ (target=sql)
+List the name of the company that produced more th   | docker             0.97 | ✗ (target=sql)
+Count the number of rooms that are not in the Lamb   | sql                0.99 | ✓
+Find the total student enrollment for different af   | sql                1.00 | ✓
+Show the id, name of each editor and the number of   | sql                0.99 | ✓
+What are the album titles for albums containing bo   | docker             0.99 | ✗ (target=sql)
+How many artists are above age 46 and joined after   | music-audio        1.00 | ✗ (target=sql)
+Show the names of people who have been on the nega   | docker             1.00 | ✗ (target=sql)
+Show the names of members and the location of the    | docker             0.98 | ✗ (target=sql)
+Find the title of all the albums of the artist "AC   | reasoning          0.98 | ✗ (target=sql)
+How many students are there?                         | docker             1.00 | ✗ (target=sql)
+List official names of cities in descending order    | docker             1.00 | ✗ (target=sql)
+List all the model names sorted by their launch ye   | docker             1.00 | ✗ (target=sql)
+What is the 3 most common cloud cover rates in the   | docker             0.98 | ✗ (target=sql)
+Show the names of people that are on affirmative s   | docker             0.98 | ✗ (target=sql)
+Show the names of editors and the theme of journal   | reasoning          0.99 | ✗ (target=sql)
+How many allergies are there?                        | reasoning          1.00 | ✗ (target=sql)
+Find the Char cells, Pixels and Hardware colours f   | python             0.98 | ✗ (target=sql)
+Find the name of the company that has the least nu   | reasoning          1.00 | ✗ (target=sql)
+What are the names of stations that are located in   | docker             0.99 | ✗ (target=sql)
+Show the party that has the most people.             | docker             1.00 | ✗ (target=sql)
+Show theme and year for all exhibitions with ticke   | docker             0.99 | ✗ (target=sql)
+What is the name of tracks whose genre is Rock?      | music-audio        1.00 | ✗ (target=sql)
+Show all allergies with type food.                   | typescript         1.00 | ✗ (target=sql)
+Show all artist names and the number of exhibition   | sql                0.97 | ✓
+List all information regarding the basketball matc   | docker             0.97 | ✗ (target=sql)
+How many races are there?                            | docker             1.00 | ✗ (target=sql)
+How many games has each stadium held?                | reasoning          0.99 | ✗ (target=sql)
+How many different users wrote some reviews?         | docker             1.00 | ✗ (target=sql)
+Find all the policy types that are used by more th   | docker             0.99 | ✗ (target=sql)
+What are the names of countries that have both pla   | docker             0.97 | ✗ (target=sql)
+Implement DMA transfer pour ADC en STM32 HAL         | embedded           1.00 | ✗ (target=stm32)
+Create an array from elements 0 to 10 in JavaScrip   | docker             1.00 | ✗ (target=typescript)
+Implement a function in JavaScript that flips a gi   | lua-upy            1.00 | ✗ (target=typescript)
+Write a JavaScript code snippet to print the numbe   | docker             1.00 | ✗ (target=typescript)
+Create a React component that renders the provided   | web-frontend       1.00 | ✗ (target=typescript)
+Write a code in ReactJS that renders the title of    | web-frontend       1.00 | ✗ (target=typescript)
+What is a callback function in JavaScript?           | lua-upy            1.00 | ✗ (target=typescript)
+Create a React component to accept a list of items   | web-frontend       1.00 | ✗ (target=typescript)
+Write a JavaScript function to filter out all fals   | lua-upy            1.00 | ✗ (target=typescript)
+Create a function in JavaScript to subtract two da   | lua-upy            1.00 | ✗ (target=typescript)
+Convert the following JavaScript code to valid C++   | cpp                1.00 | ✗ (target=typescript)
+Create a Javascript object that can generate a ran   | lua-upy            1.00 | ✗ (target=typescript)
+Create a JavaScript program to capitalize each wor   | lua-upy            1.00 | ✗ (target=typescript)
+Write a React component to render a table with 4 c   | web-frontend       1.00 | ✗ (target=typescript)
+Suggest a completion to the following React compon   | web-frontend       1.00 | ✗ (target=typescript)
+Write a function definition in JavaScript that cal   | lua-upy            1.00 | ✗ (target=typescript)
+List the books in alphabetical order using JavaScr   | lua-upy            1.00 | ✗ (target=typescript)
+Write a JavaScript program to compare two given st   | lua-upy            1.00 | ✗ (target=typescript)
+Rewrite the following javascript code such that it   | docker             1.00 | ✗ (target=typescript)
+Given a JavaScript string, replace all instances o   | lua-upy            1.00 | ✗ (target=typescript)
+Complete the following task: Create a function in    | lua-upy            1.00 | ✗ (target=typescript)
+Write a React component to show the current date.    | web-frontend       1.00 | ✗ (target=typescript)
+Modify the following Javascript code to check if a   | lua-upy            1.00 | ✗ (target=typescript)
+Use the following JSON data and write a JavaScript   | python             1.00 | ✗ (target=typescript)
+Design a JavaScript function that can convert any    | lua-upy            1.00 | ✗ (target=typescript)
+Convert the following array of strings to an array   | docker             1.00 | ✗ (target=typescript)
+Explain the difference between interface and abstr   | typescript         1.00 | ✓
+Create a Node.js server that serves up a webpage w   | web-backend        1.00 | ✗ (target=typescript)
+Write a JavaScript program that prints all the eve   | lua-upy            1.00 | ✗ (target=typescript)
+How would you capitalize the first letter of a str   | lua-upy            1.00 | ✗ (target=typescript)
+Write a regular expression in JavaScript to find a   | lua-upy            1.00 | ✗ (target=typescript)
+Assign a variable 'name' with a value of your choi   | lua-upy            1.00 | ✗ (target=typescript)
+Create a JavaScript function that finds the shorte   | lua-upy            1.00 | ✗ (target=typescript)
+Write a JavaScript function to check if a string e   | lua-upy            1.00 | ✗ (target=typescript)
+Create an API endpoint in Node.js that would accep   | web-backend        1.00 | ✗ (target=typescript)
+Create a function in JavaScript that takes an arra   | lua-upy            1.00 | ✗ (target=typescript)
+Create a JavaScript function that takes an array o   | lua-upy            1.00 | ✗ (target=typescript)
+Add comments to the following JavaScript code that   | lua-upy            1.00 | ✗ (target=typescript)
+Given a sentence, remove all punctuation using Jav   | sql                1.00 | ✗ (target=typescript)
+Write a JavaScript function to compare two numbers   | lua-upy            1.00 | ✗ (target=typescript)
+Create a program in JavaScript to calculate the ar   | lua-upy            1.00 | ✗ (target=typescript)
+Create an array of 8 string objects in JavaScript    | lua-upy            1.00 | ✗ (target=typescript)
+Create a JavaScript class to generate random numbe   | lua-upy            1.00 | ✗ (target=typescript)
+How to remove the first and last characters from a   | docker             1.00 | ✗ (target=typescript)
+Create a web page with a JavaScript function to se   | html-css           1.00 | ✗ (target=typescript)
+You need to edit a given code in JavaScript to add   | html-css           1.00 | ✗ (target=typescript)
+Create a JavaScript function to get the highest va   | docker             1.00 | ✗ (target=typescript)
+Create a method in JavaScript to convert a string    | lua-upy            1.00 | ✗ (target=typescript)`torch_dtype` is deprecated! Use `dtype` instead!
+
+Write a JavaScript code that returns the current d   | lua-upy            1.00 | ✗ (target=typescript)
+Create a React component that displays a form with   | web-frontend       1.00 | ✗ (target=typescript)
+Write a JavaScript program to check whether two or   | lua-upy            1.00 | ✗ (target=typescript)
+Write a function in JavaScript to reorder the give   | lua-upy            1.00 | ✗ (target=typescript)
+Write a JavaScript function to greet a user, given   | lua-upy            1.00 | ✗ (target=typescript)
+Explain with a code snippet how to execute an AJAX   | docker             1.00 | ✗ (target=typescript)
+Write a JavaScript expression to compute the remai   | rust               1.00 | ✗ (target=typescript)
+Using JavaScript, create a function that takes two   | lua-upy            1.00 | ✗ (target=typescript)
+Create an array variable in JavaScript for storing   | music-audio        1.00 | ✗ (target=typescript)
+Write a JavaScript statement to delete the key-val   | lua-upy            1.00 | ✗ (target=typescript)
+Debug the following JavaScript code which calculat   | lua-upy            1.00 | ✗ (target=typescript)
+Write a recursive function in JS to traverse a mul   | lua-upy            1.00 | ✗ (target=typescript)
+Write a JavaScript code snippet to check if a give   | lua-upy            1.00 | ✗ (target=typescript)
+Create an AJAX request in JavaScript to retrieve d   | python             1.00 | ✗ (target=typescript)
+Write a JavaScript program to get the current user   | docker             1.00 | ✗ (target=typescript)
+Write a JavaScript program to create a random stri   | lua-upy            1.00 | ✗ (target=typescript)
+Create an object in JavaScript representing a pet    | lua-upy            1.00 | ✗ (target=typescript)
+Generate a URL in JavaScript for an API endpoint t   | web-backend        1.00 | ✗ (target=typescript)
+Develop a function in JavaScript to get the maximu   | lua-upy            1.00 | ✗ (target=typescript)
+Write a JavaScript statement to determine whether    | lua-upy            1.00 | ✗ (target=typescript)
+Write a JavaScript program to make an AJAX request   | lua-upy            1.00 | ✗ (target=typescript)
+Write a JavaScript code snippet to display a welco   | lua-upy            1.00 | ✗ (target=typescript)
+Create an array of four different colors in JavaSc   | lua-upy            0.99 | ✗ (target=typescript)
+Write a short JavaScript code snippet to detect a    | html-css           1.00 | ✗ (target=typescript)
+Write a JavaScript function that takes two integer   | lua-upy            1.00 | ✗ (target=typescript)
+Write a JavaScript function for reversing a string   | lua-upy            1.00 | ✗ (target=typescript)
+Complete the following Node.js code to return 'tru   | lua-upy            1.00 | ✗ (target=typescript)
+Create a JavaScript loop that counts from 1 to 10.   | lua-upy            1.00 | ✗ (target=typescript)
+Construct an object in JavaScript to model a car w   | typescript         0.99 | ✓
+Create a JavaScript function that takes a name as    | lua-upy            1.00 | ✗ (target=typescript)
+Write a function to check whether a number is a pr   | lua-upy            1.00 | ✗ (target=typescript)
+Write a JavaScript function that takes an array of   | lua-upy            1.00 | ✗ (target=typescript)
+Correct the syntax errors in the following JavaScr   | lua-upy            1.00 | ✗ (target=typescript)
+Create a React component that renders a list of nu   | web-frontend       1.00 | ✗ (target=typescript)
+Write a JavaScript code to copy an array including   | lua-upy            1.00 | ✗ (target=typescript)
+Create a while loop in JavaScript to print out all   | lua-upy            1.00 | ✗ (target=typescript)
+Demonstrate how to use the following JavaScript fu   | lua-upy            1.00 | ✗ (target=typescript)
+Generate 10 random strings of 5 characters in leng   | lua-upy            1.00 | ✗ (target=typescript)
+Create a looping structure in JavaScript that exec   | lua-upy            0.99 | ✗ (target=typescript)
+What is the syntax for creating an array in JavaSc   | lua-upy            1.00 | ✗ (target=typescript)
+Create an array of objects in JavaScript and log t   | typescript         0.98 | ✓
+Given a list of numbers, create a function in Java   | lua-upy            1.00 | ✗ (target=typescript)
+Extract the next 5 worksdays in JavaScript.          | docker             1.00 | ✗ (target=typescript)
+Generate a JavaScript program to check if a number   | lua-upy            1.00 | ✗ (target=typescript)
+Construct a for loop in JavaScript that adds the v   | lua-upy            1.00 | ✗ (target=typescript)
+What is the JavaScript command to place the cursor   | sql                1.00 | ✗ (target=typescript)
+Define a function in JavaScript that returns true    | lua-upy            1.00 | ✗ (target=typescript)
+How do you export a JavaScript variable as a globa   | docker             0.99 | ✗ (target=typescript)
+Create a JavaScript class that returns the area an   | lua-upy            1.00 | ✗ (target=typescript)
+Create a JavaScript function to remove all spaces    | sql                1.00 | ✗ (target=typescript)
+Create a class in JavaScript to represent a person   | lua-upy            1.00 | ✗ (target=typescript)
+Write a JavaScript program to accept a string and    | lua-upy            1.00 | ✗ (target=typescript)
+How to redirect a page using JavaScript              | lua-upy            1.00 | ✗ (target=typescript)
+Find the maximum and minimum number in the followi   | lua-upy            1.00 | ✗ (target=typescript)
+Create an algorithm in JavaScript that calculates    | lua-upy            1.00 | ✗ (target=typescript)
+Write a code snippet to create a new JavaScript ar   | lua-upy            1.00 | ✗ (target=typescript)
+Write a JavaScript statement to check if a given n   | lua-upy            1.00 | ✗ (target=typescript)
+Create a function to calculate the sum of the firs   | lua-upy            1.00 | ✗ (target=typescript)
+What is the JavaScript operator used to check if t   | lua-upy            1.00 | ✗ (target=typescript)
+Write a JavaScript function that takes an array of   | lua-upy            1.00 | ✗ (target=typescript)
+Using the given array of numbers, write a JavaScri   | lua-upy            1.00 | ✗ (target=typescript)
+Compute the minimum of 3 given numbers using a Jav   | lua-upy            1.00 | ✗ (target=typescript)
+Given a sorted array and a target value, write a f   | lua-upy            1.00 | ✗ (target=typescript)
+Rewrite the following JavaScript code as an arrow    | lua-upy            1.00 | ✗ (target=typescript)
+Construct a React component to display a login for   | web-frontend       1.00 | ✗ (target=typescript)
+Create a React component that renders a list of it   | web-frontend       1.00 | ✗ (target=typescript)
+Create a function in JavaScript that displays an a   | lua-upy            1.00 | ✗ (target=typescript)
+Console log "Hello" seven times in JavaScript.       | lua-upy            0.99 | ✗ (target=typescript)
+Create a React component to display a list of 5 us   | web-frontend       1.00 | ✗ (target=typescript)
+Transform the following code into an array of obje   | docker             1.00 | ✗ (target=typescript)
+How can we debug our JavaScript code?                | lua-upy            0.99 | ✗ (target=typescript)
+Create a function in JavaScript that reverses the    | lua-upy            1.00 | ✗ (target=typescript)
+Create a JavaScript function that takes no more th   | lua-upy            1.00 | ✗ (target=typescript)
+Describe the benefits of using JavaScript.           | rust               1.00 | ✗ (target=typescript)
+Build a GraphQL API avec Apollo Server 4 et TypeSc   | typescript         1.00 | ✗ (target=web-backend)
+Run a Lighthouse audit pour une PWA avec service w   | reasoning          0.86 | ✗ (target=web-frontend)
+Comment merger deux fichiers JSON avec jq ?          | chat-fr            1.00 | ✗ (target=yaml-json)
+
+(Jina head not retrained — only encoder-only signals reportable for Jina)
+
+=== Jina v3 (task=classification) ===  (jinaai/jina-embeddings-v3)
+Loading weights:   0%|          | 0/492 [00:00<?, ?it/s]Loading weights: 100%|██████████| 492/492 [00:00<00:00, 4920.64it/s]
+  load       : 8.2s
+  encode 1978 prompts: 32781ms total, 16.6ms/prompt   dim=1024
+  cos same-domain pairs: mean=0.719  diff-domain: mean=0.567  separation Δ=0.152
+
+=== Jina v3 (task=separation) ===  (jinaai/jina-embeddings-v3)
+Loading weights:   0%|          | 0/492 [00:00<?, ?it/s]Loading weights:  85%|████████▍ | 417/492 [00:00<00:00, 4166.91it/s]Loading weights: 100%|██████████| 492/492 [00:00<00:00, 4407.06it/s]
+  load       : 7.4s
+  encode 1978 prompts: 19156ms total, 9.7ms/prompt   dim=1024
+  cos same-domain pairs: mean=0.812  diff-domain: mean=0.662  separation Δ=0.150
+
+Note: top-1 accuracy with Jina would require retraining the MLP head (384d → 1024d). The encoder-only Δ above is the cleanest comparable signal.
