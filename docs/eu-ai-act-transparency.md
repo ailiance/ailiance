@@ -1,8 +1,8 @@
 # EU AI Act — Transparency & Traceability Documentation
 
 **Document ID:** EU-KIKI-TRANS-001
-**Date:** 2026-04-28
-**Version:** 0.3.0
+**Date:** 2026-05-05
+**Version:** 0.4.0
 **System:** eu-kiki — EU-sovereign multi-model LLM serving pipeline
 **Risk Classification:** Limited risk (general-purpose AI system, Article 52)
 
@@ -385,6 +385,42 @@ Low-signal detections (PERSON, LOCATION, DATE_TIME) are common false positives i
 
 ---
 
+## 8.bis Evaluation summary (Art. 53(1)(d))
+
+Full results, methodology, and reproduction scripts:
+[`eval/results/SUMMARY.md`](../eval/results/SUMMARY.md),
+[`eval/WORKFLOW.md`](../eval/WORKFLOW.md), and the consolidated model
+card [`MODEL_CARD.md`](../MODEL_CARD.md).
+
+Headline metrics (all measured on this hardware, all reproducible):
+
+| Bench | Subject | Result |
+|---|---|---|
+| HumanEval+ (Linux EvalPlus) | Devstral 24B 4-bit base | 87.20 / 82.90 |
+| HumanEval+ | Devstral + python adapter | −1.80 HE+ |
+| HumanEval+ | Devstral + cpp adapter | −1.22 HE base (custom scorer) |
+| HumanEval+ | Devstral + rust adapter | −0.61 HE base (custom scorer) |
+| MT-Bench (full 80q) | Devstral 24B 4-bit base | 8.892/10 (37/160 turns parseable) |
+| GSM8K 5-shot, n=200 | Qwen 35B-A3B-4bit base | 94.5 % |
+| GSM8K | + reasoning fused | 0 |
+| GSM8K | + math fused | −4.5 |
+| KIKI-DSL v3 (custom, 15 prompts) | Qwen 35B-A3B-4bit base | 73.3 % pass / 0.704 avg |
+| KIKI-DSL v3 | + reasoning fused | +13.4 pass |
+| KIKI-DSL v3 | + math fused | +6.7 pass |
+| KIKI-DSL v3 | + kicad-dsl narrow fused | −27 pass (negative transfer) |
+
+**Honest limitations disclosed (Art. 53(1)(d) requires faithful summary):**
+
+1. The KIKI-DSL v1 test set was biased (named-IC heavy); v3 corrects it.
+   On v3, `chat-fr` loses its v1 +10 win (artifact), and domain-narrow
+   adapters show real but reduced regressions (−20 to −27 vs −30 on v1).
+2. The cognitive cluster (`reasoning`, `math`) wins on KIKI-DSL v3 but
+   does **not** transfer to public GSM8K (0 and −4.5 deltas). Saturated
+   public-bench performance is the base model's, not the adapter's.
+3. eu-kiki Devstral adapters slightly **degrade** HumanEval+ (style
+   mismatch). They are intended for chat-style production, not raw
+   algorithmic completion benchmarks.
+
 ## 9. Contact
 
 - **System operator:** L'Electron Rare (electron-rare)
@@ -401,4 +437,5 @@ Low-signal detections (PERSON, LOCATION, DATE_TIME) are common false positives i
 | 2026-04-28 | 0.1.1-dev | Quarantine web-backend/yaml-json (missing provenance); JWT secret resolved; PII/opt-out TODOs; verified zenml/llmops-database (Apache-2.0) and AYI-NEDJIMI/mlops-infrastructure-en (MIT) |
 | 2026-04-28 | 0.1.2-dev | Replace TIGER-Lab/MathInstruct (unclear sub-source licenses) with microsoft/orca-math-word-problems-200k (MIT, 200K examples) for math-reasoning domain |
 | 2026-04-28 | 0.2.0 | Comprehensive update: all 33 domains inventoried with SPDX licenses and record counts; added all scraped repo sources (ESP-IDF, STM32Cube, Arduino, Embassy, KiCad symbols/footprints, FreeCAD macros, OSHWA API); added Mistral Small 4 119B (pending eval) and Mistral Medium 3.5 128B (teacher/eval only, Modified MIT); PII scan completed (Presidio, 1 finding redacted); web-backend/yaml-json provenance resolved; Devstral BF16 dequantization source documented |
+| 2026-05-05 | 0.4.0 | **Art. 53(1)(d) evaluation summary added** (§8.bis): published full benchmark suite (HumanEval+ Devstral base/python/cpp/rust, MT-Bench Devstral 8.89/10, GSM8K Qwen base/reasoning/math, KIKI-DSL v3 8 adapters). New model card at [`MODEL_CARD.md`](../MODEL_CARD.md). Honest limitations disclosed: v1→v3 test-set bias correction, no cognitive transfer to public GSM8K, slight HumanEval+ degradation by Devstral adapters. All result directories self-contained (`env.json` + `methodology.md` + `rerun.sh`); cross-platform pipeline (macM1 + studio + kx6tm-23) traced in [`eval/WORKFLOW.md`](../eval/WORKFLOW.md). |
 | 2026-04-28 | 0.3.0 | **EU AI Act compliance remediation:** (1) Per-record `_provenance` added to 49,956 records across 21 HF-traced domains (source, SPDX license, record_idx, access_date); (2) Non-SPDX license values corrected in MANIFEST_niche.json: embedded (Apache-2.0 AND CC-BY-SA-4.0), emc-dsp-power (arXiv-TDM-DSM-Art4 AND CC-BY-SA-3.0), traduction-tech (CC-BY-4.0), cpp sub-sources (removed "Open"/"various"), freecad (MIT AND CC-BY-4.0 AND CC0-1.0), rust-embedded "various" sub-source (MIT AND Apache-2.0); (3) PII scan extended to ALL 35+ domains; (4) Scraping manifests (manifest.json) created for all 8 scraped directories; (5) License field added to all 7 model config.json files; (6) stm32 and electronics added as PDF-supplement domains; (7) rust-strand annotated as deprecated phantom entry |

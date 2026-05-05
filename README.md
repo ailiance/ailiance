@@ -118,11 +118,31 @@ src/
 
 | Doc | Contenu |
 |-----|---------|
-| [`eu-ai-act-transparency.md`](docs/eu-ai-act-transparency.md) | Doc principale — Art. 52/53 EU AI Act, "limited risk" classification, full provenance chain. |
+| [`MODEL_CARD.md`](MODEL_CARD.md) | **Carte de modèle — performance mesurée, limitations connues, intended/out-of-scope use, Art. 53(1)(d)**. |
+| [`eu-ai-act-transparency.md`](docs/eu-ai-act-transparency.md) | Doc principale — Art. 52/53 EU AI Act, "limited risk" classification, full provenance chain (v0.4.0 + evaluation summary §8.bis). |
 | [`pdf-compliance-report.md`](docs/pdf-compliance-report.md) | Audit pipeline PDF (robots.txt, SHA-256, DSM Art.4 TDM). |
 | [`vlm-compliance-report.md`](docs/vlm-compliance-report.md) | Audit pipeline VLM POC. |
-| `specs/2026-04-26-eu-kiki-design.md` | Design initial du système. |
-| `specs/2026-04-26-eu-kiki-plan.md` | Plan d'implémentation. |
+| [`eval/WORKFLOW.md`](eval/WORKFLOW.md) | Bench pipeline trace (3-host topology, bug history, fuse workaround, full results). |
+| [`eval/results/SUMMARY.md`](eval/results/SUMMARY.md) | Aggregated benchmark table — KIKI-DSL v3, HumanEval+, MT-Bench, GSM8K. |
+| `docs/specs/2026-04-26-eu-kiki-design.md` | Design initial du système. |
+| `docs/specs/2026-04-26-eu-kiki-plan.md` | Plan d'implémentation. |
+
+## Headline benchmark results
+
+| Bench | Subject | Result |
+|---|---|---|
+| HumanEval+ | Devstral 24B 4-bit base (Linux EvalPlus) | 87.20 / 82.90 |
+| HumanEval+ | + python / cpp / rust adapters | −1.80 / −1.22 / −0.61 |
+| MT-Bench (full 80q, judge Mistral-Medium 128B) | Devstral base | **8.892 / 10** |
+| GSM8K 5-shot, n=200 | Qwen 35B-A3B-4bit base | **94.5 %** |
+| GSM8K | + reasoning / + math adapters | 0 / −4.5 |
+| KIKI-DSL v3 (15 prompts, balanced) | Qwen base | 73.3 % pass / 0.704 avg |
+| KIKI-DSL v3 | best adapter (`reasoning`) | **+13.4 pass** |
+| KIKI-DSL v3 | worst adapter (`kicad-dsl`, narrow) | −27 pass |
+
+Cognitive adapter wins on KIKI-DSL v3 do **not** transfer to GSM8K
+(saturated). See [`MODEL_CARD.md`](MODEL_CARD.md) §4.5 for cross-bench
+analysis and §7 for known limitations.
 
 ## Logs
 
