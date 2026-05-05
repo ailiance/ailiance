@@ -13,6 +13,123 @@
       "rows_used": 600
     },
     {
+      "domain": "kicad-pcb",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 12,
+      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "kicad-dsl",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 11,
+      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "stm32",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 12,
+      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "embedded",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 11,
+      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "dsp",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 11,
+      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "iot",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 11,
+      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "music-audio",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 11,
+      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "platformio",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 11,
+      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "ml-training",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 12,
+      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "llm-orch",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 12,
+      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "web-backend",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 12,
+      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "web-frontend",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 12,
+      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "yaml-json",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 12,
+      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+    },
+    {
       "domain": "python",
       "huggingface_repo": "sahil2801/CodeAlpaca-20k",
       "config": null,
@@ -184,20 +301,20 @@
     "security": 192,
     "docker": 106,
     "devops": 76,
+    "stm32": 17,
+    "embedded": 16,
+    "llm-orch": 16,
+    "web-backend": 16,
     "rust": 16,
-    "embedded": 5,
-    "stm32": 5,
-    "web-backend": 4,
-    "music-audio": 4,
-    "llm-orch": 4,
-    "web-frontend": 3,
-    "yaml-json": 3,
-    "iot": 3,
-    "dsp": 3,
-    "ml-training": 3,
-    "kicad-pcb": 3,
-    "kicad-dsl": 2,
-    "platformio": 2
+    "kicad-pcb": 15,
+    "music-audio": 15,
+    "ml-training": 15,
+    "web-frontend": 15,
+    "yaml-json": 15,
+    "dsp": 14,
+    "iot": 14,
+    "kicad-dsl": 13,
+    "platformio": 13
   },
-  "grand_total": 9817
+  "grand_total": 9967
 }

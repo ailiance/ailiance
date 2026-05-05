@@ -1,6 +1,6 @@
 # configs/gateway.yaml
 router:
-  weights_dir: output/router-v5
+  weights_dir: output/router-v6
   embedding_model: sentence-transformers/all-MiniLM-L6-v2
   embedding_dim: 384
   hidden_dim: 256
