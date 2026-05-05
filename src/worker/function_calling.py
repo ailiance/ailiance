@@ -25,6 +25,19 @@ _TOOL_CALL_RE = re.compile(
     re.DOTALL,
 )
 
+# Mistral / Devstral native format: [TOOL_CALLS]<name>[ARGS]<json>
+# Used by Devstral-Small-2 (mistral fine-tune).
+_MISTRAL_TOOL_RE = re.compile(
+    r"\[TOOL_CALLS\]\s*(?P<name>[A-Za-z_][\w]*)\s*\[ARGS\]\s*(?P<args>\{.*\})",
+    re.DOTALL,
+)
+
+# XML envelope: <tool_call>{...}</tool_call> (Apertus / Cline-legacy style).
+_XML_TOOL_RE = re.compile(
+    r"<tool_call>\s*(?P<json>\{.*?\})\s*</tool_call>",
+    re.DOTALL,
+)
+
 _INJECT_TEMPLATE = (
     "You have access to tools. To call a tool, respond with EXACTLY this "
     "JSON on a single line, nothing else:\n\n"
@@ -83,18 +96,98 @@ def generate_tool_call_id() -> str:
     return f"call_{uuid.uuid4().hex[:8]}"
 
 
+def _parse_mistral_args_balanced(args_blob: str) -> dict | None:
+    """Parse the {...} arguments from a Mistral [TOOL_CALLS]...[ARGS]{...} blob.
+
+    The trailing regex is greedy, so we scan for the first balanced object.
+    """
+    depth = 0
+    in_str = False
+    escape = False
+    end = -1
+    for i, ch in enumerate(args_blob):
+        if escape:
+            escape = False
+            continue
+        if in_str:
+            if ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                end = i + 1
+                break
+    if end < 0:
+        return None
+    try:
+        return json.loads(args_blob[:end])
+    except json.JSONDecodeError:
+        return None
+
+
 def parse_tool_call_from_text(
     text: str,
 ) -> tuple[str, list[dict] | None]:
-    """Extract a tool call JSON object from model output.
+    """Extract a tool call from model output.
+
+    Supports three formats commonly produced by EU-sovereign models:
+    1. JSON object with "name" + "arguments" keys (the format we inject).
+    2. Mistral / Devstral native: [TOOL_CALLS]<name>[ARGS]<json>.
+    3. XML envelope: <tool_call>{json}</tool_call>.
 
     Returns (content, tool_calls). If no tool call detected, returns
-    (text, None). Otherwise returns (text_before_json_stripped, [call_dict]).
-    The arguments field is serialized as a JSON STRING per OpenAI spec.
+    (text, None). The arguments field is serialized as a JSON STRING per
+    OpenAI spec.
     """
     if not text:
         return text or "", None
 
+    # 1. Mistral / Devstral native (highest priority — most explicit marker).
+    mistral = _MISTRAL_TOOL_RE.search(text)
+    if mistral:
+        name = mistral.group("name")
+        args = _parse_mistral_args_balanced(mistral.group("args"))
+        if isinstance(name, str) and isinstance(args, dict):
+            content_before = text[: mistral.start()].strip()
+            tool_call = {
+                "id": generate_tool_call_id(),
+                "type": "function",
+                "function": {
+                    "name": name,
+                    "arguments": json.dumps(args, ensure_ascii=False),
+                },
+            }
+            return content_before, [tool_call]
+
+    # 2. XML envelope (Apertus / Cline-legacy).
+    xml = _XML_TOOL_RE.search(text)
+    if xml:
+        try:
+            parsed = json.loads(xml.group("json"))
+            name = parsed.get("name")
+            args = parsed.get("arguments")
+            if isinstance(name, str) and isinstance(args, dict):
+                content_before = text[: xml.start()].strip()
+                tool_call = {
+                    "id": generate_tool_call_id(),
+                    "type": "function",
+                    "function": {
+                        "name": name,
+                        "arguments": json.dumps(args, ensure_ascii=False),
+                    },
+                }
+                return content_before, [tool_call]
+        except json.JSONDecodeError:
+            pass
+
+    # 3. Plain JSON {"name":"...","arguments":{...}} (our injected format).
     match = _TOOL_CALL_RE.search(text)
     if not match:
         return text, None
