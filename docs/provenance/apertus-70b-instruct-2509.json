@@ -1,0 +1,43 @@
+{
+  "_doc": "EU AI Act Annex IV §1(c) — model lineage / supply-chain record.",
+  "deployment_id": "eu-kiki/apertus-70b",
+  "deployed_at_utc": "2026-04-22T00:00:00Z",
+  "deployed_on_host": "studio (Mac Studio M3 Ultra)",
+  "served_via": "uvicorn FastAPI worker @ studio:9301, MLX inference (Metal)",
+  "source": {
+    "provider": "Swiss AI Initiative (EPFL / ETHZ / CSCS)",
+    "huggingface_repo": "swiss-ai/Apertus-70B-Instruct-2509",
+    "huggingface_url": "https://huggingface.co/swiss-ai/Apertus-70B-Instruct-2509",
+    "repo_commit_sha": "ec382cbace70",
+    "repo_last_modified_utc": "2026-04-21T09:39:24Z",
+    "license_spdx": "apache-2.0",
+    "license_url": "https://huggingface.co/swiss-ai/Apertus-70B-Instruct-2509/blob/main/LICENSE"
+  },
+  "weights_file": {
+    "filename": "(MLX 8-bit conversion in /Users/clems/KIKI-Mac_tunner/models/Apertus-70B-Instruct-2509)",
+    "size_bytes": null,
+    "sha256_expected": null,
+    "comment": "Original safetensors checksums on HF; MLX local conversion produced via mlx_lm.convert. Reconversion deterministic from upstream commit."
+  },
+  "architecture": {
+    "family": "Apertus (Llama-style dense)",
+    "total_parameters": 70599864480,
+    "active_parameters_per_token": 70599864480,
+    "attention": "standard MHA",
+    "context_length_native": 65536
+  },
+  "quantization": {
+    "method": "MLX 8-bit",
+    "produced_by": "L'Électron Rare (mlx_lm.convert from upstream BF16)"
+  },
+  "modifications_post_download": [
+    "MLX 8-bit quantisation (mlx_lm.convert)",
+    "Domain LoRA adapters loaded at runtime — see output/adapters/apertus/"
+  ],
+  "intended_use": "Public chat playground at https://ml.saillant.cc/chat/eu-kiki/apertus-70b — multilingual EU reasoning + electronics/hardware domains via LoRA adapters.",
+  "out_of_scope": [
+    "Healthcare diagnosis without clinician review",
+    "Legal advice",
+    "Autonomous safety-critical decisions"
+  ]
+}

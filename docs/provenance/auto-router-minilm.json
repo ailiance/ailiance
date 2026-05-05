@@ -1,0 +1,72 @@
+{
+  "_doc": "EU AI Act Annex IV §1(c) — model lineage / supply-chain record.",
+  "deployment_id": "eu-kiki/auto",
+  "deployed_at_utc": "2026-05-05T13:55:00Z",
+  "deployed_on_host": "electron-server (gateway-side, CPU)",
+  "served_via": "in-process MLP head invoked by the eu-kiki gateway (FastAPI :9300)",
+  "source": {
+    "provider": "L'Électron Rare (head trained in-house) + Microsoft / Hugging Face (encoder)",
+    "encoder": {
+      "huggingface_repo": "sentence-transformers/all-MiniLM-L6-v2",
+      "huggingface_url": "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2",
+      "license_spdx": "apache-2.0",
+      "embedding_dim": 384,
+      "parameters": 22700000
+    },
+    "head": {
+      "checkpoint": "eu-kiki/output/router/router.safetensors",
+      "previous_checkpoint": "eu-kiki/output/router-v1-backup-1777983938 (rollback)",
+      "training_script": "scripts/train_router.py",
+      "training_data_script": "scripts/build_router_data.py + scripts/augment_router_data.py"
+    }
+  },
+  "weights_file": {
+    "filename": "router.safetensors",
+    "size_bytes": 432000,
+    "sha256_expected": null,
+    "comment": "Hash captured on next deploy. Reproducible from training data + scripts/train_router.py with fixed seed."
+  },
+  "architecture": {
+    "family": "Encoder + classifier head",
+    "encoder_kind": "BERT-style sentence transformer (MiniLM L6 v2, 384d)",
+    "head_kind": "2-layer MLP (Linear → GELU → Dropout → Linear)",
+    "head_hidden_dim": 256,
+    "num_domains": 34,
+    "total_parameters": 22700000,
+    "active_parameters_per_token": 22700000
+  },
+  "training_data": {
+    "source": "L'Électron Rare proprietary corpus — ~46 500 user-style prompts classified across 34 technical domains",
+    "datasets_combined": [
+      "KIKI-Mac_tunner/data/micro-kiki/classified/*.jsonl (32 domains, ~46 000 lines)",
+      "scripts/augment_router_data.py — manually curated 528 prompts targeting docker/spice/calcul-normatif gaps + FR/EN code-switching"
+    ],
+    "split": "80/20 train/valid, deterministic seed 42",
+    "language_mix": "primarily fr/en (mixed), small amounts of de/it/es",
+    "copyright_status": "All training prompts are short user-style queries written or paraphrased internally; no scraped third-party copyrighted text."
+  },
+  "training_method": {
+    "loss": "BCE-with-logits (multi-label sigmoid)",
+    "optimizer": "AdamW lr=1e-3",
+    "epochs": 30,
+    "batch_size": 128,
+    "hardware": "Mac Studio M3 Ultra (CPU encoder + CPU/Metal head)",
+    "wall_clock_minutes_estimate": 6,
+    "energy_estimate_wh": 50,
+    "metrics_final": {
+      "top1_accuracy": 0.652,
+      "top3_accuracy": 0.857,
+      "validation_set_size": 11644
+    }
+  },
+  "modifications_post_download": [
+    "Encoder used unchanged from sentence-transformers/all-MiniLM-L6-v2",
+    "Classifier head trained from scratch on internal corpus"
+  ],
+  "intended_use": "Domain routing only — classifies an inbound user prompt into one of 34 technical domains and forwards the chat request to the most adapted backend worker (Apertus / Devstral / EuroLLM / Qwen / Gemma).",
+  "out_of_scope": [
+    "Standalone classification of safety-critical text (e.g. medical triage)",
+    "Content moderation",
+    "Anything requiring calibrated probabilities — head is not calibrated"
+  ]
+}
