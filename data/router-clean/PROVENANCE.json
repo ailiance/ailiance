@@ -5,6 +5,14 @@
   "target_per_domain": 800,
   "sources": [
     {
+      "domain": "freecad",
+      "huggingface_repo": "Yas1n/FreeCAD_Sketches",
+      "config": "filename-derived prompts (no row download)",
+      "split": null,
+      "license_spdx": "cc-by-4.0",
+      "rows_used": 600
+    },
+    {
       "domain": "python",
       "huggingface_repo": "sahil2801/CodeAlpaca-20k",
       "config": null,
@@ -93,6 +101,46 @@
       "rows_used": 188
     },
     {
+      "domain": "spice",
+      "huggingface_repo": "theprint/Electronics-QA",
+      "config": null,
+      "split": "train",
+      "license_spdx": "apache-2.0",
+      "rows_used": 600
+    },
+    {
+      "domain": "power",
+      "huggingface_repo": "theprint/Electronics-QA",
+      "config": null,
+      "split": "train",
+      "license_spdx": "apache-2.0",
+      "rows_used": 192
+    },
+    {
+      "domain": "electronics",
+      "huggingface_repo": "theprint/Electronics-QA",
+      "config": null,
+      "split": "train",
+      "license_spdx": "apache-2.0",
+      "rows_used": 600
+    },
+    {
+      "domain": "devops",
+      "huggingface_repo": "sahil2801/CodeAlpaca-20k",
+      "config": null,
+      "split": "train",
+      "license_spdx": "cc-by-4.0",
+      "rows_used": 71
+    },
+    {
+      "domain": "lua-upy",
+      "huggingface_repo": "Roblox/luau_corpus",
+      "config": null,
+      "split": "train",
+      "license_spdx": "mit",
+      "rows_used": 600
+    },
+    {
       "domain": "calcul-normatif",
       "huggingface_repo": null,
       "split": null,
@@ -113,7 +161,7 @@
       "huggingface_repo": null,
       "split": null,
       "license_spdx": "apache-2.0",
-      "rows_used": 99,
+      "rows_used": 699,
       "note": "Curated by L'Électron Rare in May 2026. See scripts/augment_router_data.py."
     }
   ],
@@ -123,20 +171,23 @@
     "math": 803,
     "reasoning": 803,
     "chat-fr": 801,
+    "spice": 702,
     "typescript": 603,
+    "electronics": 603,
+    "lua-upy": 603,
+    "freecad": 602,
     "html-css": 602,
     "shell": 597,
     "cpp": 478,
     "calcul-normatif": 223,
+    "power": 196,
     "security": 192,
     "docker": 106,
-    "spice": 102,
+    "devops": 76,
     "rust": 16,
-    "devops": 5,
     "embedded": 5,
     "stm32": 5,
     "web-backend": 4,
-    "power": 4,
     "music-audio": 4,
     "llm-orch": 4,
     "web-frontend": 3,
@@ -144,12 +195,9 @@
     "iot": 3,
     "dsp": 3,
     "ml-training": 3,
-    "electronics": 3,
-    "lua-upy": 3,
     "kicad-pcb": 3,
-    "freecad": 2,
     "kicad-dsl": 2,
     "platformio": 2
   },
-  "grand_total": 6999
+  "grand_total": 9662
 }
