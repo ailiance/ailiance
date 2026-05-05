@@ -167,7 +167,7 @@ class DomainRouter:
         log.info("Router encoder device: %s", device)
         self._encoder_device = device
         self._encoder = SentenceTransformer(
-            self._cfg.embedding_model, device=device,
+            self._cfg.embedding_model, device=device, trust_remote_code=True,
         )
         # Truncate inputs to bound per-query encode cost (attention is O(n²))
         try:
