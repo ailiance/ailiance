@@ -65,19 +65,69 @@ def _msg_to_dict(msg: Any) -> dict:
     raise TypeError(f"Unsupported message type: {type(msg)!r}")
 
 
+def _normalize_for_template(m: dict) -> dict:
+    """Flatten OpenAI tool roles into vanilla user/assistant text.
+
+    Devstral / Mistral chat templates require strict user-assistant
+    alternation (system optional first). Dirac sends role="tool" turns
+    plus assistant turns with tool_calls; both confuse the template.
+    """
+    role = m.get("role")
+    if role == "tool":
+        tcid = m.get("tool_call_id") or m.get("name") or "?"
+        content = m.get("content") or ""
+        if isinstance(content, list):  # OpenAI block-form content
+            content = "\n".join(
+                str(b.get("text") or b.get("content") or "")
+                for b in content
+                if isinstance(b, dict)
+            )
+        return {
+            "role": "user",
+            "content": f"[TOOL_RESULT id={tcid}]\n{content}",
+        }
+    if role == "assistant" and m.get("tool_calls"):
+        bits: list[str] = []
+        if m.get("content"):
+            bits.append(str(m["content"]))
+        for tc in m["tool_calls"]:
+            fn = tc.get("function") or {}
+            name = fn.get("name", "?")
+            args = fn.get("arguments") or "{}"
+            bits.append(f"[TOOL_CALLS]{name}[ARGS]{args}")
+        return {"role": "assistant", "content": "\n".join(bits)}
+    return {"role": role, "content": m.get("content") or ""}
+
+
+def _coalesce_alternation(messages: list[dict]) -> list[dict]:
+    """Merge consecutive same-role turns to satisfy strict-alternation templates."""
+    out: list[dict] = []
+    for m in messages:
+        if out and out[-1]["role"] == m["role"]:
+            out[-1] = {
+                "role": m["role"],
+                "content": f"{out[-1].get('content') or ''}\n\n{m.get('content') or ''}".strip(),
+            }
+        else:
+            out.append(dict(m))
+    return out
+
+
 def inject_tools_into_messages(
     messages: list[Any], tools: list[Any]
 ) -> list[dict]:
     """Append/insert a system message describing available tools.
 
     Returns plain-dict messages (role/content) so they can flow directly
-    into the worker's chat-template path.
+    into the worker's chat-template path. Also normalizes OpenAI tool
+    roles into vanilla user/assistant text and coalesces consecutive
+    same-role turns to satisfy strict-alternation templates (Mistral).
     """
     tools_serialized = [_tool_to_dict(t) for t in tools]
     tools_json = json.dumps(tools_serialized, ensure_ascii=False, indent=2)
     block = _INJECT_TEMPLATE.format(tools_json=tools_json)
 
-    out: list[dict] = []
+    normalized: list[dict] = []
     injected = False
     for m in messages:
         d = _msg_to_dict(m)
@@ -85,11 +135,15 @@ def inject_tools_into_messages(
             existing = d.get("content") or ""
             d = {**d, "content": f"{existing}\n\n{block}" if existing else block}
             injected = True
-        out.append(d)
+        normalized.append(_normalize_for_template(d))
 
     if not injected:
-        out.insert(0, {"role": "system", "content": block})
-    return out
+        normalized.insert(0, {"role": "system", "content": block})
+
+    # System first, then alternation between user/assistant.
+    head = [m for m in normalized if m.get("role") == "system"][:1]
+    body = [m for m in normalized if m.get("role") != "system"]
+    return head + _coalesce_alternation(body)
 
 
 def generate_tool_call_id() -> str:
