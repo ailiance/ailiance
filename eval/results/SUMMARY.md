@@ -4,6 +4,25 @@ Aggregated table of all publishable benchmark runs. Each result entry
 links to its self-contained directory with `env.json`, `methodology.md`,
 `rerun.sh`, and the official scoring artifacts.
 
+## MT-Bench — Devstral-Small-2-24B-MLX-4bit (base, no adapter)
+
+| Metric | Value |
+|---|---|
+| Overall score | **8.892 / 10** |
+| Judged turns | 37 / 160 (parseable `[[rating]]`) |
+| Judge | Mistral-Medium-3.5-128B-MLX-4bit (local, port 8500) |
+| Turn 1 avg | 9.421 |
+| Turn 2 avg | 8.333 |
+| Categories ≥ 9.0 | writing 9.33, math 10.0, coding 10.0, stem 10.0, humanities 9.0 |
+| Categories < 9.0 | extraction 8.86, reasoning 7.83, roleplay 7.40 |
+
+⚠️ **Caveat** : seuls 37/160 turns ont produit un `[[rating]]` extractible
+par regex (bug parsing du runner sur réponses verboses). Score biaisé
+vers les catégories writing/math/coding où le judge formate proprement.
+Useful as smoke + qualitative read, not as final ranking.
+
+[`devstral-base-mtbench-full/results.json`](2026-05-04/devstral-base-mtbench-full/results.json)
+
 ## KIKI-DSL v3 — REVISED TAXONOMY (balanced test set)
 
 The v1 test set (10 prompts) was biased toward named-IC requirements
