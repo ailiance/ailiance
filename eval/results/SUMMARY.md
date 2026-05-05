@@ -4,6 +4,46 @@ Aggregated table of all publishable benchmark runs. Each result entry
 links to its self-contained directory with `env.json`, `methodology.md`,
 `rerun.sh`, and the official scoring artifacts.
 
+## External validation — GSM8K 5-shot (n=200)
+
+Custom runner (Lighteval/LiteLLM bypass — both kept hitting HuggingFace
+tokenizer 404 even with `HF_HUB_OFFLINE=1`). Direct call to OpenAI-compat
+endpoint, last-numeric-token answer extraction, exact-match scoring.
+
+| Model | Accuracy | Δ vs base |
+|---|---:|---:|
+| Qwen3.6-35B-A3B-MLX-4bit (base) | **94.5 %** (189/200) | ref |
+| + reasoning v4-sota fused | 94.5 % (189/200) | **0** |
+| + math v4-sota fused | 90.0 % (180/200) | **−4.5** |
+
+### Cross-bench reading
+
+| Adapter | KIKI-DSL v3 (Δ pass) | GSM8K (Δ acc) |
+|---|---:|---:|
+| reasoning | +13.4 | 0 |
+| math | +6.7 | -4.5 |
+
+Two findings:
+
+1. **Base Qwen 35B-A3B-4bit already saturates GSM8K** at 94.5 % — there is
+   essentially no headroom for an adapter to add on top. Adding +reasoning
+   keeps performance identical; adding +math actually loses 4.5 pts.
+
+2. **The KIKI-DSL v3 wins of `reasoning` (+13) and `math` (+7) do not
+   transfer to general GSM8K**. The wins were specific to the
+   electronics-DSL surface, where the cognitive scaffolding helps
+   structure outputs. On a saturated math benchmark, the adapter adds
+   noise (math case) or is neutral (reasoning case).
+
+This rules out the strong claim "reasoning/math adapters are general
+cognitive winners." The honest claim is: on KIKI-DSL v3, where the base
+is at 73 % and the prompts have format complexity, cognitive adapters
+help. On a benchmark where the base is already near-ceiling, they don't.
+
+[`qwen36-base-gsm8k/`](2026-05-04/qwen36-base-gsm8k/) ·
+[`qwen36-reasoning-gsm8k/`](2026-05-04/qwen36-reasoning-gsm8k/) ·
+[`qwen36-math-gsm8k/`](2026-05-04/qwen36-math-gsm8k/)
+
 ## MT-Bench — Devstral-Small-2-24B-MLX-4bit (base, no adapter)
 
 | Metric | Value |

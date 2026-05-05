@@ -1,0 +1,9 @@
+{
+  "task": "gsm8k",
+  "n": 200,
+  "correct": 180,
+  "accuracy": 0.9,
+  "model": "/Users/clems/eu-kiki/scratch/qwen-math-fused-4bit",
+  "base_url": "http://127.0.0.1:8896/v1",
+  "evaluated_at": "2026-05-05T12:05:58+0200"
+}
