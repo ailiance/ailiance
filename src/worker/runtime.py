@@ -7,6 +7,7 @@ Each worker process runs one instance of this runtime.
 from __future__ import annotations
 
 import logging
+import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -15,6 +16,43 @@ import mlx.core as mx
 import mlx.nn as nn
 
 log = logging.getLogger(__name__)
+
+
+def _infer_lora_config(adapter_path: Path) -> dict | None:
+    """Infer LoRA config from an adapters.safetensors with no adapter_config.json.
+
+    Returns dict {rank, scale, dropout, keys, num_layers} or None if no LoRA
+    weights found.
+    """
+    try:
+        weights = mx.load(str(adapter_path))
+    except Exception as exc:
+        log.warning("Could not load %s: %s", adapter_path, exc)
+        return None
+    rank: int | None = None
+    num_layers = 0
+    keys: set[str] = set()
+    layer_re = re.compile(r"(?:model\.)?layers\.(\d+)\.(.+)")
+    for key, val in weights.items():
+        if not key.endswith(".lora_a"):
+            continue
+        if rank is None and len(val.shape) >= 2:
+            # MLX LoRA stores lora_a as (input_dim, rank).
+            rank = int(val.shape[1])
+        base = key[: -len(".lora_a")]
+        m = layer_re.search(base)
+        if m:
+            num_layers = max(num_layers, int(m.group(1)) + 1)
+            keys.add(m.group(2))
+    if rank is None or num_layers == 0 or not keys:
+        return None
+    return {
+        "rank": rank,
+        "scale": 20.0,
+        "dropout": 0.0,
+        "keys": sorted(keys),
+        "num_layers": num_layers,
+    }
 
 
 @dataclass(frozen=True)
@@ -49,33 +87,34 @@ class MLXWorkerRuntime:
         log.info("Model loaded")
 
     def preload_adapters(self) -> int:
+        """Cache adapter paths + inferred LoRA config per domain.
+
+        Weights are NOT loaded here — adapter wrap + load happens on apply()
+        so the model can be hot-swapped between domains without keeping
+        every adapter resident at once.
+        """
         adapters_root = Path(self._cfg.adapters_dir)
-        model_keys = {k for k, _ in nn.utils.tree_flatten(self._model.parameters())}
         count = 0
         for domain in self._cfg.domains:
             adapter_path = adapters_root / domain / "adapters.safetensors"
             if not adapter_path.exists():
                 log.warning("No adapter for domain: %s", domain)
                 continue
-            raw = mx.load(str(adapter_path))
-            weights = self._remap_adapter_keys(raw, model_keys)
-            # Skip LoRA-only adapters: load_weights is strict; lora_a/lora_b keys
-            # are not in the base model unless linear_to_lora_layers wrapped it
-            # first (it doesn't here). Filter to keys present in the model.
-            filtered = {k: v for k, v in weights.items() if k in model_keys}
-            skipped = len(weights) - len(filtered)
-            if not filtered:
+            cfg = _infer_lora_config(adapter_path)
+            if cfg is None:
                 log.warning(
-                    "Adapter %s: 0 matching keys (%d skipped LoRA params); "
-                    "running on base model", domain, skipped,
+                    "Adapter %s: could not infer LoRA config (no lora_a keys?); "
+                    "running on base model", domain,
                 )
                 continue
-            mx.eval(filtered)
-            self._adapter_cache[domain] = filtered
+            self._adapter_cache[domain] = {
+                "adapter_path": str(adapter_path),
+                "lora_config": cfg,
+            }
             count += 1
             log.info(
-                "Preloaded adapter: %s (%d keys, %d skipped)",
-                domain, len(filtered), skipped,
+                "Indexed adapter: %s (rank=%d, layers=%d, keys=%d)",
+                domain, cfg["rank"], cfg["num_layers"], len(cfg["keys"]),
             )
         return count
 
@@ -114,14 +153,41 @@ class MLXWorkerRuntime:
         return dict(raw)
 
     def apply(self, domain: str) -> float:
+        """Hot-swap LoRA adapter for the given domain.
+
+        Wraps the base model with LoRA layers (linear_to_lora_layers) using
+        the inferred config from preload_adapters, then loads adapter
+        weights with strict=False so any extra/missing keys are tolerated.
+        Calls remove_lora_layers between switches to keep the active set
+        clean.
+        """
+        from mlx_lm.tuner.utils import linear_to_lora_layers, remove_lora_layers
+
         t0 = time.perf_counter()
         if domain == self._active_domain:
             return 0.0
         if self._active_domain is not None:
-            self._unpatch()
-        if domain in self._adapter_cache:
-            self._model.load_weights(list(self._adapter_cache[domain].items()))
-        self._active_domain = domain
+            try:
+                remove_lora_layers(self._model)
+            except Exception as exc:
+                log.warning("remove_lora_layers failed: %s", exc)
+            self._active_domain = None
+        entry = self._adapter_cache.get(domain)
+        if entry is not None:
+            try:
+                cfg = entry["lora_config"]
+                linear_to_lora_layers(self._model, cfg["num_layers"], cfg)
+                self._model.load_weights(entry["adapter_path"], strict=False)
+                self._active_domain = domain
+            except Exception as exc:
+                log.warning(
+                    "apply(%s) failed (%s); falling back to base model",
+                    domain, exc,
+                )
+                try:
+                    remove_lora_layers(self._model)
+                except Exception:
+                    pass
         return time.perf_counter() - t0
 
     def generate(
