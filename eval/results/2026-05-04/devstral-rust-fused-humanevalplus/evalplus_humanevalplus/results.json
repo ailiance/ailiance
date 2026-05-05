@@ -1,0 +1,18 @@
+{
+  "task": "humanevalplus",
+  "dataset": "humaneval",
+  "model_name": "/Users/clems/eu-kiki/scratch/devstral-rust-fused-4bit",
+  "base_url": "http://127.0.0.1:8891/v1",
+  "n_samples_per_problem": 1,
+  "temperature": 0.0,
+  "seed": 42,
+  "pass_at_k": {
+    "humaneval_base_pass_at_1": 0.8659,
+    "humaneval_plus_pass_at_1": 0.8659,
+    "n_problems": 164,
+    "scorer": "custom-subprocess (macOS-compatible, EvalPlus sandbox bypassed)"
+  },
+  "samples_jsonl": "eval/results/2026-05-04/devstral-rust-fused-humanevalplus/evalplus_humanevalplus/samples.jsonl",
+  "log": "eval/results/2026-05-04/devstral-rust-fused-humanevalplus/evalplus_humanevalplus/evalplus.log",
+  "evaluated_at": "2026-05-05T13:06:35+0200"
+}

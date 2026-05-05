@@ -4,6 +4,20 @@ Aggregated table of all publishable benchmark runs. Each result entry
 links to its self-contained directory with `env.json`, `methodology.md`,
 `rerun.sh`, and the official scoring artifacts.
 
+## HumanEval+ — Devstral-Small-2-24B-MLX-4bit (eu-kiki v1 adapters)
+
+| Run | HE base | HE+ | Δ HE+ vs base | Scorer |
+|---|---:|---:|---:|---|
+| Devstral base | 87.20 % | 82.90 % | ref | EvalPlus Linux (kx6tm-23) |
+| + python fused | 86.00 % | 81.10 % | −1.80 | EvalPlus Linux (kx6tm-23) |
+| + cpp fused | 85.98 % | 85.98 % | −1.22* | custom subprocess (macOS) |
+| + rust fused | **86.59 %** | **86.59 %** | **−0.61*** | custom subprocess (macOS) |
+| + typescript fused | (incomplete) | — | — | — |
+
+\* Custom Studio scorer doesn't apply EvalPlus extra-tests (Linux-only),
+so HE base = HE+ for those rows. Comparison `−Δ` is HE base vs base.
+For rigorous HE+ delta, samples must be re-scored on Linux (kx6tm-23).
+
 ## External validation — GSM8K 5-shot (n=200)
 
 Custom runner (Lighteval/LiteLLM bypass — both kept hitting HuggingFace
