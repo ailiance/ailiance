@@ -19,17 +19,30 @@ log = logging.getLogger(__name__)
 
 
 def _infer_lora_config(adapter_path: Path) -> dict | None:
-    """Infer LoRA config from an adapters.safetensors with no adapter_config.json.
+    """Infer LoRA config from adapter_config.json when present, else from safetensors.
 
     Returns dict {rank, scale, dropout, keys, num_layers} or None if no LoRA
     weights found.
     """
+    import json
+
+    # Prefer adapter_config.json (written by mlx_lm training — contains the
+    # authoritative scale = alpha/rank used during training).
+    config_path = adapter_path.parent / "adapter_config.json"
+    lora_params: dict = {}
+    if config_path.exists():
+        try:
+            raw = json.loads(config_path.read_text())
+            lora_params = raw.get("lora_parameters", {})
+        except Exception as exc:
+            log.warning("Could not parse %s: %s", config_path, exc)
+
     try:
         weights = mx.load(str(adapter_path))
     except Exception as exc:
         log.warning("Could not load %s: %s", adapter_path, exc)
         return None
-    rank: int | None = None
+    rank: int | None = lora_params.get("rank")
     num_layers = 0
     keys: set[str] = set()
     layer_re = re.compile(r"(?:model\.)?layers\.(\d+)\.(.+)")
@@ -46,10 +59,12 @@ def _infer_lora_config(adapter_path: Path) -> dict | None:
             keys.add(m.group(2))
     if rank is None or num_layers == 0 or not keys:
         return None
+    scale = lora_params.get("scale", rank)  # default: alpha == rank -> scale = 1.0
+    dropout = lora_params.get("dropout", 0.0)
     return {
         "rank": rank,
-        "scale": 20.0,
-        "dropout": 0.0,
+        "scale": scale,
+        "dropout": dropout,
         "keys": sorted(keys),
         "num_layers": num_layers,
     }
