@@ -1,24 +1,33 @@
 # src/router/domain_map.py
 """Static mapping of domains to worker ports.
 
-Apertus (:9301) — reasoning, hardware, EU normative
-Devstral (:9302) — code generation
-EuroLLM  (:9303) — multilingual EU
-Gemma    (:9304) — quick / fallback / multilingual short
+Apertus    (:9301) — hardware, EU normative, math, music
+Devstral   (:9302) — code generation
+EuroLLM    (:9303) — multilingual EU
+Gemma      (:9304) — quick / fallback / generalist short
+Qwen3-Next (:8002) — reasoning (80B sparse MoE, served via tunnel to kxkm-ai)
 """
 
 APERTUS_PORT = 9301
 DEVSTRAL_PORT = 9302
 EUROLLM_PORT = 9303
 GEMMA_PORT = 9304
+QWEN_PORT = 8002
 
+# `reasoning` moved off Apertus so the 80B sparse MoE handles complex
+# multi-step reasoning — strictly more capable on benchmarks like GSM8K /
+# AIME / MMLU-Pro reasoning subsets at the cost of ~3x lower throughput
+# (CPU-side MoE expert offload). Math stays on Apertus (faster, sufficient
+# for routine maths).
 APERTUS_DOMAINS = frozenset({
     "electronics-hw", "emc", "dsp", "spice", "kicad", "stm32",
-    "platformio", "iot", "embedded", "math", "reasoning",
+    "platformio", "iot", "embedded", "math",
     "security", "music-audio", "freecad", "power",
     "misra-c", "autosar-cert", "doc-technique-ce",
     "calcul-normatif", "normes-iec",
 })
+
+QWEN_DOMAINS = frozenset({"reasoning"})
 
 DEVSTRAL_DOMAINS = frozenset({
     "python", "rust", "typescript", "cpp", "shell", "html-css",
@@ -68,7 +77,10 @@ DOMAIN_ALIASES: dict[str, str] = {
     "embedded-c": "embedded",
 }
 
-ALL_DOMAINS = APERTUS_DOMAINS | DEVSTRAL_DOMAINS | EUROLLM_DOMAINS | GEMMA_DOMAINS
+ALL_DOMAINS = (
+    APERTUS_DOMAINS | DEVSTRAL_DOMAINS | EUROLLM_DOMAINS | GEMMA_DOMAINS
+    | QWEN_DOMAINS
+)
 
 DOMAIN_TO_WORKER: dict[str, int] = {}
 for d in APERTUS_DOMAINS:
@@ -79,6 +91,8 @@ for d in EUROLLM_DOMAINS:
     DOMAIN_TO_WORKER[d] = EUROLLM_PORT
 for d in GEMMA_DOMAINS:
     DOMAIN_TO_WORKER[d] = GEMMA_PORT
+for d in QWEN_DOMAINS:
+    DOMAIN_TO_WORKER[d] = QWEN_PORT
 
 
 def get_worker_for_domain(domain: str | None) -> int | None:
