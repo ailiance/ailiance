@@ -1,0 +1,80 @@
+{
+  "task": "kiki-kicad-dsl-v3",
+  "task_version": "0.3.0",
+  "n_questions": 15,
+  "n_passed": 13,
+  "pass_rate": 0.8667,
+  "metrics": {
+    "overall_avg": 0.7047,
+    "syntax_ok_rate": 0.2667,
+    "contains_avg": 0.9137,
+    "unique_avg": 0.9333
+  },
+  "by_category": {
+    "passive": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "regulator": {
+      "avg": 0.619,
+      "n": 1
+    },
+    "led": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "rc-filter": {
+      "avg": 0.571,
+      "n": 1
+    },
+    "transistor-amplifier": {
+      "avg": 0.63,
+      "n": 1
+    },
+    "i2c-pullup": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "h-bridge": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "decoupling": {
+      "avg": 0.619,
+      "n": 1
+    },
+    "esd-protection": {
+      "avg": 1.0,
+      "n": 1
+    },
+    "opamp-buffer": {
+      "avg": 0.611,
+      "n": 1
+    },
+    "spice-pure-rc": {
+      "avg": 1.0,
+      "n": 1
+    },
+    "spice-pure-rlc": {
+      "avg": 1.0,
+      "n": 1
+    },
+    "spice-pure-divider": {
+      "avg": 0.667,
+      "n": 1
+    },
+    "spice-pure-bias": {
+      "avg": 0.63,
+      "n": 1
+    },
+    "spice-pure-lc-tank": {
+      "avg": 0.556,
+      "n": 1
+    }
+  },
+  "model_id": "/tmp/qwen-reasoning-fused-4bit",
+  "base_url": "http://127.0.0.1:8871/v1",
+  "task_path": "tasks/kiki_native/kicad_dsl_v3.json",
+  "answers_path": "results/2026-05-04/qwen36-35b-4bit-fused-reasoning-on-kicad-dsl-v3/kiki_kicad_dsl_v3/answers.jsonl",
+  "evaluated_at": "2026-05-05T01:59:32+0200"
+}
