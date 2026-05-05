@@ -1,0 +1,43 @@
+{
+  "_doc": "EU AI Act Annex IV §1(c) — model lineage / supply-chain record.",
+  "deployment_id": "eu-kiki/devstral-24b",
+  "deployed_at_utc": "2026-02-26T00:00:00Z",
+  "deployed_on_host": "macm1 (Mac mini M1)",
+  "served_via": "uvicorn FastAPI worker @ macm1:9302, MLX inference (Metal)",
+  "source": {
+    "provider": "Mistral AI",
+    "huggingface_repo": "mistralai/Devstral-Small-2-24B-Instruct-2512",
+    "huggingface_url": "https://huggingface.co/mistralai/Devstral-Small-2-24B-Instruct-2512",
+    "repo_commit_sha": "f2ca762c466d",
+    "repo_last_modified_utc": "2026-02-25T08:50:48Z",
+    "license_spdx": "apache-2.0",
+    "license_url": "https://huggingface.co/mistralai/Devstral-Small-2-24B-Instruct-2512/blob/main/LICENSE"
+  },
+  "weights_file": {
+    "filename": "(MLX 4-bit conversion in /Users/electron/Projets/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit)",
+    "size_bytes": null,
+    "sha256_expected": null,
+    "comment": "Original safetensors checksums on HF; MLX 4-bit local conversion via mlx_lm.convert -q 4 --q-group-size 64."
+  },
+  "architecture": {
+    "family": "Mistral Small 3.1 (Llama-style dense)",
+    "total_parameters": 24011361840,
+    "active_parameters_per_token": 24011361840,
+    "attention": "GQA",
+    "context_length_native": 131072
+  },
+  "quantization": {
+    "method": "MLX 4-bit (group-size 64)",
+    "produced_by": "L'Électron Rare (mlx_lm.convert from upstream BF16)"
+  },
+  "modifications_post_download": [
+    "MLX 4-bit quantisation (mlx_lm.convert -q 4)",
+    "Domain LoRA adapters loaded at runtime — see output/adapters/devstral/"
+  ],
+  "intended_use": "Public chat playground at https://ml.saillant.cc/chat/eu-kiki/devstral-24b — code generation across Python/Rust/TS/C++/SQL via LoRA adapters.",
+  "out_of_scope": [
+    "Generating malware, exploits or vulnerability research without authorisation",
+    "Code requiring formal verification (medical, avionics) without human review",
+    "Autonomous code execution on production systems"
+  ]
+}

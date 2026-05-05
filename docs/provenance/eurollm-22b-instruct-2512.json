@@ -1,0 +1,43 @@
+{
+  "_doc": "EU AI Act Annex IV §1(c) — model lineage / supply-chain record.",
+  "deployment_id": "eu-kiki/eurollm-22b",
+  "deployed_at_utc": "2026-02-10T00:00:00Z",
+  "deployed_on_host": "studio (Mac Studio M3 Ultra)",
+  "served_via": "uvicorn FastAPI worker @ studio:9303, MLX inference (Metal)",
+  "source": {
+    "provider": "Utter Project (EU-funded consortium)",
+    "huggingface_repo": "utter-project/EuroLLM-22B-Instruct-2512",
+    "huggingface_url": "https://huggingface.co/utter-project/EuroLLM-22B-Instruct-2512",
+    "repo_commit_sha": "38196362cf70",
+    "repo_last_modified_utc": "2026-02-06T02:24:04Z",
+    "license_spdx": "apache-2.0",
+    "license_url": "https://huggingface.co/utter-project/EuroLLM-22B-Instruct-2512/blob/main/LICENSE"
+  },
+  "weights_file": {
+    "filename": "(MLX 8-bit conversion in /Users/clems/KIKI-Mac_tunner/models/EuroLLM-22B-Instruct-2512)",
+    "size_bytes": null,
+    "sha256_expected": null,
+    "comment": "Original safetensors checksums on HF; MLX 8-bit local conversion via mlx_lm.convert -q 8."
+  },
+  "architecture": {
+    "family": "EuroLLM (Llama-style dense, multilingual EU)",
+    "total_parameters": 22637328384,
+    "active_parameters_per_token": 22637328384,
+    "attention": "standard MHA",
+    "context_length_native": 32768,
+    "languages_trained": "all 24 official EU languages + arabic / chinese / korean / russian / hindi / japanese / turkish"
+  },
+  "quantization": {
+    "method": "MLX 8-bit",
+    "produced_by": "L'Électron Rare (mlx_lm.convert from upstream BF16)"
+  },
+  "modifications_post_download": [
+    "MLX 8-bit quantisation",
+    "Domain LoRA adapters loaded at runtime — see output/adapters/eurollm/"
+  ],
+  "intended_use": "Public chat playground at https://ml.saillant.cc/chat/eu-kiki/eurollm-22b — multilingual EU chat, technical translation, multilingual editing.",
+  "out_of_scope": [
+    "Healthcare / legal advice without human review",
+    "Translation of safety-critical documentation without certified linguist verification"
+  ]
+}

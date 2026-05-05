@@ -1,0 +1,43 @@
+{
+  "_doc": "EU AI Act Annex IV §1(c) — model lineage / supply-chain record.",
+  "deployment_id": "eu-kiki/gemma-3-4b (router fallback worker only — not exposed as a chat-eligible card)",
+  "deployed_at_utc": "2025-04-12T00:00:00Z",
+  "deployed_on_host": "tower (Linux + NVIDIA Quadro P2000 5GB VRAM)",
+  "served_via": "llama.cpp on tower:9304 — used as fallback / quick-response worker by the auto-router",
+  "source": {
+    "provider": "Google",
+    "huggingface_repo": "google/gemma-3-4b-it",
+    "huggingface_url": "https://huggingface.co/google/gemma-3-4b-it",
+    "repo_commit_sha": "093f9f388b31",
+    "repo_last_modified_utc": "2025-03-21T20:20:53Z",
+    "license_spdx": "gemma",
+    "license_url": "https://ai.google.dev/gemma/terms",
+    "license_note": "Google Gemma Terms of Use — review obligations before downstream commercial use."
+  },
+  "weights_file": {
+    "filename": "(GGUF Q4_K_M conversion in tower:/home/clems/models/)",
+    "size_bytes": null,
+    "sha256_expected": null,
+    "comment": "Local llama.cpp convert from upstream BF16 to GGUF Q4_K_M. SHA256 of the produced GGUF should be captured next time."
+  },
+  "architecture": {
+    "family": "Gemma 3 (decoder-only)",
+    "total_parameters": 4300079472,
+    "active_parameters_per_token": 4300079472,
+    "attention": "GQA",
+    "context_length_native": 8192
+  },
+  "quantization": {
+    "method": "Q4_K_M",
+    "produced_by": "L'Électron Rare (llama.cpp convert)"
+  },
+  "modifications_post_download": [
+    "Quantisation to Q4_K_M GGUF"
+  ],
+  "intended_use": "Routing fallback only — when the MiniLM domain classifier can't confidently match a labelled domain, the gateway forwards to Gemma 3 because it is fast and reachable. Not surfaced as a primary card on https://ml.saillant.cc.",
+  "out_of_scope": [
+    "Production-quality answers on domain-specific prompts (use the routed worker instead)",
+    "Long-context retrieval (8 k context only)",
+    "Healthcare / legal advice without human review"
+  ]
+}
