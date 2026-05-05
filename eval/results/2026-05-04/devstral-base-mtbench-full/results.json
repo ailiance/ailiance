@@ -1,0 +1,55 @@
+{
+  "overall_score": 8.892,
+  "n_judged_turns": 37,
+  "by_category": {
+    "writing": {
+      "avg": 9.333,
+      "n": 9
+    },
+    "roleplay": {
+      "avg": 7.4,
+      "n": 5
+    },
+    "reasoning": {
+      "avg": 7.833,
+      "n": 6
+    },
+    "math": {
+      "avg": 10.0,
+      "n": 4
+    },
+    "coding": {
+      "avg": 10.0,
+      "n": 4
+    },
+    "extraction": {
+      "avg": 8.857,
+      "n": 7
+    },
+    "stem": {
+      "avg": 10.0,
+      "n": 1
+    },
+    "humanities": {
+      "avg": 9.0,
+      "n": 1
+    }
+  },
+  "by_turn": {
+    "1": {
+      "avg": 9.421,
+      "n": 19
+    },
+    "2": {
+      "avg": 8.333,
+      "n": 18
+    }
+  },
+  "model_id": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit",
+  "judge_model": "/Users/clems/KIKI-Mac_tunner/models/Mistral-Medium-3.5-128B-MLX-4bit",
+  "base_url": "http://127.0.0.1:8870/v1",
+  "judge_base_url": "http://127.0.0.1:8500/v1",
+  "temperature": 0.7,
+  "max_tokens": 1024,
+  "evaluated_at": "2026-05-05T08:53:41+0200"
+}
