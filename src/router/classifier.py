@@ -57,6 +57,12 @@ class RouterConfig:
     num_domains: int = 40
     threshold: float = 0.12
     max_active: int = 4
+    # Encoder device: "mps" on Apple Silicon, "cuda" on NVIDIA, "cpu" fallback.
+    # Auto-resolved at load time when set to "auto".
+    encoder_device: str = "auto"
+    # Cap input length to keep encoding fast — routing decisions stabilize
+    # well before the full 8192 tokens that Jina v3 supports.
+    max_seq_length: int = 128
 
 
 def _build_mlp(cfg: RouterConfig) -> "tnn.Module":
@@ -109,7 +115,24 @@ class DomainRouter:
         meta = json.loads(meta_path.read_text())
         self._domains = meta["domains"]
 
-        self._encoder = SentenceTransformer(self._cfg.embedding_model)
+        device = self._cfg.encoder_device
+        if device == "auto":
+            if torch.backends.mps.is_available():
+                device = "mps"
+            elif torch.cuda.is_available():
+                device = "cuda"
+            else:
+                device = "cpu"
+        log.info("Router encoder device: %s", device)
+        self._encoder_device = device
+        self._encoder = SentenceTransformer(
+            self._cfg.embedding_model, device=device,
+        )
+        # Truncate inputs to bound per-query encode cost (attention is O(n²))
+        try:
+            self._encoder.max_seq_length = self._cfg.max_seq_length
+        except Exception:
+            pass
         self._mlp = _build_mlp(self._cfg)
         state = load_file(str(weights_path))
         # Remap keys: training saves "0.weight" but MLP expects "net.0.weight"
@@ -118,6 +141,9 @@ class DomainRouter:
         else:
             remapped = {f"net.{k}": v for k, v in state.items()}
         self._mlp.load_state_dict(remapped)
+        # Keep MLP on the same device as the encoder to avoid GPU→CPU copy
+        # on every query (~0.3 ms saved per route).
+        self._mlp.to(device)
         self._mlp.eval()
         log.info("Router loaded: %d domains, %s encoder", len(self._domains), self._cfg.embedding_model)
 
@@ -127,8 +153,9 @@ class DomainRouter:
 
         with torch.no_grad():
             emb = self._encoder.encode(query, convert_to_tensor=True, normalize_embeddings=True)
-            emb = emb.cpu()  # MLP is on CPU
-            scores = self._mlp(emb.unsqueeze(0)).squeeze(0)
+            # MLP is co-located with the encoder; final scores moved to CPU
+            # only for argsort/index ops below.
+            scores = self._mlp(emb.unsqueeze(0)).squeeze(0).cpu()
 
         results: list[tuple[str, float]] = []
         for idx in torch.argsort(scores, descending=True):
