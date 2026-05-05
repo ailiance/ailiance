@@ -126,6 +126,30 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             ],
         }
 
+    @app.post("/v1/route")
+    def route_only(payload: dict) -> dict:
+        """Read-only routing decision for a prompt — no chat side-effect.
+
+        Body: {"prompt": "..."}
+        Returns: {"router_loaded", "selections": [{"domain","score"}], "chosen_domain", "chosen_port"}
+        """
+        prompt = (payload or {}).get("prompt", "")
+        if router is None:
+            return {"router_loaded": False, "selections": [], "chosen_port": 9304}
+        selections = router.route(prompt) if prompt else []
+        chosen_domain = selections[0][0] if selections else None
+        chosen_port = (
+            get_worker_for_domain(chosen_domain) if chosen_domain else None
+        ) or 9304
+        return {
+            "router_loaded": True,
+            "selections": [
+                {"domain": d, "score": float(s)} for d, s in selections[:5]
+            ],
+            "chosen_domain": chosen_domain,
+            "chosen_port": chosen_port,
+        }
+
     @app.post("/v1/chat/completions")
     async def chat_completions(req: ChatCompletionRequest):
         forced_port = MODEL_FORCE_MAP.get(req.model)
