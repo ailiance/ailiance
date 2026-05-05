@@ -53,6 +53,20 @@ PAIRS_DIFF = [
 ]
 
 
+def load_full_valid() -> list[tuple[str, str]]:
+    """Read data/router/valid.jsonl, return (prompt, domain) pairs."""
+    import json
+    from pathlib import Path
+    repo_root = Path(__file__).resolve().parent.parent
+    valid_path = repo_root / "data/router/valid.jsonl"
+    pairs: list[tuple[str, str]] = []
+    with valid_path.open() as f:
+        for line in f:
+            obj = json.loads(line)
+            pairs.append((obj["prompt"], obj["domain"]))
+    return pairs
+
+
 def cos(a, b):
     a = a / (np.linalg.norm(a) + 1e-9)
     b = b / (np.linalg.norm(b) + 1e-9)
@@ -140,6 +154,17 @@ def head_predict_with_minilm(embs):
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--full", action="store_true",
+                    help="Run on data/router/valid.jsonl instead of the 10-prompt smoke set")
+    args = ap.parse_args()
+
+    global TESTS
+    if args.full:
+        TESTS = load_full_valid()
+        print(f"FULL VALIDATION MODE: {len(TESTS)} prompts")
+
     embs_minilm = bench_encoder(
         "MiniLM L6 v2", "sentence-transformers/all-MiniLM-L6-v2"
     )
