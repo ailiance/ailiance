@@ -4,7 +4,53 @@ Aggregated table of all publishable benchmark runs. Each result entry
 links to its self-contained directory with `env.json`, `methodology.md`,
 `rerun.sh`, and the official scoring artifacts.
 
-## KIKI-DSL (KiCad schematic synthesis)
+## KIKI-DSL v3 — REVISED TAXONOMY (balanced test set)
+
+The v1 test set (10 prompts) was biased toward named-IC requirements
+(LM358, AMS1117, BME280, 2N3904, IRF540, PESD5V0L1BA, STM32F103,
+LDO AMS1117). The v3 set (15 prompts) adds 5 SPICE-pure prompts using
+abstract net labels (A, B, N1, N2, BASE, EMITTER, OUT). Results below
+use `kicad_dsl_v3.json`.
+
+### v3 ranking (5 adapters benched)
+
+| Adapter | Pass | Avg | Δ pass | Δ avg | v1 → v3 |
+|---------|-----:|----:|-------:|------:|---------|
+| 🥇 reasoning | **86.7 %** | 0.705 | +13.4 | +0.001 | (90% v1) confirmed cognitive winner |
+| 🥈 math | 80.0 % | **0.726** | +6.7 | +0.022 | (70% v1) confirmed, BEST avg |
+| ⚖️ base v3 | 73.3 % | 0.704 | ref | ref | reference |
+| ⚖️ chat-fr | 73.3 % | 0.615 | 0.0 | -0.089 | LOST v1 advantage (+10 → 0) |
+| 📉 spice-sim | 53.3 % | 0.614 | -20.0 | -0.090 | (-30 v1 → -20 v3) recovers somewhat |
+| ❌ kicad-dsl | 46.7 % | 0.477 | -26.6 | -0.227 | (-30 v1 → -27 v3) still bad |
+
+### Findings (HONEST, post-v3 revision)
+
+1. **True cognitive adapters help robustly** — `reasoning` and `math` win on both v1 and v3. The cluster is real but smaller (reasoning's +30 on v1 → +13 on v3; math +10 → +7).
+
+2. **Stylistic adapters were oversold** — `chat-fr` looked +10 on v1 but is **NEUTRAL on v3**. The v1 win was largely a function of v1 prompts triggering refusal preambles which chat-fr suppressed.
+
+3. **Domain-narrow adapters do degrade — but less than v1 suggested** — kicad-dsl/spice-sim drop ~25 points (not 30) on the fair test. They have real wins on their niche prompts (`spice-sim` Q14 bias network = 1.00, Q15 LC tank = 1.00) but lose elsewhere.
+
+4. **Base Qwen 3.6-35B-A3B-4bit is already strong on SPICE-pure prompts** — 5/5 PASS on Q11-Q15 (4 perfect 1.00). Specialized adapters for compact netlist format are largely redundant.
+
+### v1 vs v3 — what was an artifact
+
+| Adapter | v1 Δ pass | v3 Δ pass | Verdict |
+|---------|----------:|----------:|---------|
+| reasoning | +30 | +13 | win confirmed, magnitude inflated on v1 |
+| math | +10 | +7 | win confirmed |
+| chat-fr | +10 | 0 | **artifact**: v1 win was test-set-specific |
+| security | +10 | (TBD) | retest pending |
+| kicad-pcb | 0 | (TBD) | retest pending |
+| embedded | -10 | (TBD) | retest pending |
+| electronics | -20 | (TBD) | retest pending |
+| spice-sim | -30 | -20 | partial artifact, real degradation reduced |
+| components | -30 | (TBD) | retest pending |
+| kicad-dsl | -30 | -27 | confirmed, slight reduction |
+
+→ The v1 test set inflated both wins and losses. v3 is more honest.
+
+## KIKI-DSL v1 (10 prompts, biased — historical reference)
 
 First valid measurement of an eu-kiki adapter delta on a custom KIKI-native bench. Workflow: `mlx_lm fuse` produces a self-contained 4-bit model with adapter weights baked in (workaround for `--adapter-path` runtime bug), evaluated by [`runners/kiki_native_runner.py`](../runners/kiki_native_runner.py) on 10 hand-curated KiCad prompts.
 
