@@ -68,7 +68,7 @@ echo "============================================================"
     --model "$BASE" \
     --adapter-path "$ADAPTER" \
     --save-path "$FUSED_DIR" \
-    --de-quantize 2>&1 | tail -5
+    --dequantize 2>&1 | tail -5
 
 # Step 2: quantize to 4-bit (skipped on --skip-quantize)
 if (( SKIP_QUANTIZE )); then
