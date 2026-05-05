@@ -205,14 +205,16 @@ HF_SOURCES: list[dict] = [
     # each unique sketch name in the file structure (`PartName_SketchName.py`).
     # Loaded specially in main() rather than via fetch_hf().
     # === Lua / Luau (Roblox MIT, 10k+ rows) ===
+    # Schema is {prompt: str, completion: str} where prompt is a Lua comment
+    # describing what the next code block does. We use the prompt directly,
+    # stripping the leading "--" comment markers.
     {
         "domain": "lua-upy",
         "hf_repo": "Roblox/luau_corpus",
         "license": "mit",
         "split": "train",
         "take": 600,
-        # Stack-of-code style — synthesise a prompt around each fragment.
-        "extract": lambda r: f"Explain what this Luau / Lua code does:\n```lua\n{(r.get('content') or r.get('code') or '')[:300]}\n```" if (r.get("content") or r.get("code")) else None,
+        "extract": lambda r: (r.get("prompt") or "").lstrip("-").strip() if r.get("prompt") else None,
     },
 ]
 
