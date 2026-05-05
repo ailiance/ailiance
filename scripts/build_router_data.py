@@ -1,12 +1,22 @@
 # scripts/build_router_data.py
-"""Build router training data from micro-kiki classified data + new EU domains."""
+"""Build router train/valid splits.
+
+By default reads the AI-Act-traceable corpus produced by
+scripts/rebuild_router_dataset.py at data/router-clean/. Set the env var
+ROUTER_LEGACY=1 to fall back to the legacy noisy corpus at
+~/KIKI-Mac_tunner/data/micro-kiki/classified/ (deprecated, kept for
+reproducibility of pre-2026-05 router checkpoints)."""
 
 import json
+import os
 import random
 from pathlib import Path
 
-CLASSIFIED_DIR = Path.home() / "KIKI-Mac_tunner/data/micro-kiki/classified"
-OUTPUT_DIR = Path("data/router")
+REPO_ROOT = Path(__file__).resolve().parent.parent
+LEGACY_DIR = Path.home() / "KIKI-Mac_tunner/data/micro-kiki/classified"
+CLEAN_DIR = REPO_ROOT / "data/router-clean"
+CLASSIFIED_DIR = LEGACY_DIR if os.environ.get("ROUTER_LEGACY") == "1" else CLEAN_DIR
+OUTPUT_DIR = REPO_ROOT / "data/router"
 SEED = 42
 TRAIN_RATIO = 0.8
 
