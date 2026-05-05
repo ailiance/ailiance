@@ -9,6 +9,7 @@ from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, HTTPException, Response
+from fastapi.responses import StreamingResponse
 from prometheus_client import CollectorRegistry, Counter, Histogram, generate_latest
 
 from src.router.domain_map import ALL_DOMAINS, get_worker_for_domain
@@ -106,10 +107,37 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
 
         worker_url = WORKER_URLS[worker_port]
         headers = {"X-Lora-Domain": domain}
+        body = req.model_dump()
+
+        # Streaming path: pipe SSE chunks back to the client without buffering.
+        if body.get("stream"):
+            req_stream = http_client.build_request(
+                "POST",
+                f"{worker_url}/v1/chat/completions",
+                json=body,
+                headers=headers,
+            )
+            worker_resp = await http_client.send(req_stream, stream=True)
+            requests_total.labels(
+                model=req.model, status=str(worker_resp.status_code)
+            ).inc()
+
+            async def relay() -> "object":
+                try:
+                    async for chunk in worker_resp.aiter_raw():
+                        yield chunk
+                finally:
+                    await worker_resp.aclose()
+
+            return StreamingResponse(
+                relay(),
+                status_code=worker_resp.status_code,
+                media_type=worker_resp.headers.get("content-type", "text/event-stream"),
+            )
 
         resp = await http_client.post(
             f"{worker_url}/v1/chat/completions",
-            json=req.model_dump(),
+            json=body,
             headers=headers,
         )
 
