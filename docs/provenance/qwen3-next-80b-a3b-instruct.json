@@ -1,0 +1,42 @@
+{
+  "_doc": "EU AI Act Annex IV §1(c) — model lineage / supply-chain record. Captured at first deployment.",
+  "deployment_id": "eu-kiki/qwen3-next-80b-a3b-instruct",
+  "deployed_at_utc": "2026-05-05T14:00:00Z",
+  "deployed_on_host": "kxkm-ai",
+  "served_via": "llama.cpp on RTX 4090, MoE-offload (-ot 'ffn_(up|gate|down)_exps=CPU')",
+  "source": {
+    "provider": "Qwen (Alibaba Cloud)",
+    "huggingface_repo": "Qwen/Qwen3-Next-80B-A3B-Instruct-GGUF",
+    "huggingface_url": "https://huggingface.co/Qwen/Qwen3-Next-80B-A3B-Instruct-GGUF",
+    "repo_commit_sha": "4c8630cf7af926a9c5095cb4bbbbc65d36e20f77",
+    "repo_last_modified_utc": "2025-12-03T08:26:07Z",
+    "license_spdx": "apache-2.0",
+    "license_url": "https://huggingface.co/Qwen/Qwen3-Next-80B-A3B-Instruct-GGUF/blob/main/LICENSE"
+  },
+  "weights_file": {
+    "filename": "Qwen3-Next-80B-A3B-Instruct-Q4_K_M.gguf",
+    "size_bytes": 48410988384,
+    "sha256_expected": "d103b2733ec1012a52d01edda66b7e5c24ae50508c9f99f5297ea459ef3c061a",
+    "blob_id": "206436d6d50b27ad169e1c4694140ec0fb01d813"
+  },
+  "architecture": {
+    "family": "Qwen3-Next",
+    "total_parameters": 80000000000,
+    "active_parameters_per_token": 3000000000,
+    "experts_total": 512,
+    "experts_active_per_token": 10,
+    "attention": "Gated Delta Net + standard attention hybrid",
+    "context_length_native": 262144
+  },
+  "quantization": {
+    "method": "Q4_K_M",
+    "produced_by": "Qwen team (official GGUF release)"
+  },
+  "modifications_post_download": [],
+  "intended_use": "Public chat playground at https://ml.saillant.cc/chat/eu-kiki/qwen3-next-80b-a3b-instruct — reasoning, multilingual chat. No fine-tuning applied; raw Qwen weights served.",
+  "out_of_scope": [
+    "Healthcare diagnosis",
+    "Legal advice without human review",
+    "Autonomous safety-critical decisions"
+  ]
+}
