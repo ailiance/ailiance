@@ -6,10 +6,20 @@ import asyncio
 import logging
 import time
 from pathlib import Path
+from typing import AsyncIterator
 
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.responses import StreamingResponse
 from prometheus_client import CollectorRegistry, Counter, Histogram, generate_latest
 
+from src.worker.function_calling import (
+    inject_tools_into_messages,
+    parse_tool_call_from_text,
+    sse_chunk_finish,
+    sse_chunk_for_content,
+    sse_chunk_for_tool_call,
+    sse_done,
+)
 from src.worker.runtime import MLXWorkerRuntime, WorkerConfig
 from src.worker.schemas import ChatCompletion, ChatCompletionRequest, ChatMessage, Choice
 
@@ -55,15 +65,22 @@ def make_worker_app(cfg: WorkerConfig, skip_model_load: bool = False) -> FastAPI
         return Response(generate_latest(reg), media_type="text/plain; version=0.0.4")
 
     @app.post("/v1/chat/completions")
-    async def chat_completions(req: ChatCompletionRequest, request: Request) -> ChatCompletion:
+    async def chat_completions(req: ChatCompletionRequest, request: Request):
         domain = request.headers.get("X-Lora-Domain", cfg.domains[0] if cfg.domains else "")
+
+        # Build messages: inject tool spec into system prompt when tools given.
+        if req.tools:
+            messages = inject_tools_into_messages(req.messages, req.tools)
+        else:
+            messages = [
+                {"role": m.role, "content": m.content or ""} for m in req.messages
+            ]
 
         try:
             async with semaphore:
                 # MLX Metal requires GPU ops on main thread
                 runtime.apply(domain)
                 t0 = time.perf_counter()
-                messages = [{"role": m.role, "content": m.content} for m in req.messages]
                 text, _meta = runtime.generate(messages, req.max_tokens, req.temperature)
                 latency = time.perf_counter() - t0
         except Exception as exc:
@@ -81,9 +98,44 @@ def make_worker_app(cfg: WorkerConfig, skip_model_load: bool = False) -> FastAPI
         inference_latency.observe(latency)
         requests_total.labels(status="200").inc()
 
+        # If tools were provided, try to parse a tool call from the output.
+        tool_calls = None
+        content_text = text
+        if req.tools:
+            content_text, tool_calls = parse_tool_call_from_text(text)
+            if tool_calls is None:
+                content_text = text
+
+        finish_reason = "tool_calls" if tool_calls else "stop"
+
+        # Rough token accounting (model-agnostic placeholder).
+        prompt_tokens = sum(len((m.get("content") or "").split()) for m in messages)
+        completion_tokens = len((text or "").split())
+
+        if req.stream:
+            async def event_stream() -> AsyncIterator[str]:
+                if tool_calls:
+                    yield sse_chunk_for_tool_call(req.model, tool_calls)
+                else:
+                    yield sse_chunk_for_content(req.model, content_text)
+                yield sse_chunk_finish(
+                    req.model, finish_reason, prompt_tokens, completion_tokens
+                )
+                yield sse_done()
+
+            return StreamingResponse(
+                event_stream(), media_type="text/event-stream"
+            )
+
+        # Non-streaming response.
+        message = ChatMessage(
+            role="assistant",
+            content=None if tool_calls else content_text,
+            tool_calls=tool_calls,
+        )
         return ChatCompletion(
             model=req.model,
-            choices=[Choice(message=ChatMessage(role="assistant", content=text))],
+            choices=[Choice(message=message, finish_reason=finish_reason)],
         )
 
     return app

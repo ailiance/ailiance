@@ -32,11 +32,28 @@ def _flatten_content(value: Any) -> str | None:
 class ChatMessage(BaseModel, extra="ignore"):
     role: str
     content: str | None = None
+    # Allow assistant tool_calls in conversation history (Dirac sends these
+    # back when continuing a tool-use loop). Free-form list of dicts so we
+    # don't enforce OpenAI's exact ToolCall shape on input.
+    tool_calls: list[dict[str, Any]] | None = None
+    tool_call_id: str | None = None
+    name: str | None = None
 
     @field_validator("content", mode="before")
     @classmethod
     def _coerce_content(cls, value: Any) -> str | None:
         return _flatten_content(value)
+
+
+class FunctionDef(BaseModel, extra="ignore"):
+    name: str
+    description: str | None = None
+    parameters: dict[str, Any] | None = None
+
+
+class ToolDef(BaseModel, extra="ignore"):
+    type: str = "function"
+    function: FunctionDef
 
 
 class ChatCompletionRequest(BaseModel, extra="ignore"):
@@ -45,6 +62,10 @@ class ChatCompletionRequest(BaseModel, extra="ignore"):
     temperature: float = 0.7
     max_tokens: int = 2048
     stream: bool = False
+    tools: list[ToolDef] | None = None
+    tool_choice: str | dict[str, Any] | None = None
+    parallel_tool_calls: bool | None = None
+    stream_options: dict[str, Any] | None = None
 
 
 class Choice(BaseModel):
