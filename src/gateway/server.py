@@ -24,6 +24,9 @@ _DEFAULT_WORKER_URLS = {
     9302: "http://localhost:9302",
     9303: "http://localhost:9303",
     9304: "http://localhost:9304",
+    # Qwen3.5 35B A3B on kxkm-ai (llama-server, alias 'qwen-32b-awq')
+    # reached via the autossh tunnel listening on 0.0.0.0:8002.
+    8002: "http://localhost:8002",
 }
 
 
@@ -52,6 +55,17 @@ MODEL_FORCE_MAP = {
     "eu-kiki-apertus": 9301,
     "eu-kiki-devstral": 9302,
     "eu-kiki-eurollm": 9303,
+    "eu-kiki-qwen": 8002,  # llama-server on kxkm-ai
+}
+
+# Per-port forward overrides for non-eu-kiki backends. The gateway rewrites
+# the request body's `model` field and injects an Authorization header before
+# proxying. Both pieces are sourced from env so secrets never land in source.
+WORKER_FORWARD_OVERRIDES: dict[int, dict[str, str]] = {
+    8002: {
+        "model": "qwen-32b-awq",  # the alias llama-server expects
+        "auth_env": "KXKM_QWEN_KEY",
+    },
 }
 
 
@@ -108,6 +122,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 {"id": "eu-kiki-apertus", "object": "model", "owned_by": "eu-kiki"},
                 {"id": "eu-kiki-devstral", "object": "model", "owned_by": "eu-kiki"},
                 {"id": "eu-kiki-eurollm", "object": "model", "owned_by": "eu-kiki"},
+                {"id": "eu-kiki-qwen", "object": "model", "owned_by": "eu-kiki"},
             ],
         }
 
@@ -138,6 +153,19 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         # tool_call_id) don't reach llama.cpp workers as `null` and trip
         # their JSON schema validation.
         body = req.model_dump(exclude_none=True)
+
+        # Per-port forward rewrites: rename `model` and inject Authorization
+        # for backends that aren't part of the eu-kiki worker pool (kxkm-ai
+        # llama-server expects an alias + bearer key).
+        override = WORKER_FORWARD_OVERRIDES.get(worker_port)
+        if override:
+            if "model" in override:
+                body["model"] = override["model"]
+            auth_env = override.get("auth_env")
+            if auth_env:
+                key = os.environ.get(auth_env, "")
+                if key:
+                    headers["Authorization"] = f"Bearer {key}"
 
         # Streaming path: pipe SSE chunks back to the client without buffering.
         if body.get("stream"):
