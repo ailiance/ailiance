@@ -100,10 +100,12 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             selections = router.route(user_msg)
             route_latency.observe(time.perf_counter() - t0)
             domain = selections[0][0] if selections else "python"
-            worker_port = get_worker_for_domain(domain) or 9302
+            # Fallback to Gemma (9304): reachable + fast for unmapped domains.
+            worker_port = get_worker_for_domain(domain) or 9304
         else:
-            domain = "python"
-            worker_port = 9302
+            # No router loaded → default to Gemma (fast, reachable).
+            domain = "general"
+            worker_port = 9304
 
         worker_url = WORKER_URLS[worker_port]
         headers = {"X-Lora-Domain": domain}
