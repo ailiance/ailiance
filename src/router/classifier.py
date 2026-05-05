@@ -45,8 +45,33 @@ except Exception:  # pragma: no cover - optional dep / duplicate registration
     _ROUTER_CACHE_HITS = _NoopCounter()
     _ROUTER_CACHE_MISSES = _NoopCounter()
 
+try:
+    from prometheus_client import Counter as _PromCounter2  # noqa: F401
+
+    _ROUTER_L2_HITS = _PromCounter(
+        "eu_kiki_router_l2_hits_total",
+        "L2 semantic-cache hits (cosine match) in DomainRouter.route()",
+    )
+except Exception:  # pragma: no cover
+    class _NoopCounter2:
+        def inc(self, _amount: float = 1) -> None:
+            return None
+
+    _ROUTER_L2_HITS = _NoopCounter2()
+
 
 _CACHE_MAXSIZE = 1024
+
+# Default prompts used to warm L1 LRU at boot (eliminates p95 spike on first
+# real query). Cover the most-frequent French/English greetings and a few
+# common task starts.
+DEFAULT_WARMUP_PROMPTS: list[str] = [
+    "coucou", "salut", "bonjour", "hello", "hi",
+    "merci", "ok", "comment ça va",
+    "explique moi", "donne moi un exemple",
+    "écris du code python", "give me code", "write a function",
+    "traduis", "translate",
+]
 
 
 @dataclass(frozen=True)
@@ -63,6 +88,10 @@ class RouterConfig:
     # Cap input length to keep encoding fast — routing decisions stabilize
     # well before the full 8192 tokens that Jina v3 supports.
     max_seq_length: int = 128
+    # L2 semantic cache: cosine threshold for embedding-similarity hit.
+    # Catches paraphrases ("coucou" / "salut" / "hello"). Set to 0 to disable.
+    l2_cache_threshold: float = 0.95
+    l2_cache_size: int = 256
 
 
 def _build_mlp(cfg: RouterConfig) -> "tnn.Module":
@@ -98,11 +127,23 @@ class DomainRouter:
         self._encoder = None
         self._mlp = None
         self._domains: list[str] = []
+        # L2 semantic cache: parallel ring of (embedding, route) pairs.
+        # Set to None to disable. _l2_embs is a tensor on the encoder device
+        # so the cosine similarity stays on GPU.
+        self._l2_embs = None  # torch.Tensor [N, D] or None
+        self._l2_routes: list[tuple[tuple[str, float], ...]] = []
         self._load(weights_dir)
         # Bind a fresh lru_cache per-instance so reloading flushes it.
         self._cached_route_by_hash = lru_cache(maxsize=_CACHE_MAXSIZE)(
             self._route_by_hash
         )
+        # Warm caches at construction time. Eliminates the ~250 ms p95 spike
+        # observed on first call to Jina v3 (LoRA-task lazy init). Cheap on
+        # any encoder; ~150-300 ms one-time cost paid at boot, not per-query.
+        try:
+            self.prewarm()
+        except Exception:
+            log.exception("router prewarm failed (non-fatal)")
 
     def _load(self, weights_dir: Path) -> None:
         import torch
@@ -148,11 +189,27 @@ class DomainRouter:
         log.info("Router loaded: %d domains, %s encoder", len(self._domains), self._cfg.embedding_model)
 
     def _compute_route(self, query: str) -> list[tuple[str, float]]:
-        """Uncached embedding+MLP path."""
+        """Uncached embedding+MLP path. Also feeds the L2 semantic cache."""
         import torch
 
         with torch.no_grad():
-            emb = self._encoder.encode(query, convert_to_tensor=True, normalize_embeddings=True)
+            emb = self._encoder.encode(
+                query, convert_to_tensor=True, normalize_embeddings=True,
+            )
+
+            # L2 semantic cache lookup BEFORE the MLP — saves the MLP forward
+            # AND the unnecessary CPU transfer when a near-duplicate hits.
+            if (
+                self._cfg.l2_cache_threshold > 0
+                and self._l2_embs is not None
+                and self._l2_embs.shape[0] > 0
+            ):
+                sim = torch.matmul(self._l2_embs, emb)
+                best = torch.argmax(sim).item()
+                if sim[best].item() >= self._cfg.l2_cache_threshold:
+                    _ROUTER_L2_HITS.inc()
+                    return list(self._l2_routes[best])
+
             # MLP is co-located with the encoder; final scores moved to CPU
             # only for argsort/index ops below.
             scores = self._mlp(emb.unsqueeze(0)).squeeze(0).cpu()
@@ -166,7 +223,29 @@ class DomainRouter:
             results.append((self._domains[i], s))
             if len(results) >= self._cfg.max_active:
                 break
+
+        # Push (emb, results) into the L2 ring (FIFO).
+        if self._cfg.l2_cache_threshold > 0:
+            self._l2_push(emb.detach(), tuple(results))
+
         return results
+
+    def _l2_push(self, emb, route: tuple[tuple[str, float], ...]) -> None:
+        """Append (emb, route) to L2 cache, evicting oldest when full."""
+        import torch
+
+        e = emb.unsqueeze(0)
+        if self._l2_embs is None:
+            self._l2_embs = e
+            self._l2_routes = [route]
+            return
+        if self._l2_embs.shape[0] < self._cfg.l2_cache_size:
+            self._l2_embs = torch.cat([self._l2_embs, e], dim=0)
+            self._l2_routes.append(route)
+        else:
+            # Ring buffer: roll and overwrite oldest slot.
+            self._l2_embs = torch.cat([self._l2_embs[1:], e], dim=0)
+            self._l2_routes = self._l2_routes[1:] + [route]
 
     def _route_by_hash(self, _query_hash: str, query: str) -> tuple[tuple[str, float], ...]:
         """Cached helper — keyed on the sha256 hash to bound memory.
@@ -200,12 +279,17 @@ class DomainRouter:
         """Flush the L1 cache (useful after reloads or in tests)."""
         self._cached_route_by_hash.cache_clear()
 
-    def prewarm(self, prompts: list[str]) -> int:
-        """Populate the L1 cache by routing each prompt once.
+    def prewarm(self, prompts: list[str] | None = None) -> int:
+        """Populate the L1+L2 caches by routing each prompt once.
 
-        Returns the number of prompts processed. Used at startup (and
-        later by L3) to amortize the embedding cost on common queries.
+        With prompts=None, uses DEFAULT_WARMUP_PROMPTS to kill the cold-call
+        p95 spike (Jina v3 LoRA-task lazy init costs ~250 ms on first call).
+        Pass an explicit list to extend or replace.
+
+        Returns the number of prompts processed.
         """
+        if prompts is None:
+            prompts = DEFAULT_WARMUP_PROMPTS
         n = 0
         for p in prompts:
             try:
@@ -213,4 +297,7 @@ class DomainRouter:
                 n += 1
             except Exception:  # pragma: no cover
                 log.exception("prewarm failed for prompt: %r", p[:80])
+        log.info("Router prewarmed on %d prompts (L1=%d, L2=%d)",
+                 n, self._cached_route_by_hash.cache_info().currsize,
+                 0 if self._l2_embs is None else self._l2_embs.shape[0])
         return n
