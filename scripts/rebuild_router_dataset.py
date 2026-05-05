@@ -403,6 +403,21 @@ def main() -> None:
                 "license": "apache-2.0",
             })
 
+    # Short greetings (FR/EN) — short prompts collide with Lua comment-style
+    # data; we ground them explicitly in chat-fr.
+    try:
+        from augment_short_greetings import SHORT_GREETINGS  # type: ignore
+        for prompt in SHORT_GREETINGS:
+            if _ok(prompt):
+                all_rows.append({
+                    "prompt": prompt,
+                    "domain": "chat-fr",
+                    "source": "L'Électron Rare internal (curated greetings)",
+                    "license": "apache-2.0",
+                })
+    except Exception as e:
+        print(f"  short greetings — import failed: {e}")
+
     # Write per-domain JSONL
     by_domain: dict[str, list[dict]] = {}
     for r in all_rows:
