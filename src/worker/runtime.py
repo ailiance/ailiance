@@ -83,7 +83,14 @@ class MLXWorkerRuntime:
         mx.set_cache_limit(self._cfg.cache_limit_gb * 1024**3)
 
         log.info("Loading model from %s", self._cfg.model_path)
-        self._model, self._tokenizer = mlx_load(self._cfg.model_path)
+        # fix_mistral_regex=True patches Mistral-Small-3.x tokenizer regex
+        # (HF discussion #84). Unknown kwargs are silently ignored by
+        # tokenizers that don't recognize them, so this is safe to pass for
+        # all backbones we serve (Apertus, Devstral/Mistral, EuroLLM).
+        self._model, self._tokenizer = mlx_load(
+            self._cfg.model_path,
+            tokenizer_config={"fix_mistral_regex": True},
+        )
         log.info("Model loaded")
 
     def preload_adapters(self) -> int:
