@@ -123,6 +123,46 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 {"id": "eu-kiki-devstral", "object": "model", "owned_by": "eu-kiki"},
                 {"id": "eu-kiki-eurollm", "object": "model", "owned_by": "eu-kiki"},
                 {"id": "eu-kiki-qwen", "object": "model", "owned_by": "eu-kiki"},
+                {"id": "eu-kiki-gemma", "object": "model", "owned_by": "eu-kiki"},
+            ],
+        }
+
+    @app.get("/v1/models/details")
+    def list_models_details() -> dict:
+        """Enriched model listing with display metadata.
+
+        Reads `configs/models-display.yaml` on each call so descriptions
+        can be edited without a gateway restart. The minimal /v1/models
+        endpoint stays OpenAI-standard for plain clients.
+        """
+        import yaml as _yaml
+
+        path = Path("configs/models-display.yaml")
+        try:
+            raw = _yaml.safe_load(path.read_text()) if path.exists() else {}
+        except Exception as exc:
+            log.warning("models-display.yaml parse failed: %s", exc)
+            raw = {}
+        models = raw.get("models", {}) if isinstance(raw, dict) else {}
+        # Enumerate the same id list as /v1/models so they stay aligned.
+        ids = [
+            "eu-kiki",
+            "eu-kiki-apertus",
+            "eu-kiki-devstral",
+            "eu-kiki-eurollm",
+            "eu-kiki-qwen",
+            "eu-kiki-gemma",
+        ]
+        return {
+            "object": "list",
+            "data": [
+                {
+                    "id": mid,
+                    "object": "model",
+                    "owned_by": "eu-kiki",
+                    **(models.get(mid) or {}),
+                }
+                for mid in ids
             ],
         }
 

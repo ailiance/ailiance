@@ -1,0 +1,66 @@
+# Display metadata for /v1/models/details endpoint.
+# OpenAI-standard /v1/models stays minimal (id + object + owned_by);
+# clients (UIs, aki) that want richer info hit /v1/models/details.
+# Edit freely — gateway re-reads this file on each request (no restart).
+
+models:
+  eu-kiki:
+    display_name: "Auto-router"
+    base_model: "MiniLM L6 v2 + 2-layer MLP"
+    domain: "router"
+    description: >-
+      Domain router classifies your prompt over 40 domains and forwards
+      to the best worker (Apertus 70B / Devstral 24B / EuroLLM 22B /
+      Qwen 35B / Gemma 3 4B). Decision exposed via /v1/route.
+    headline: "MiniLM 384d · 40 domains · top1≈65% top3≈86%"
+
+  eu-kiki-apertus:
+    display_name: "Apertus 70B"
+    base_model: "Apertus 70B Instruct (EPFL + ETH + CSCS)"
+    domain: "general / hardware / EU norms"
+    description: >-
+      Swiss-stack 70B foundation model — fluent FR/DE/IT/EN. Fine-tuned
+      with LoRA over 20 domains (electronics, EMC, KiCad, STM32, IoT,
+      embedded, IEC norms, etc.). MLX 8-bit · ~70 GB · runs on Mac
+      Studio M3 Ultra (studio:9301).
+    headline: "70B params · MLX 8-bit · Mac Studio M3 Ultra"
+
+  eu-kiki-devstral:
+    display_name: "Devstral 24B"
+    base_model: "Mistral Small 3.1 (Devstral fine-tune)"
+    domain: "code"
+    description: >-
+      Mistral-AI Devstral 24B — code-focused. 16 LoRA adapters
+      (python, rust, typescript, cpp, sql, devops, etc.).
+      MLX 4-bit · ~13 GB · runs on Mac mini M1 (macm1:9302).
+    headline: "24B params · MLX 4-bit · Mac mini M1"
+
+  eu-kiki-eurollm:
+    display_name: "EuroLLM 22B"
+    base_model: "EuroLLM 22B Instruct (utter-project)"
+    domain: "multilingual"
+    description: >-
+      EuroLLM 22B — multilingual EU coverage (24 official EU languages).
+      MLX 8-bit · ~22 GB · runs on Mac Studio M3 Ultra (studio:9303).
+    headline: "22B params · MLX 8-bit · Mac Studio M3 Ultra"
+
+  eu-kiki-qwen:
+    display_name: "Qwen3.5 35B A3B"
+    base_model: "Qwen3.5 35B (MoE 256 experts, 3B active)"
+    domain: "reasoning"
+    description: >-
+      Qwen3.5 35B Active-3B MoE Q3_K_XL — reasoning-tuned with explicit
+      <think> traces. ~17 GB · llama.cpp on KXKM-AI server (RTX 4090
+      via SSH tunnel to kxkm-ai:8002).
+    headline: "35B MoE / 3B active · Q3_K_XL · KXKM-AI"
+
+  eu-kiki-gemma:
+    display_name: "Gemma 3 4B IT"
+    base_model: "Google Gemma 3 4B Instruction-Tuned"
+    domain: "quick / fallback"
+    description: >-
+      Gemma 3 4B IT Q4_K_M — fast generalist for short prompts,
+      summaries, classification, and unmapped-domain fallback.
+      ~2.7 GB · llama.cpp Vulkan on Tower (Quadro P2000 5GB VRAM,
+      32K context with KV cache in CPU RAM).
+    headline: "4B params · Q4_K_M · Tower (Vulkan / Quadro P2000)"
