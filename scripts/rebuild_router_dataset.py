@@ -149,6 +149,71 @@ HF_SOURCES: list[dict] = [
         "filter_keywords": ["security", "encrypt", "decrypt", "password", "auth", "vulnerab", "secure ", "ssl ", "tls "],
         "extract": lambda r: r.get("instruction") or r.get("prompt"),
     },
+    # === Analog electronics — Electronics-QA (Apache-2.0, 2516 rows) ===
+    # Heavy focus on transistor circuits, fuzz pedals, op-amps; complements the
+    # spice / power / electronics-hw curated prompts.
+    {
+        "domain": "spice",
+        "hf_repo": "theprint/Electronics-QA",
+        "license": "apache-2.0",
+        "split": "train",
+        "take": 600,
+        "filter_keywords": ["circuit", "transistor", "diode", "amplifier", "spice", "simulat",
+                            "ngspice", "ltspice", "voltage", "current", "filter", "rc circuit",
+                            "rl circuit", "rlc", "operational amplifier", "op-amp"],
+        "extract": lambda r: r.get("question"),
+    },
+    {
+        "domain": "power",
+        "hf_repo": "theprint/Electronics-QA",
+        "license": "apache-2.0",
+        "split": "train",
+        "take": 600,
+        "filter_keywords": ["power", "buck", "boost", "converter", "battery", "regulator",
+                            "transformer", "inverter", "supply", "watt", "load",
+                            "smps", "linear regulator", "ldo"],
+        "extract": lambda r: r.get("question"),
+    },
+    {
+        "domain": "electronics",
+        "hf_repo": "theprint/Electronics-QA",
+        "license": "apache-2.0",
+        "split": "train",
+        "take": 600,
+        "filter_keywords": ["resistor", "capacitor", "inductor", "led ", "ic ",
+                            "pcb", "schematic", "component", "datasheet", "pinout",
+                            "current limit", "ohm", "farad"],
+        "extract": lambda r: r.get("question"),
+    },
+    # === DevOps — CodeAlpaca filtered for k8s/docker/CI/CD/Terraform/Ansible ===
+    # The "good" DevOps datasets on HF (PL-DevOps-Instruct, devops-kubectl-v1,
+    # devops-gitops-corpus) all have empty READMEs and no declared licence.
+    # We stay strict and filter CodeAlpaca on DevOps keywords instead.
+    {
+        "domain": "devops",
+        "hf_repo": "sahil2801/CodeAlpaca-20k",
+        "license": "cc-by-4.0",
+        "split": "train",
+        "take": 600,
+        "filter_keywords": ["kubernetes", "kubectl", "k8s ", "docker ", "compose",
+                            "terraform", "ansible", "ci/cd", "github actions",
+                            "jenkins", "gitlab ci", "deploy", "helm", "nginx"],
+        "extract": lambda r: r.get("instruction") or r.get("prompt"),
+    },
+    # === FreeCAD parametric sketches (CC-BY-4.0, 3000 .py files) ===
+    # The dataset is Python files, not prompts. We synthesise a prompt for
+    # each unique sketch name in the file structure (`PartName_SketchName.py`).
+    # Loaded specially in main() rather than via fetch_hf().
+    # === Lua / Luau (Roblox MIT, 10k+ rows) ===
+    {
+        "domain": "lua-upy",
+        "hf_repo": "Roblox/luau_corpus",
+        "license": "mit",
+        "split": "train",
+        "take": 600,
+        # Stack-of-code style — synthesise a prompt around each fragment.
+        "extract": lambda r: f"Explain what this Luau / Lua code does:\n```lua\n{(r.get('content') or r.get('code') or '')[:300]}\n```" if (r.get("content") or r.get("code")) else None,
+    },
 ]
 
 # Manually curated domains — already in scripts/augment_router_data.py.
@@ -235,6 +300,48 @@ def main() -> None:
         "target_per_domain": TARGET_PER_DOMAIN,
         "sources": [],
     }
+
+    # === FreeCAD — special handling: snapshot the file list of Yas1n/FreeCAD_Sketches
+    # via the HF API and synthesise a "Generate a FreeCAD sketch named X" prompt
+    # per file. Avoids downloading the whole repo just to read filenames.
+    try:
+        import urllib.request
+        url = "https://huggingface.co/api/datasets/Yas1n/FreeCAD_Sketches/tree/main?recursive=true"
+        with urllib.request.urlopen(url, timeout=20) as resp:
+            tree = json.loads(resp.read())
+        py_files = [
+            t["path"] for t in tree
+            if t.get("type") == "file" and t["path"].endswith(".py")
+        ]
+        random.shuffle(py_files)
+        prompts = []
+        seen: set[str] = set()
+        for p in py_files[:1500]:
+            stem = Path(p).stem  # PartName_SketchName
+            parts = stem.replace("_", " ").strip()
+            if not parts or parts.lower() in seen:
+                continue
+            seen.add(parts.lower())
+            prompts.append({
+                "prompt": f"Generate a parametric FreeCAD sketch in Python for: {parts}",
+                "domain": "freecad",
+                "source": "Yas1n/FreeCAD_Sketches",
+                "license": "cc-by-4.0",
+            })
+            if len(prompts) >= 600:
+                break
+        all_rows.extend(prompts)
+        provenance["sources"].append({
+            "domain": "freecad",
+            "huggingface_repo": "Yas1n/FreeCAD_Sketches",
+            "config": "filename-derived prompts (no row download)",
+            "split": None,
+            "license_spdx": "cc-by-4.0",
+            "rows_used": len(prompts),
+        })
+        print(f"  freecad — synthesised {len(prompts)} prompts from FreeCAD_Sketches filenames")
+    except Exception as e:
+        print(f"  freecad — fetch failed: {e}")
 
     # === HF-sourced domains ===
     for spec in HF_SOURCES:
