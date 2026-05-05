@@ -166,11 +166,11 @@
     }
   ],
   "totals": {
+    "chat-fr": 956,
     "python": 807,
     "sql": 805,
     "math": 803,
     "reasoning": 803,
-    "chat-fr": 801,
     "spice": 702,
     "typescript": 603,
     "electronics": 603,
@@ -199,5 +199,5 @@
     "kicad-dsl": 2,
     "platformio": 2
   },
-  "grand_total": 9662
+  "grand_total": 9817
 }
