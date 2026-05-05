@@ -345,6 +345,34 @@ def main() -> None:
     except Exception as e:
         print(f"  freecad — fetch failed: {e}")
 
+    # === Niche-domain manually-curated prompts ===
+    try:
+        from augment_niche_domains import NICHE_DOMAIN_PROMPTS  # type: ignore
+        for domain, prompts in NICHE_DOMAIN_PROMPTS.items():
+            kept = 0
+            for p in prompts:
+                if _ok(p):
+                    all_rows.append({
+                        "prompt": p,
+                        "domain": domain,
+                        "source": "L'Électron Rare internal (niche curation)",
+                        "license": "apache-2.0",
+                    })
+                    kept += 1
+            if kept:
+                provenance["sources"].append({
+                    "domain": domain,
+                    "huggingface_repo": None,
+                    "config": None,
+                    "split": None,
+                    "license_spdx": "apache-2.0",
+                    "rows_used": kept,
+                    "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py.",
+                })
+            print(f"  niche {domain:14s} +{kept}")
+    except Exception as e:
+        print(f"  niche import failed: {e}")
+
     # === HF-sourced domains ===
     for spec in HF_SOURCES:
         rows = fetch_hf(spec)
