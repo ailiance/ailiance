@@ -40,50 +40,55 @@ MAX_LEN = 600            # max chars (router only sees one-shot intent)
 # (domain, hf_repo, license, split, take_n_max, hf_filter_fn, hf_extract_fn)
 # extract_fn returns the user prompt text or None to skip the row.
 HF_SOURCES: list[dict] = [
-    # === Programming languages ===
+    # === Programming languages — CodeAlpaca filtered by language keyword ===
+    # All language-specific prompts come from sahil2801/CodeAlpaca-20k (CC-BY-4.0)
+    # which contains generic instruction-tuning prompts; we filter per language
+    # so each domain gets prompts that mention the language explicitly.
+    # CodeAlpaca is verified existing (2023-07, 19k downloads).
     {
         "domain": "python",
-        "hf_repo": "iamtarun/python_code_instructions_18k_alpaca",
-        "license": "apache-2.0",
+        "hf_repo": "sahil2801/CodeAlpaca-20k",
+        "license": "cc-by-4.0",
         "split": "train",
-        "take": 1000,
-        "extract": lambda r: r.get("instruction"),
+        "take": 800,
+        "filter_keywords": ["python", "def ", "import ", "pip ", "numpy", "pandas"],
+        "extract": lambda r: r.get("instruction") or r.get("prompt"),
     },
     {
         "domain": "rust",
-        "hf_repo": "ammarnasr/the-stack-rust-clean",
-        "license": "other-stack-v1",  # The Stack, opt-out respected
+        "hf_repo": "sahil2801/CodeAlpaca-20k",
+        "license": "cc-by-4.0",
         "split": "train",
-        "take": 1000,
-        # The Stack is *code*. We synthesise a prompt around the file path.
-        "extract": lambda r: f"Explain or modify this Rust file: `{r.get('max_stars_repo_path', 'main.rs')}`" if r.get("content") else None,
+        "take": 600,
+        "filter_keywords": ["rust ", " rust", "fn ", "cargo ", "trait ", "impl ", "let mut"],
+        "extract": lambda r: r.get("instruction") or r.get("prompt"),
     },
     {
         "domain": "typescript",
-        "hf_repo": "bigcode/the-stack-smol",
-        "license": "other-stack-v1",
+        "hf_repo": "sahil2801/CodeAlpaca-20k",
+        "license": "cc-by-4.0",
         "split": "train",
-        "config": "data/typescript",
-        "take": 1000,
-        "extract": lambda r: f"Review or extend this TypeScript file: `{r.get('max_stars_repo_path', 'index.ts')}`" if r.get("content") else None,
+        "take": 600,
+        "filter_keywords": ["typescript", "javascript", "interface ", "node.js", "tsconfig", "react", " js "],
+        "extract": lambda r: r.get("instruction") or r.get("prompt"),
     },
     {
         "domain": "cpp",
-        "hf_repo": "bigcode/the-stack-smol",
-        "license": "other-stack-v1",
+        "hf_repo": "sahil2801/CodeAlpaca-20k",
+        "license": "cc-by-4.0",
         "split": "train",
-        "config": "data/c++",
-        "take": 1000,
-        "extract": lambda r: f"Review or extend this C++ file: `{r.get('max_stars_repo_path', 'main.cpp')}`" if r.get("content") else None,
+        "take": 600,
+        "filter_keywords": ["c++", "cpp", "std::", "iostream", "printf"],
+        "extract": lambda r: r.get("instruction") or r.get("prompt"),
     },
     {
         "domain": "shell",
-        "hf_repo": "bigcode/the-stack-smol",
-        "license": "other-stack-v1",
+        "hf_repo": "sahil2801/CodeAlpaca-20k",
+        "license": "cc-by-4.0",
         "split": "train",
-        "config": "data/shell",
-        "take": 1000,
-        "extract": lambda r: f"Explain or refactor this Bash / shell script: `{r.get('max_stars_repo_path', 'script.sh')}`" if r.get("content") else None,
+        "take": 600,
+        "filter_keywords": ["bash", "shell ", "command line", "linux", "terminal command", "awk ", "sed ", "grep "],
+        "extract": lambda r: r.get("instruction") or r.get("prompt"),
     },
     {
         "domain": "sql",
@@ -96,23 +101,26 @@ HF_SOURCES: list[dict] = [
     # === Web ===
     {
         "domain": "html-css",
-        "hf_repo": "bigcode/the-stack-smol",
-        "license": "other-stack-v1",
+        "hf_repo": "sahil2801/CodeAlpaca-20k",
+        "license": "cc-by-4.0",
         "split": "train",
-        "config": "data/html",
-        "take": 800,
-        "extract": lambda r: f"Improve or fix this HTML page: `{r.get('max_stars_repo_path', 'index.html')}`" if r.get("content") else None,
+        "take": 600,
+        "filter_keywords": ["html", "css", "<div>", "<style>", "stylesheet"],
+        "extract": lambda r: r.get("instruction") or r.get("prompt"),
     },
-    # === Multilingual ===
+    # === Multilingual chat (FR) ===
+    # OpenAssistant covers FR; we filter by detecting French keywords. Multi-lingual
+    # licence: Apache-2.0.
     {
         "domain": "chat-fr",
-        "hf_repo": "OpenLLM-France/Claire-Dialogue-French-0.1",
-        "license": "cc-by-nc-sa-4.0",
+        "hf_repo": "OpenAssistant/oasst1",
+        "license": "apache-2.0",
         "split": "train",
         "take": 1000,
-        "extract": lambda r: (r.get("text") or "").split("[Speaker001]")[1].split("[Speaker")[0].strip()[:200] if "[Speaker001]" in (r.get("text") or "") else None,
+        "filter_keywords": [" le ", " la ", " les ", " est ", " une ", " que ", " pour ", " bonjour", " comment "],
+        "extract": lambda r: r.get("text") if r.get("role") == "prompter" else None,
     },
-    # === Math / reasoning ===
+    # === Math ===
     {
         "domain": "math",
         "hf_repo": "openai/gsm8k",
@@ -122,23 +130,24 @@ HF_SOURCES: list[dict] = [
         "take": 1000,
         "extract": lambda r: r.get("question"),
     },
+    # === Reasoning — NuminaMath-CoT (Apache 2.0) for chain-of-thought reasoning ===
     {
         "domain": "reasoning",
-        "hf_repo": "allenai/openbookqa",
+        "hf_repo": "AI-MO/NuminaMath-CoT",
         "license": "apache-2.0",
         "split": "train",
-        "config": "main",
         "take": 1000,
-        "extract": lambda r: r.get("question_stem"),
+        "extract": lambda r: r.get("problem"),
     },
-    # === Security ===
+    # === Security — sourced from CodeAlpaca with security keywords ===
     {
         "domain": "security",
-        "hf_repo": "scieval/SecQA",
-        "license": "mit",
+        "hf_repo": "sahil2801/CodeAlpaca-20k",
+        "license": "cc-by-4.0",
         "split": "train",
-        "take": 800,
-        "extract": lambda r: r.get("question"),
+        "take": 600,
+        "filter_keywords": ["security", "encrypt", "decrypt", "password", "auth", "vulnerab", "secure ", "ssl ", "tls "],
+        "extract": lambda r: r.get("instruction") or r.get("prompt"),
     },
 ]
 
@@ -183,6 +192,7 @@ def fetch_hf(spec: dict) -> list[dict]:
         return []
 
     take = spec["take"]
+    keywords = [k.lower() for k in spec.get("filter_keywords") or []]
     rows: list[dict] = []
     seen_hashes: set[str] = set()
     for r in ds:
@@ -193,6 +203,10 @@ def fetch_hf(spec: dict) -> list[dict]:
         if not _ok(prompt):
             continue
         prompt = prompt.strip()
+        if keywords:
+            lower = prompt.lower()
+            if not any(k in lower for k in keywords):
+                continue
         h = _hash(prompt)
         if h in seen_hashes:
             continue
