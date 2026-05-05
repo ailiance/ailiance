@@ -170,6 +170,15 @@ class MLXWorkerRuntime:
 
         return dict(raw)
 
+    # Quarantined adapters — known-broken (trained with chat-template
+    # leakage causing "user user user..." loops). Verified 2026-05-05.
+    # When requested, worker silently falls back to base model.
+    # Re-train and remove from set to re-enable.
+    QUARANTINED_DOMAINS: set[str] = {
+        "chat-fr",         # eurollm — outputs "user user user..."
+        "traduction-tech", # eurollm — outputs "Traduis user user..."
+    }
+
     def apply(self, domain: str) -> float:
         """Hot-swap LoRA adapter for the given domain.
 
@@ -182,6 +191,15 @@ class MLXWorkerRuntime:
         from mlx_lm.tuner.utils import linear_to_lora_layers, remove_lora_layers
 
         t0 = time.perf_counter()
+        if domain in self.QUARANTINED_DOMAINS:
+            log.warning("apply(%s) quarantined — using base model", domain)
+            if self._active_domain is not None:
+                try:
+                    remove_lora_layers(self._model)
+                except Exception:
+                    pass
+                self._active_domain = None
+            return time.perf_counter() - t0
         if domain == self._active_domain:
             return 0.0
         if self._active_domain is not None:
