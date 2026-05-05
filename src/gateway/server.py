@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 import time
 from pathlib import Path
 
@@ -17,11 +19,34 @@ from src.worker.schemas import ChatCompletionRequest
 
 log = logging.getLogger(__name__)
 
-WORKER_URLS = {
+_DEFAULT_WORKER_URLS = {
     9301: "http://localhost:9301",
     9302: "http://localhost:9302",
     9303: "http://localhost:9303",
+    9304: "http://localhost:9304",
 }
+
+
+def _load_worker_urls() -> dict[int, str]:
+    """Allow distributed deployments to override WORKER_URLS via env var.
+
+    Set ``EU_KIKI_WORKERS_JSON='{"9301":"http://studio:9301", ...}'`` to point
+    each worker at a Tailscale/LAN address. Defaults stay localhost so a
+    single-host setup just works.
+    """
+    raw = os.environ.get("EU_KIKI_WORKERS_JSON")
+    if not raw:
+        return dict(_DEFAULT_WORKER_URLS)
+    try:
+        return {int(k): str(v) for k, v in json.loads(raw).items()}
+    except Exception as exc:
+        log.warning(
+            "failed to parse EU_KIKI_WORKERS_JSON (%s); using defaults", exc,
+        )
+        return dict(_DEFAULT_WORKER_URLS)
+
+
+WORKER_URLS = _load_worker_urls()
 
 MODEL_FORCE_MAP = {
     "eu-kiki-apertus": 9301,
