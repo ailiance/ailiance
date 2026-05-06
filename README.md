@@ -20,30 +20,86 @@
 
 A **multi-model LLM serving pipeline** running on a home cluster — three EU/CH foundation models, two complementary base-model workers, all behind a single OpenAI-compatible endpoint. The router decides which model answers, the gateway forwards, the worker streams. No cloud, no telemetry, full audit trail.
 
+### Architecture at a glance
+
+```mermaid
+flowchart TB
+    user([👤 User])
+    cf[/"Cloudflare Tunnel<br/>ml.saillant.cc"/]
+
+    subgraph electron["electron-server (Ubuntu, no GPU)"]
+        cockpit["kiki-cockpit<br/>(Docker)"]
+        gateway["eu-kiki-gateway :9300<br/>FastAPI · MiniLM router-v6<br/>L1+L2 cache · /metrics"]
+        cockpit --> gateway
+    end
+
+    user -->|HTTPS| cf --> cockpit
+
+    subgraph studio["studio · Mac Studio M3 Ultra · 512 GB"]
+        apertus["🇨🇭 Apertus 70B<br/>MLX 8-bit · :9301"]
+        eurollm["🇪🇺 EuroLLM 22B<br/>MLX 8-bit · :9303"]
+    end
+
+    subgraph macm1["macm1 · Mac mini M1 · 32 GB"]
+        devstral["🇫🇷 Devstral 24B<br/>MLX 4-bit · :9302"]
+    end
+
+    subgraph tower["tower · NVIDIA Quadro P2000 5 GB"]
+        gemma["Gemma 3 4B IT<br/>GGUF Q4_K_M · :9304"]
+    end
+
+    subgraph kxkm["kxkm-ai · RTX 4090 24 GB + 64 GB RAM (LAN-only)"]
+        qwen["🇨🇳 Qwen3-Next 80B MoE<br/>Q4_K_M · MoE expert offload<br/>llama.cpp :18888"]
+    end
+
+    gateway -->|Tailscale| apertus
+    gateway -->|Tailscale| devstral
+    gateway -->|Tailscale| eurollm
+    gateway -->|Tailscale| gemma
+    gateway -.->|"autossh tunnel<br/>:8002 → :18888"| qwen
+
+    classDef sov fill:#dbeafe,stroke:#1e40af,stroke-width:2px,color:#0c2a5b
+    classDef ext fill:#fef3c7,stroke:#92400e,stroke-width:2px,color:#451a03
+    classDef gw fill:#ede9fe,stroke:#5b21b6,stroke-width:2px,color:#1e1147
+    class apertus,devstral,eurollm sov
+    class gemma,qwen ext
+    class gateway,cockpit gw
 ```
-                       ml.saillant.cc (Cloudflare Tunnel)
-                                │
-                                ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  electron-server                                                 │
-│  ┌─────────────┐    ┌────────────────────────────────────────┐   │
-│  │ kiki-cockpit│ ── │  eu-kiki-gateway :9300                 │   │
-│  │  (Docker)   │    │   • MiniLM router-v6 (32 domains)      │   │
-│  └─────────────┘    │   • L1 LRU + L2 cosine cache           │   │
-│                     │   • Prometheus /metrics                 │   │
-│                     └────────────────┬───────────────────────┘   │
-└──────────────────────────────────────┼───────────────────────────┘
-                                       │ Tailscale + autossh
-            ┌──────────────┬───────────┼──────────────┬──────────────┐
-            ▼              ▼           ▼              ▼              ▼
-      ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
-      │ studio   │  │  macm1   │  │ studio   │  │  tower   │  │ kxkm-ai  │
-      │ Apertus  │  │ Devstral │  │ EuroLLM  │  │ Gemma 3  │  │ Qwen3-N  │
-      │  70B     │  │   24B    │  │   22B    │  │   4B     │  │  80B MoE │
-      │ M3 Ultra │  │  M1 mini │  │ M3 Ultra │  │ Quadro   │  │ RTX 4090 │
-      │  :9301   │  │  :9302   │  │  :9303   │  │  :9304   │  │  :8002   │
-      └──────────┘  └──────────┘  └──────────┘  └──────────┘  └──────────┘
-        🇨🇭 Apache    🇫🇷 Apache    🇪🇺 Apache      Gemma TOS    🇨🇳 Apache
+
+Blue = EU/CH-origin · Amber = third-country base-model worker (annotated in transparency dossier).
+
+### Request lifecycle
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant C as Cloudflare Tunnel
+    participant K as kiki-cockpit (Docker)
+    participant G as gateway :9300
+    participant R as router-v6 (MiniLM+MLP)
+    participant W as Worker (MLX / llama.cpp)
+
+    U->>C: POST /api/public/chat<br/>{model_id, messages}
+    C->>K: forward
+    K->>K: rate-limit (Traefik 30/min)<br/>+ slowapi guard
+    K->>G: POST /v1/chat/completions
+
+    alt model_id == eu-kiki/auto
+        G->>R: encode(prompt)
+        R-->>G: top-k domains<br/>(sigmoid, threshold 0.50)
+        G->>G: pick best worker<br/>(domain → port)
+    else explicit alias
+        G->>G: MODEL_FORCE_MAP[alias]<br/>→ worker port
+    end
+
+    G->>W: stream chat-completions
+    W-->>G: SSE tokens
+    G-->>K: SSE + route-decision header
+    K-->>C: SSE
+    C-->>U: live token stream
+
+    Note over G: Prometheus counters<br/>per (model, status)<br/>at /metrics
 ```
 
 ## Try it in 10 seconds
@@ -94,6 +150,43 @@ If you ship a product that needs to *prove* what model was used, on what data, u
 
 \* Qwen reaches the gateway via an `autossh` tunnel (`electron-server:8002` → `kxkm-ai:18888`); kxkm-ai is LAN-only and is a **different machine** from `kx6tm-23` (Proxmox PVE host, no GPU). Other workers are addressed over Tailscale magic DNS.
 
+#### Cluster topology
+
+```mermaid
+flowchart TB
+    Internet([🌍 Public internet])
+
+    subgraph Cloudflare["Cloudflare (proxied + tunnel)"]
+        ml["ml.saillant.cc"]
+    end
+
+    Internet --> ml
+
+    subgraph Tailscale["Tailscale tailnet"]
+        ES["electron-server<br/>100.78.191.52<br/>Ubuntu · no GPU<br/>Docker host · gateway :9300"]
+        ST["studio<br/>100.116.92.12<br/>Mac Studio M3 Ultra<br/>512 GB unified RAM"]
+        M1["macm1<br/>100.112.121.126<br/>Mac mini M1 · 32 GB"]
+        TW["tower<br/>100.78.6.122<br/>NVIDIA Quadro P2000 5 GB"]
+    end
+
+    LAN["kxkm-ai<br/>10.2.0.237<br/>NVIDIA RTX 4090 24 GB<br/>+ 64 GB RAM<br/>(LAN-only, no Tailscale)"]
+
+    ml -.->|tunnel| ES
+    ES <-->|magic DNS| ST
+    ES <-->|magic DNS| M1
+    ES <-->|magic DNS| TW
+    ES -.->|"autossh<br/>:8002 → :18888"| LAN
+
+    classDef pub fill:#fee2e2,stroke:#991b1b
+    classDef ts fill:#dbeafe,stroke:#1e40af
+    classDef lan fill:#fef3c7,stroke:#92400e
+    class Internet,Cloudflare pub
+    class ES,ST,M1,TW ts
+    class LAN lan
+```
+
+Note: kxkm-ai is a **distinct machine** from `kx6tm-23` (Proxmox PVE, AMD ES1000 only, no GPU) — earlier internal docs conflated them; the corrected mapping is reflected in [`docs/eu-ai-act-transparency.md` §2.7](docs/eu-ai-act-transparency.md).
+
 LoRA adapters: Apertus (20 domains — electronics, EMC, DSP, SPICE, KiCad, STM32, IoT, embedded, MISRA-C, AUTOSAR, IEC norms…), Devstral (16 — Python, Rust, TypeScript, C++, shell, SQL, web, Docker, devops, llm-ops, ml-training…), EuroLLM (4 — chat-fr, traduction-tech, redaction-multilingue, localisation-doc). Gemma 3 and Qwen3-Next serve as base-model workers (no adapter).
 
 ## Routing — `router-v6`
@@ -110,6 +203,44 @@ LoRA adapters: Apertus (20 domains — electronics, EMC, DSP, SPICE, KiCad, STM3
 | Training corpus | 9 967 rows across 32 domains (`data/router-clean/`), niche-augmented + greetings-grounded, AI-Act-traceable |
 
 Confusion top-10 and per-domain stats: [`docs/transparency/confusion-top10.md`](docs/transparency/confusion-top10.md).
+
+#### Classifier internals
+
+```mermaid
+flowchart LR
+    P([prompt])
+
+    subgraph cache["L1 + L2 cache"]
+        L1{"L1 LRU<br/>1024 entries<br/>~0.01 ms"}
+        L2{"L2 cosine ≥ 0.95<br/>~0.2 ms"}
+        L1 -- miss --> L2
+    end
+
+    P --> L1
+    L2 -- miss --> ENC
+
+    subgraph encmlp["MiniLM-L6-v2 + MLP head"]
+        direction LR
+        ENC["Encoder<br/>384d"]
+        H1["Linear 384→256<br/>+ GELU"]
+        H2["Linear 256→32<br/>+ Sigmoid"]
+        ENC --> H1 --> H2
+    end
+
+    H2 --> SCORES["32 domain scores<br/>∈ [0, 1]"]
+    SCORES --> THR{"threshold 0.50<br/>top-k = 4"}
+    THR --> PICK["domain → worker port<br/>(MODEL_FORCE_MAP)"]
+
+    L1 -- hit --> PICK
+    L2 -- hit --> PICK
+
+    PICK --> OUT([forward to worker])
+
+    classDef hit fill:#d1fae5,stroke:#065f46
+    classDef miss fill:#fee2e2,stroke:#991b1b
+    class cache hit
+    class encmlp miss
+```
 
 ⚠️ **Quarantined adapters** (verified 2026-05-05): EuroLLM `chat-fr` and `traduction-tech` produce `"user user user…"` loops from a chat-template leak. The worker silently falls back to the base EuroLLM for those domains — see `MLXWorkerRuntime.QUARANTINED_DOMAINS`. Re-train pending.
 
@@ -128,6 +259,28 @@ Every served weight has a **provenance JSON** under [`docs/provenance/`](docs/pr
 The full transparency dossier — risk classification (Art. 52, limited risk), training-data documentation, evaluation summary (Art. 53(1)(d)), incident log, opt-out contact — is in [`docs/eu-ai-act-transparency.md`](docs/eu-ai-act-transparency.md).
 
 The system card is [`MODEL_CARD.md`](MODEL_CARD.md) — performance numbers measured on this hardware, honest limitations.
+
+#### Provenance trail (per served weight)
+
+```mermaid
+flowchart LR
+    HF["HuggingFace repo<br/>+ commit SHA"] --> DL
+    DL["weights download<br/>+ SHA-256"] --> CONV
+    CONV["quantization<br/>(MLX / GGUF)"] --> DEPLOY
+    DEPLOY["deploy on host<br/>worker process"] --> JSON
+
+    JSON["docs/provenance/<br/>&lt;alias&gt;.json"]
+    JSON --> CARD["MODEL_CARD.md §2"]
+    JSON --> DOSSIER["eu-ai-act-transparency.md<br/>§2.x per worker"]
+    JSON --> SPA["ml.saillant.cc<br/>/models/&lt;owner&gt;/&lt;name&gt;<br/>(provenance JSON inlined)"]
+
+    classDef step fill:#ede9fe,stroke:#5b21b6
+    classDef sink fill:#d1fae5,stroke:#065f46
+    class HF,DL,CONV,DEPLOY step
+    class CARD,DOSSIER,SPA sink
+```
+
+Each JSON in [`docs/provenance/`](docs/provenance/) is the single source of truth and gets inlined verbatim on the public model page so external auditors don't have to clone the repo.
 
 ## Headline benchmark results
 
@@ -207,6 +360,43 @@ src/
 | Vendor PDFs (ST/Espressif/TI/NXP/KiCad) | `scripts/pdf_pipeline/` | 360 pairs |
 
 `data/hf-traced/` (404 MB) — 35 domain folders, JSONL, split 95/5, max 3 000/domain, seed 42. Each `MANIFEST.json` carries `hf_dataset_id`, `license`, `download_date`, `n_source_rows`, `n_used`. PDF pipeline obeys robots.txt under EU DSM Art. 4 TDM exception, SHA-256 manifests — audit at [`docs/pdf-compliance-report.md`](docs/pdf-compliance-report.md).
+
+#### Data → adapter → router
+
+```mermaid
+flowchart LR
+    subgraph sources["📥 Sources (per domain)"]
+        HF["HuggingFace datasets<br/>+ MANIFEST.json"]
+        SCRAPE["Scrapers<br/>OSHWA / arXiv / Wiki<br/>Hackaday / Arduino..."]
+        PDF["Vendor PDFs<br/>ST · Espressif · TI<br/>NXP · KiCad"]
+    end
+
+    HF --> CLEAN
+    SCRAPE --> CLEAN
+    PDF --> PII["PII scan<br/>(scan_pii.py)"] --> CLEAN
+
+    CLEAN["data/hf-traced/<br/>JSONL split 95/5<br/>+ MANIFEST.json"]
+
+    CLEAN -->|adapter training| LORA["LoRA q/k/v/o_proj<br/>per domain"]
+    CLEAN -->|router corpus| ROUTER
+
+    subgraph router["Router pipeline"]
+        ROUTER["data/router-clean/<br/>9 967 rows × 32 domains"]
+        EMBED["MiniLM encode<br/>data/router-minilm-v6/"]
+        TRAIN["MLP head train<br/>30 epochs"]
+        ROUTER --> EMBED --> TRAIN
+    end
+
+    LORA --> WORKER1["Apertus + 20 LoRA"]
+    LORA --> WORKER2["Devstral + 16 LoRA"]
+    LORA --> WORKER3["EuroLLM + 4 LoRA"]
+    TRAIN --> ACTIVE["output/router-v6/<br/>active checkpoint<br/>87.7 % top-1"]
+
+    classDef src fill:#fef3c7,stroke:#92400e
+    classDef out fill:#d1fae5,stroke:#065f46
+    class sources src
+    class WORKER1,WORKER2,WORKER3,ACTIVE out
+```
 
 ## Compliance docs
 
