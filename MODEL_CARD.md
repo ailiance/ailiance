@@ -12,16 +12,25 @@
 
 ## 1. System overview
 
-eu-kiki dispatches user queries via a Jina v3 + MLP router (40 domains,
-sigmoid multi-label) to one of three EU/CH foundation models, each
-augmented with LoRA adapters trained on HF-traceable datasets. Local-only
-deployment, no cloud, no telemetry.
+eu-kiki dispatches user queries via a MiniLM-L6-v2 (384d) + MLP router
+(32 domains, sigmoid multi-label, threshold 0.50) to one of three EU/CH
+foundation models, each augmented with LoRA adapters trained on
+HF-traceable datasets. Local-only deployment, no cloud, no telemetry.
 
 ```
-client → gateway:9200 → router → worker:9301/9302/9303 → response
-                                       │
-                                       └── base model + LoRA(domain)
+client → ml.saillant.cc (Cloudflare Tunnel)
+       → kiki-cockpit (electron-server :443)
+       → gateway:9300 (electron-server, systemd unit, EU_KIKI_WORKERS_JSON env)
+       → router (MiniLM v6 + L1+L2 cache, auto-prewarm)
+       → worker:9301/9302/9303 (Studio MLX BF16, over Tailscale)
+              │
+              └── base model + LoRA(domain)  [or base model if domain quarantined]
 ```
+
+Router checkpoint v6 (2026-05-05): **87.7 % top-1 / 98.7 % top-3** on a
+2 K validation set, vs v5 (65.5 % / 85.3 %), gain +22 / +13 pts. Built from
+9 967 curated rows across 32 domains (niche-augmented, greetings-grounded,
+HF-deduplicated).
 
 ## 2. Models served
 
@@ -214,3 +223,4 @@ Topology + bug history + workarounds: [`eval/WORKFLOW.md`](eval/WORKFLOW.md).
 |---|---|---|
 | 2026-04-28 | 0.3.0 | Provenance remediation, license normalization (transparency.md) |
 | 2026-05-05 | 0.4.0 | First model card; full benchmark suite published (HumanEval+, MT-Bench, GSM8K, KIKI-DSL v3); cross-bench transfer analysis added; known-limitations section consolidates v3 taxonomy revision |
+| 2026-05-05 | 0.4.1 | Router v6 deployed (87.7 % top-1 vs v5 65.5 %, +22 pts); rebuilt dataset 9 967 rows curated; L1 LRU + L2 cosine semantic cache + auto-prewarm; MiniLM auto-device (MPS/CUDA/CPU); EuroLLM `chat-fr` + `traduction-tech` adapters quarantined (training chat-template leak → "user user" loop, fallback to base); systemd unit `eu-kiki-gateway.service` on electron-server with `EU_KIKI_WORKERS_JSON` env for Tailscale worker URLs |

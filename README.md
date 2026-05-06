@@ -4,7 +4,7 @@
 
 ## What This Does
 
-Routes requests to **3 European foundation models** via a Jina v3 domain classifier (Berlin), each fine-tuned with **LoRA adapters trained on 20 HF-traceable domains** (48K curated examples).
+Routes requests to **3 European foundation models** via a MiniLM domain classifier, each fine-tuned with **LoRA adapters trained on HF-traceable domains** (~10 K curated examples after v6 rebuild).
 
 | Model | Origin | Domains | Port |
 |-------|--------|---------|------|
@@ -12,9 +12,13 @@ Routes requests to **3 European foundation models** via a Jina v3 domain classif
 | **Devstral-Small-2-24B-MLX-4bit** | Mistral AI (FR) | 16 — Python, Rust, TypeScript, C++, shell, SQL, web, Docker, devops, llm-ops, ml-training… | `:9302` |
 | **EuroLLM-22B-Instruct-2512** | utter-project (EU consortium) | 4 — chat-fr, traduction-tech, redaction-multilingue, localisation-doc | `:9303` |
 
-Router: **Jina Embeddings v3** (Berlin) + MLP classifier — sigmoid multi-label routing on 40 domains, `top-k=4`, `threshold=0.12`.
+Router: **all-MiniLM-L6-v2** (384d, 22 M params) + MLP head (256 hidden) — sigmoid multi-label routing on **32 domains**, `top-k=4`, `threshold=0.50`. Active checkpoint: `output/router-v6` — **87.7 % top-1 / 98.7 % top-3** on validation (vs v5 65.5 % / 85.3 %, +22 / +13 pts).
 
-Gateway: FastAPI on `:9200` with Prometheus metrics.
+Encoder caches: L1 LRU 1024 (exact-hit ~0.01 ms) + L2 cosine ≥ 0.95 (paraphrase ~0.2 ms) + auto-prewarm at boot. Auto-resolves device (MPS / CUDA / CPU). Cold compute ~9 ms on Studio MPS, ~17 ms on electron-server CPU.
+
+Gateway: FastAPI on `:9300` (electron-server, systemd unit `eu-kiki-gateway.service`, env `EU_KIKI_WORKERS_JSON` for Tailscale worker URLs). Prometheus metrics at `/metrics`. Live at `https://ml.saillant.cc/api/public/chat` (Cloudflare Tunnel → kiki-cockpit on electron-server → gateway → workers on Studio over Tailscale).
+
+⚠️ **Quarantined adapters** (verified 2026-05-05, source: training-data chat-template leak): EuroLLM `chat-fr` and `traduction-tech` produce `"user user user…"` loops; the worker silently falls back to the base EuroLLM model for those domains. See `MLXWorkerRuntime.QUARANTINED_DOMAINS` in `src/worker/runtime.py`. Re-train pending.
 
 ## Why EU-sovereign?
 
@@ -38,10 +42,11 @@ uv run python scripts/train_apertus.py
 uv run python scripts/train_devstral.py
 uv run python scripts/train_eurollm.py
 
-# Train router
-uv run python scripts/build_router_data.py
-uv run python scripts/encode_router_jina.py
-uv run python scripts/train_router_from_embeddings.py
+# Train router (full pipeline, ~25 min on macM1 MPS)
+uv run python scripts/rebuild_router_dataset.py        # HF + niche + greetings → data/router-clean/
+uv run python scripts/build_router_data.py             # split train/valid 80/20
+uv run python scripts/encode_router_minilm.py          # MiniLM embeddings → data/router-minilm-vN/
+uv run python scripts/train_router_from_embeddings.py --emb-dir data/router-minilm-vN --hidden-dim 256 --output-dir output/router-vN
 
 # Launch all services
 bash scripts/start.sh
@@ -85,11 +90,15 @@ uv run python -m pytest tests/test_xielu.py -v   # single file
 
 | Component | Path |
 |-----------|------|
-| Embeddings | `data/router-jina-v3/` (Jina v3 pre-encoded, 39 MB) |
-| Train data | `data/router/train.jsonl` (46100 lines) + `valid.jsonl` (11532) |
-| Classifier | `src/router/classifier.py` (Jina v3, 1024d → MLP hidden=512 → 40 domains) |
-| Domain map | `src/router/domain_map.py` (static domain → worker port) |
-| Train script | `scripts/train_router.py` (175 lines) |
+| Active checkpoint | `output/router-v6/` (87.7 % top-1 / 98.7 % top-3 on validation) |
+| Encoder | `sentence-transformers/all-MiniLM-L6-v2` (384d, 22 M) |
+| MLP head | 384 → 256 → 32 (sigmoid, threshold 0.50) |
+| Train data | `data/router-clean/` (32 JSONL, 9967 rows, niche+greetings curated) |
+| Embeddings | `data/router-minilm-v6/{train,valid}_embs.npy` (MPS-encoded) |
+| Classifier | `src/router/classifier.py` (auto-device, L1 LRU + L2 cosine cache, auto-prewarm) |
+| Train pipeline | `scripts/{rebuild_router_dataset,build_router_data,encode_router_minilm,train_router_from_embeddings}.py` |
+| Confusion top-10 | [`docs/transparency/confusion-top10.md`](docs/transparency/confusion-top10.md) |
+| Provenance | [`docs/transparency/router-training-data.md`](docs/transparency/router-training-data.md) |
 
 ## Configuration
 
