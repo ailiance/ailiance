@@ -56,6 +56,7 @@ MODEL_FORCE_MAP = {
     "eu-kiki-devstral": 9302,
     "eu-kiki-eurollm": 9303,
     "eu-kiki-gemma": 9304,  # Gemma 3 4B IT on tower
+    "eu-kiki-qwen": 8002,  # llama-server on kxkm-ai (RTX 4090) via autossh tunnel
 }
 
 # Per-port forward overrides for non-eu-kiki backends. The gateway rewrites
@@ -123,6 +124,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 {"id": "eu-kiki-devstral", "object": "model", "owned_by": "eu-kiki"},
                 {"id": "eu-kiki-eurollm", "object": "model", "owned_by": "eu-kiki"},
                 {"id": "eu-kiki-gemma", "object": "model", "owned_by": "eu-kiki"},
+                {"id": "eu-kiki-qwen", "object": "model", "owned_by": "eu-kiki"},
             ],
         }
 
@@ -150,6 +152,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             "eu-kiki-devstral",
             "eu-kiki-eurollm",
             "eu-kiki-gemma",
+            "eu-kiki-qwen",
         ]
         return {
             "object": "list",
