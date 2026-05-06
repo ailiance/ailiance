@@ -113,8 +113,8 @@ uv run python -m pytest tests/test_xielu.py -v   # single file
 
 ```
 src/
-├── gateway/          # FastAPI :9200, request dispatch, Prometheus metrics
-├── router/           # Jina v3 + MLP classifier (40 domains)
+├── gateway/          # FastAPI :9300, request dispatch, Prometheus metrics
+├── router/           # MiniLM-L6-v2 + MLP classifier (32 domains, v6 87.7% top-1)
 ├── worker/           # 1 model / process, BF16, shared memory pool
 └── mlx_models/       # Apertus MLX impl + custom xielu activation
 ```
