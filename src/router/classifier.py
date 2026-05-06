@@ -92,6 +92,15 @@ class RouterConfig:
     # Catches paraphrases ("coucou" / "salut" / "hello"). Set to 0 to disable.
     l2_cache_threshold: float = 0.95
     l2_cache_size: int = 256
+    # Length-aware preprocessing thresholds (in characters, not tokens —
+    # cheaper to measure and good enough as proxy: ~4 chars per token).
+    # Below `short_chars` → encode the whole prompt (no truncation, cheap).
+    # Between → encoder's own max_seq_length kicks in (left-truncate).
+    # Above `long_chars` → smart head+tail (capture intent + final question).
+    short_chars: int = 200
+    long_chars: int = 1000
+    long_head_chars: int = 256
+    long_tail_chars: int = 256
 
 
 def _build_mlp(cfg: RouterConfig) -> "tnn.Module":
@@ -188,13 +197,34 @@ class DomainRouter:
         self._mlp.eval()
         log.info("Router loaded: %d domains, %s encoder", len(self._domains), self._cfg.embedding_model)
 
+    def _smart_truncate(self, query: str) -> str:
+        """Length-aware preprocessing: encode the right slice.
+
+        - short prompt: untouched (cheap to encode anyway)
+        - medium: untouched, encoder's `max_seq_length` will left-truncate
+        - long: head + tail join, so we capture both the early intent
+          ("explique-moi cette fonction rust...") and the late question
+          ("...du coup, comment je teste async ?"). Same encode cost as a
+          single 128-token slice.
+        """
+        n = len(query)
+        if n <= self._cfg.short_chars or n <= self._cfg.long_chars:
+            return query
+        head = self._cfg.long_head_chars
+        tail = self._cfg.long_tail_chars
+        if head + tail >= n:
+            return query
+        return query[:head] + " ... " + query[-tail:]
+
     def _compute_route(self, query: str) -> list[tuple[str, float]]:
         """Uncached embedding+MLP path. Also feeds the L2 semantic cache."""
         import torch
 
+        encode_input = self._smart_truncate(query)
+
         with torch.no_grad():
             emb = self._encoder.encode(
-                query, convert_to_tensor=True, normalize_embeddings=True,
+                encode_input, convert_to_tensor=True, normalize_embeddings=True,
             )
 
             # L2 semantic cache lookup BEFORE the MLP — saves the MLP forward
