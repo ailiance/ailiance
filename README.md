@@ -1,18 +1,42 @@
 # eu-kiki
 
-100% EU-sovereign multi-model LLM serving pipeline running locally on Mac Studio M3 Ultra (512 GB unified memory). EU AI Act Article 52/53 transparency-compliant.
+EU-sovereign-first multi-model LLM serving pipeline distributed across a
+six-node home cluster. Three EU/CH foundation models are augmented with
+LoRA adapters; two complementary base-model workers (Gemma 3, Qwen3-Next)
+extend coverage. EU AI Act Article 52/53 transparency-compliant.
 
-## What This Does
+## Current workers
 
-Routes requests to **3 European foundation models** via a MiniLM domain classifier, each fine-tuned with **LoRA adapters trained on HF-traceable domains** (~10 K curated examples after v6 rebuild).
+5/5 healthy on 2026-05-06 — verifiable at
+`https://ml.saillant.cc/api/public/status`.
 
-| Model | Origin | Domains | Port |
-|-------|--------|---------|------|
-| **Apertus-70B-Instruct-2509** | EPFL + ETH Zürich + CSCS (CH) | 20 — electronics, EMC, DSP, SPICE, KiCad, STM32, IoT, embedded, MISRA-C, AUTOSAR, IEC norms… | `:9301` |
-| **Devstral-Small-2-24B-MLX-4bit** | Mistral AI (FR) | 16 — Python, Rust, TypeScript, C++, shell, SQL, web, Docker, devops, llm-ops, ml-training… | `:9302` |
-| **EuroLLM-22B-Instruct-2512** | utter-project (EU consortium) | 4 — chat-fr, traduction-tech, redaction-multilingue, localisation-doc | `:9303` |
+| Gateway alias | Model | Origin | Quant | Host (hardware) | Port |
+|---|---|---|---|---|---|
+| `eu-kiki-apertus` | **Apertus-70B-Instruct-2509** | EPFL + ETH Zürich + CSCS (CH) 🇨🇭 | MLX 8-bit | studio (Mac Studio M3 Ultra, 512 GB) | `:9301` |
+| `eu-kiki-devstral` | **Devstral-Small-2-24B-Instruct-2512** | Mistral AI (FR) 🇫🇷 | MLX 4-bit | macm1 (Mac mini M1, 32 GB) | `:9302` |
+| `eu-kiki-eurollm` | **EuroLLM-22B-Instruct-2512** | utter-project (EU) 🇪🇺 | MLX 8-bit | studio (Mac Studio M3 Ultra) | `:9303` |
+| `eu-kiki-gemma` | **Gemma-3-4B-IT** | Google DeepMind | GGUF Q4_K_M | tower (NVIDIA Quadro P2000 5 GB VRAM) | `:9304` |
+| `eu-kiki-qwen` | **Qwen3-Next-80B-A3B-Instruct** | Qwen / Alibaba Cloud | Q4_K_M GGUF, MoE expert offload | kxkm-ai (NVIDIA RTX 4090 24 GB + 64 GB RAM) | `:8002` * |
 
-Router: **all-MiniLM-L6-v2** (384d, 22 M params) + MLP head (256 hidden) — sigmoid multi-label routing on **32 domains**, `top-k=4`, `threshold=0.50`. Active checkpoint: `output/router-v6` — **87.7 % top-1 / 98.7 % top-3** on validation (vs v5 65.5 % / 85.3 %, +22 / +13 pts).
+\* Qwen reaches the gateway via an `autossh` tunnel
+(`electron-server:8002` → `kxkm-ai:18888`); kxkm-ai is LAN-only and is a
+**different machine** from `kx6tm-23` (the Proxmox PVE host without GPU).
+The other workers are addressed directly over Tailscale.
+
+LoRA adapters are attached to Apertus (20 domains: electronics, EMC, DSP,
+SPICE, KiCad, STM32, IoT, embedded, MISRA-C, AUTOSAR, IEC norms…),
+Devstral (16: Python, Rust, TypeScript, C++, shell, SQL, web, Docker,
+devops, llm-ops, ml-training…), and EuroLLM (4: chat-fr, traduction-tech,
+redaction-multilingue, localisation-doc). Gemma 3 and Qwen3-Next serve
+as base-model workers (no adapter).
+
+### Routing
+
+**Router-v6** (active): `all-MiniLM-L6-v2` (384d, 22 M params) + MLP head
+(256 hidden) — sigmoid multi-label routing on **32 domains**, `top-k=4`,
+`threshold=0.50`. Trained on the AI-Act-traceable clean corpus
+(`data/router-clean/`, 9 967 rows). Validation: **87.7 % top-1 / 98 %
+top-3** (vs v5 65.5 % / 85.3 %, +22 / +13 pts).
 
 Encoder caches: L1 LRU 1024 (exact-hit ~0.01 ms) + L2 cosine ≥ 0.95 (paraphrase ~0.2 ms) + auto-prewarm at boot. Auto-resolves device (MPS / CUDA / CPU). Cold compute ~9 ms on Studio MPS, ~17 ms on electron-server CPU.
 
@@ -104,10 +128,10 @@ uv run python -m pytest tests/test_xielu.py -v   # single file
 
 | File | Role |
 |------|------|
-| `configs/apertus.yaml` | Apertus 70B worker (port 9301, BF16, 20 domains) |
-| `configs/devstral.yaml` | Devstral 24B worker (port 9302, BF16, 16 domains) |
-| `configs/eurollm.yaml` | EuroLLM 22B worker (port 9303, BF16, 4 domains) |
-| `configs/gateway.yaml` | FastAPI gateway + router config |
+| `configs/apertus.yaml` | Apertus 70B worker (port 9301, MLX 8-bit on studio, 20 domains) |
+| `configs/devstral.yaml` | Devstral 24B worker (port 9302, MLX 4-bit on macm1, 16 domains) |
+| `configs/eurollm.yaml` | EuroLLM 22B worker (port 9303, MLX 8-bit on studio, 4 domains) |
+| `configs/gateway.yaml` | FastAPI gateway + router config (Gemma 3 on tower :9304, Qwen3-Next on kxkm-ai :8002 via autossh) |
 
 ## Source layout
 

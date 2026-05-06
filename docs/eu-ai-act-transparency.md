@@ -2,7 +2,7 @@
 
 **Document ID:** EU-KIKI-TRANS-001
 **Date:** 2026-05-06
-**Version:** 0.4.1
+**Version:** 0.5.0
 **System:** eu-kiki — EU-sovereign multi-model LLM serving pipeline
 **Risk Classification:** Limited risk (general-purpose AI system, Article 52)
 
@@ -87,6 +87,43 @@ EU-KIKI is a multi-model routing system that dispatches user queries to one of t
 | **License** | Modified MIT (Mistral Research License) |
 | **Purpose** | Teacher model for evaluation and contrastive pair generation ONLY |
 | **Deployment restriction** | NOT deployed for production inference. Modified MIT license does not qualify for open-source exemption under EU AI Act Art. 53(2). Used exclusively offline for training data quality evaluation. |
+
+### 2.6 Gemma-3-4B-IT (production worker)
+
+| Field | Value |
+|-------|-------|
+| **Provider** | Google DeepMind |
+| **Country** | USA 🇺🇸 (non-EU; surfaced for transparency, see §8 risk assessment) |
+| **Parameters** | 4.3 B (dense decoder-only, GQA) |
+| **License** | Google Gemma Terms of Use (review obligations apply for downstream commercial use; see https://ai.google.dev/gemma/terms) |
+| **HuggingFace** | `google/gemma-3-4b-it` (commit `093f9f388b31`, last modified 2025-03-21) |
+| **Quantization** | GGUF Q4_K_M, llama.cpp local convert from upstream BF16 |
+| **Hosting** | tower (NVIDIA Quadro P2000, 5 GB VRAM, llama.cpp on `:9304`) |
+| **Intended use** | Routing fallback / quick-response worker when the MiniLM domain classifier cannot confidently match a labelled domain. Also surfaced as a chat-eligible card on `https://ml.saillant.cc`. |
+| **Out of scope** | Production-quality answers on domain-specialised prompts (use the routed worker), long-context retrieval (8 k native), healthcare / legal advice without human review. |
+| **Provenance** | [`docs/provenance/gemma-3-4b-it.json`](provenance/gemma-3-4b-it.json) |
+
+### 2.7 Qwen3-Next-80B-A3B-Instruct (production worker)
+
+| Field | Value |
+|-------|-------|
+| **Provider** | Qwen team / Alibaba Cloud |
+| **Country** | China 🇨🇳 (non-EU; surfaced for transparency, see §8 risk assessment) |
+| **Parameters** | 80 B total / 3 B active per token (sparse MoE, 512 experts, 10 active, gated delta-net + standard attention hybrid) |
+| **License** | Apache 2.0 |
+| **HuggingFace** | `Qwen/Qwen3-Next-80B-A3B-Instruct-GGUF` (commit `4c8630cf7af9`, last modified 2025-12-03) |
+| **Quantization** | Official Q4_K_M GGUF (Qwen team), 48.4 GB, SHA-256 `d103b2733ec1012a52d01edda66b7e5c24ae50508c9f99f5297ea459ef3c061a` |
+| **Hosting** | kxkm-ai (NVIDIA RTX 4090 24 GB + 64 GB RAM), llama.cpp with MoE expert offload (`--override-tensor 'ffn_(up\|gate\|down)_exps=CPU'`): attention layers + KV cache on the 4090, FFN experts in CPU RAM. Reachable from the gateway at `electron-server:8002` via `autossh` tunnel to `kxkm-ai:18888`. |
+| **Native context** | 262 144 tokens |
+| **Intended use** | Reasoning, multilingual chat, long-context tasks. Raw weights served — no fine-tuning applied. |
+| **Out of scope** | Healthcare diagnosis, legal advice without human review, autonomous safety-critical decisions. |
+| **Provenance** | [`docs/provenance/qwen3-next-80b-a3b-instruct.json`](provenance/qwen3-next-80b-a3b-instruct.json) |
+
+> **Topology note.** kxkm-ai (`10.2.0.237`, LAN-only, RTX 4090) is a
+> **distinct machine** from `kx6tm-23` (Tailscale `100.68.25.66`,
+> Proxmox PVE host with AMD ES1000 only, no GPU). Earlier internal docs
+> conflated the two; the corrected mapping is reflected here from
+> v0.5.0 onward.
 
 ---
 
@@ -437,6 +474,7 @@ Headline metrics (all measured on this hardware, all reproducible):
 | 2026-04-28 | 0.1.1-dev | Quarantine web-backend/yaml-json (missing provenance); JWT secret resolved; PII/opt-out TODOs; verified zenml/llmops-database (Apache-2.0) and AYI-NEDJIMI/mlops-infrastructure-en (MIT) |
 | 2026-04-28 | 0.1.2-dev | Replace TIGER-Lab/MathInstruct (unclear sub-source licenses) with microsoft/orca-math-word-problems-200k (MIT, 200K examples) for math-reasoning domain |
 | 2026-04-28 | 0.2.0 | Comprehensive update: all 33 domains inventoried with SPDX licenses and record counts; added all scraped repo sources (ESP-IDF, STM32Cube, Arduino, Embassy, KiCad symbols/footprints, FreeCAD macros, OSHWA API); added Mistral Small 4 119B (pending eval) and Mistral Medium 3.5 128B (teacher/eval only, Modified MIT); PII scan completed (Presidio, 1 finding redacted); web-backend/yaml-json provenance resolved; Devstral BF16 dequantization source documented |
+| 2026-05-06 | 0.5.0 | **Fleet expanded to 5 production workers:** (1) Gemma 3 4B IT promoted from internal fallback to documented production worker on tower (NVIDIA Quadro P2000, GGUF Q4_K_M, port 9304); (2) Qwen3-Next 80B A3B Instruct (sparse MoE, 3 B active/token) restored as production worker on kxkm-ai (RTX 4090, Q4_K_M GGUF, MoE expert offload to CPU RAM via llama.cpp `--override-tensor`, reached over `autossh` tunnel `electron-server:8002` → `kxkm-ai:18888`); (3) router-v6 promoted to active checkpoint (top-1 87.7 % / top-3 98 %); (4) §2.6 / §2.7 added with provenance JSONs in `docs/provenance/`; (5) topology corrected — kxkm-ai (LAN, RTX 4090) is a separate machine from kx6tm-23 (Proxmox, no GPU); (6) MODEL_CARD bumped to v0.5.0. |
 | 2026-05-05 | 0.4.1 | **Router v6 + ops hardening:** (1) Re-trained router head on rebuilt clean corpus (`data/router-clean/`, 9 967 rows × 32 domains, niche-augmented + greetings-grounded) — top-1 65.5 % → 87.7 %, top-3 85.3 % → 98.7 %; (2) `MLXWorkerRuntime.QUARANTINED_DOMAINS` introduced, EuroLLM `chat-fr` and `traduction-tech` adapters fall back to the base model after a chat-template-leakage bug surfaced as `"user user…"` loops in production (worker behaviour now openly reflects the disabled adapters); (3) router classifier patched: auto-device resolution (MPS / CUDA / CPU), `max_seq_length=128`, L1 LRU + L2 cosine ≥ 0.95 semantic cache, auto-prewarm at boot to kill p95 spikes; (4) production gateway runs as systemd unit `eu-kiki-gateway.service` on electron-server with worker URLs supplied via `EU_KIKI_WORKERS_JSON` env (Tailscale endpoints to Studio MLX workers). |
 | 2026-05-05 | 0.4.0 | **Art. 53(1)(d) evaluation summary added** (§8.bis): published full benchmark suite (HumanEval+ Devstral base/python/cpp/rust, MT-Bench Devstral 8.89/10, GSM8K Qwen base/reasoning/math, KIKI-DSL v3 8 adapters). New model card at [`MODEL_CARD.md`](../MODEL_CARD.md). Honest limitations disclosed: v1→v3 test-set bias correction, no cognitive transfer to public GSM8K, slight HumanEval+ degradation by Devstral adapters. All result directories self-contained (`env.json` + `methodology.md` + `rerun.sh`); cross-platform pipeline (macM1 + studio + kx6tm-23) traced in [`eval/WORKFLOW.md`](../eval/WORKFLOW.md). |
 | 2026-04-28 | 0.3.0 | **EU AI Act compliance remediation:** (1) Per-record `_provenance` added to 49,956 records across 21 HF-traced domains (source, SPDX license, record_idx, access_date); (2) Non-SPDX license values corrected in MANIFEST_niche.json: embedded (Apache-2.0 AND CC-BY-SA-4.0), emc-dsp-power (arXiv-TDM-DSM-Art4 AND CC-BY-SA-3.0), traduction-tech (CC-BY-4.0), cpp sub-sources (removed "Open"/"various"), freecad (MIT AND CC-BY-4.0 AND CC0-1.0), rust-embedded "various" sub-source (MIT AND Apache-2.0); (3) PII scan extended to ALL 35+ domains; (4) Scraping manifests (manifest.json) created for all 8 scraped directories; (5) License field added to all 7 model config.json files; (6) stm32 and electronics added as PDF-supplement domains; (7) rust-strand annotated as deprecated phantom entry |

@@ -1,8 +1,8 @@
 # eu-kiki — Model Card
 
 **System:** eu-kiki — EU-sovereign multi-model LLM serving pipeline
-**Version:** 0.4.0
-**Date:** 2026-05-05
+**Version:** 0.5.0
+**Date:** 2026-05-06
 **License:** Apache-2.0
 **Risk classification (EU AI Act):** Limited risk — Article 52
 **Operator:** L'Electron Rare (`electron-rare` / `L-electron-Rare`)
@@ -13,19 +13,24 @@
 ## 1. System overview
 
 eu-kiki dispatches user queries via a MiniLM-L6-v2 (384d) + MLP router
-(32 domains, sigmoid multi-label, threshold 0.50) to one of three EU/CH
-foundation models, each augmented with LoRA adapters trained on
-HF-traceable datasets. Local-only deployment, no cloud, no telemetry.
+(32 domains, sigmoid multi-label, threshold 0.50) to one of five
+foundation models (3 EU/CH + Gemma 3 + Qwen3-Next), some augmented with
+LoRA adapters trained on HF-traceable datasets. Local-only deployment,
+no cloud, no telemetry.
 
 ```
 client → ml.saillant.cc (Cloudflare Tunnel)
        → kiki-cockpit (electron-server :443)
        → gateway:9300 (electron-server, systemd unit, EU_KIKI_WORKERS_JSON env)
        → router (MiniLM v6 + L1+L2 cache, auto-prewarm)
-       → worker:9301/9302/9303 (Studio MLX BF16, over Tailscale)
-              │
-              └── base model + LoRA(domain)  [or base model if domain quarantined]
+       → worker :9301 / :9302 / :9303 / :9304 / :8002
+              │       (Apertus / Devstral / EuroLLM / Gemma / Qwen)
+              └── base model + LoRA(domain)  [or base model if domain quarantined / no adapter]
 ```
+
+Qwen3-Next is reached over an `autossh` tunnel from electron-server :8002
+to kxkm-ai :18888 (RTX 4090 host, LAN-only). All other workers are
+addressed directly over Tailscale.
 
 Router checkpoint v6 (2026-05-05): **87.7 % top-1 / 98.7 % top-3** on a
 2 K validation set, vs v5 (65.5 % / 85.3 %), gain +22 / +13 pts. Built from
@@ -34,13 +39,20 @@ HF-deduplicated).
 
 ## 2. Models served
 
-| Model | Origin | Params | Adapters | Port |
-|---|---|---:|---:|---|
-| Apertus-70B-Instruct-2509 | Swiss AI (EPFL/ETH/CSCS) 🇨🇭 | 70.6 B | 20 | `:9301` |
-| Devstral-Small-2-24B-Instruct-2512 | Mistral AI 🇫🇷 | 24 B | 16 | `:9302` |
-| EuroLLM-22B-Instruct-2512 | utter-project 🇪🇺 | 22.6 B | 4 | `:9303` |
+Active fleet — verified healthy 5/5 on 2026-05-06.
 
-All three Apache-2.0. Full provenance per model in
+| Gateway alias | Model | Origin | Params | Quant | Host (hardware) | Port |
+|---|---|---|---:|---|---|---|
+| `eu-kiki-apertus` | Apertus-70B-Instruct-2509 | Swiss AI (EPFL/ETH/CSCS) 🇨🇭 | 70.6 B | MLX 8-bit | studio (Mac Studio M3 Ultra, 512 GB) | `:9301` |
+| `eu-kiki-devstral` | Devstral-Small-2-24B-Instruct-2512 | Mistral AI 🇫🇷 | 24 B | MLX 4-bit | macm1 (Mac mini M1, 32 GB) | `:9302` |
+| `eu-kiki-eurollm` | EuroLLM-22B-Instruct-2512 | utter-project 🇪🇺 | 22.6 B | MLX 8-bit | studio (Mac Studio M3 Ultra) | `:9303` |
+| `eu-kiki-gemma` | Gemma-3-4B-IT | Google DeepMind | 4.3 B | GGUF Q4_K_M | tower (NVIDIA Quadro P2000 5 GB VRAM) | `:9304` |
+| `eu-kiki-qwen` | Qwen3-Next-80B-A3B-Instruct | Qwen / Alibaba Cloud | 80 B (3 B active MoE) | Q4_K_M GGUF | kxkm-ai (NVIDIA RTX 4090 24 GB + 64 GB RAM, MoE expert offload via llama.cpp `--override-tensor`) | `:8002` (autossh tunnel: `electron-server:8002` → `kxkm-ai:18888`) |
+
+Apertus, Devstral, EuroLLM, and Qwen3-Next are Apache-2.0; Gemma 3 is
+under the Google Gemma Terms (review obligations apply for downstream
+commercial use). Per-model provenance JSONs:
+[`docs/provenance/`](docs/provenance/). Full transparency dossier:
 [`docs/eu-ai-act-transparency.md`](docs/eu-ai-act-transparency.md) §2.
 
 ## 3. Adapter training
