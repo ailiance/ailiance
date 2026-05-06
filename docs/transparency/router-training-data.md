@@ -9,20 +9,24 @@ this artefact as a high-quality classifier without reading below.
 
 ---
 
-## 1. Current status (as of 2026-05-05)
+## 1. Current status (as of 2026-05-06)
 
 | Item | Value |
 |---|---|
-| Active checkpoint | `output/router/router.safetensors` (v3) |
+| Active checkpoint | `output/router-v6/router.safetensors` |
 | Encoder | `sentence-transformers/all-MiniLM-L6-v2` |
-| Head | 2-layer MLP (384 → 256 → 34) |
-| Total training examples | 46 671 |
-| Total validation examples | 11 682 |
-| Top-1 accuracy on validation | 65.5 % |
-| Top-3 accuracy on validation | 85.3 % |
+| Head | 2-layer MLP (384 → 256 → 32) |
+| Total training examples | ~7 800 |
+| Total validation examples | ~2 000 |
+| Top-1 accuracy on validation | **87.7 %** |
+| Top-3 accuracy on validation | ~98 % |
+| Threshold | 0.50 (calibrated on v6 head — see scripts/calibrate_threshold.py) |
+| HuggingFace mirror | https://huggingface.co/clemsail/eu-kiki-router-v6-minilm |
 
-**⚠️ Known limitation.** The classifier is more a "text style"
-classifier than a "domain" classifier — see §4.
+The §4 limitation that affected v3 (label drift in the noisy auto-classified
+corpus) is now resolved: v6 trains on the AI-Act-traceable clean corpus
+(`data/router-clean/`) plus 150 manually-curated niche-domain prompts
+(`scripts/augment_niche_domains.py`).
 
 ---
 
