@@ -1,4 +1,4 @@
-# EU-KIKI VLM Pipeline — Compliance Audit Trail
+# AILIANCE VLM Pipeline — Compliance Audit Trail
 
 Generated: 2026-05-02T23:39:58.224859+00:00
 Pipeline version: vlm-poc-0.1

@@ -9,11 +9,11 @@ set -euo pipefail
 
 LABEL="devstral-python-adapter-2026-05-04"
 MODEL="/Users/electron/Projets/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"
-ADAPTER="/Users/electron/Projets/eu-kiki/output/adapters/devstral/python"
+ADAPTER="/Users/electron/Projets/ailiance/output/adapters/devstral/python"
 PORT=8802
 
 EVAL_DIR="$(cd "$(dirname "$0")/../../.." && pwd)/eval"
-cd "$EVAL_DIR/.."   # eu-kiki root
+cd "$EVAL_DIR/.."   # ailiance root
 
 bash eval/run_all.sh \
     --model "$MODEL" \

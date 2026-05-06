@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# eu-kiki LoRA Batch 4 — Devstral BF16 Retrain (all 12 domains)
+# ailiance LoRA Batch 4 — Devstral BF16 Retrain (all 12 domains)
 #
 # Re-trains ALL Devstral domains on the properly loaded BF16 model.
 # Previous Devstral adapters were trained on broken FP8 weights (loss ~12).
@@ -9,19 +9,19 @@
 # Provenance: mistralai official FP8 → community BF16 dequantization
 #
 # Usage:
-#   bash ~/eu-kiki/scripts/train_batch4_bf16_retrain.sh
-#   bash ~/eu-kiki/scripts/train_batch4_bf16_retrain.sh --dry-run
+#   bash ~/ailiance/scripts/train_batch4_bf16_retrain.sh
+#   bash ~/ailiance/scripts/train_batch4_bf16_retrain.sh --dry-run
 # ==============================================================================
 
 set -euo pipefail
 
 KIKI_TUNNER="$HOME/KIKI-Mac_tunner"
-EU_KIKI="$HOME/eu-kiki"
-HF_DATA="$EU_KIKI/data/hf-traced"
-ADAPTERS="$EU_KIKI/output/adapters"
-OUTPUT_ROOT="$KIKI_TUNNER/output/eu-kiki-hf"
-LOG_DIR="$EU_KIKI/output/training-logs"
-BACKUP_DIR="$EU_KIKI/output/adapters-backup-pre-bf16"
+AILIANCE="$HOME/ailiance"
+HF_DATA="$AILIANCE/data/hf-traced"
+ADAPTERS="$AILIANCE/output/adapters"
+OUTPUT_ROOT="$KIKI_TUNNER/output/ailiance-hf"
+LOG_DIR="$AILIANCE/output/training-logs"
+BACKUP_DIR="$AILIANCE/output/adapters-backup-pre-bf16"
 
 # NEW: BF16 model path
 DEVSTRAL_BF16="$KIKI_TUNNER/models/Devstral-Small-2-24B-BF16"
@@ -34,7 +34,7 @@ fi
 mkdir -p "$LOG_DIR"
 
 echo "============================================================"
-echo " eu-kiki LoRA Batch 4 — Devstral BF16 Retrain"
+echo " ailiance LoRA Batch 4 — Devstral BF16 Retrain"
 echo " Date: $(date '+%Y-%m-%d %H:%M')"
 echo " Model: $DEVSTRAL_BF16"
 echo " Data:  $HF_DATA"

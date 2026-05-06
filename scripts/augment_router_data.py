@@ -9,7 +9,7 @@ MiniLM-trained head:
   - Bilingual FR/EN prompts under-represented across all code domains, so
     the encoder over-fits language as a feature.
 
-Run from the eu-kiki repo root with the Mac venv (Python 3.12+):
+Run from the ailiance repo root with the Mac venv (Python 3.12+):
   ~/KIKI-Mac_tunner/.venv/bin/python scripts/augment_router_data.py
 
 Effect: appends ~600 new lines to ~/KIKI-Mac_tunner/data/micro-kiki/classified/

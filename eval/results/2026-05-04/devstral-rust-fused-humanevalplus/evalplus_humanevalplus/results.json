@@ -1,7 +1,7 @@
 {
   "task": "humanevalplus",
   "dataset": "humaneval",
-  "model_name": "/Users/clems/eu-kiki/scratch/devstral-rust-fused-4bit",
+  "model_name": "/Users/clems/ailiance/scratch/devstral-rust-fused-4bit",
   "base_url": "http://127.0.0.1:8891/v1",
   "n_samples_per_problem": 1,
   "temperature": 0.0,

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EU-KIKI Evaluation Framework — v1 (Devstral+Apertus+EuroLLM) vs v2 (Qwen3.6+Medium3.5)
+AILIANCE Evaluation Framework — v1 (Devstral+Apertus+EuroLLM) vs v2 (Qwen3.6+Medium3.5)
 
 Evaluates LoRA adapters across 4 dimensions:
   1. Perplexity (cross-entropy loss on validation data)
@@ -34,14 +34,14 @@ from typing import Optional
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-EU_KIKI = Path.home() / "eu-kiki"
+AILIANCE = Path.home() / "ailiance"
 KIKI_TUNNER = Path.home() / "KIKI-Mac_tunner"
-HF_DATA = EU_KIKI / "data" / "hf-traced"
-ADAPTERS_V1 = EU_KIKI / "output" / "adapters"
-ADAPTERS_V2 = EU_KIKI / "output" / "adapters-v2"
-EVAL_OUTPUT = EU_KIKI / "output" / "eval"
+HF_DATA = AILIANCE / "data" / "hf-traced"
+ADAPTERS_V1 = AILIANCE / "output" / "adapters"
+ADAPTERS_V2 = AILIANCE / "output" / "adapters-v2"
+EVAL_OUTPUT = AILIANCE / "output" / "eval"
 RAW_OUTPUT = EVAL_OUTPUT / "raw"
-LOG_DIR = EU_KIKI / "output" / "training-logs"
+LOG_DIR = AILIANCE / "output" / "training-logs"
 
 # Inject mlx_lm_fork before mlx_lm
 sys.path.insert(0, str(KIKI_TUNNER / "lib"))
@@ -870,7 +870,7 @@ def benchmark_model_speed(model_key: str) -> SpeedBenchmark | None:
 def generate_report(results: EvalResults, mode: str) -> str:
     """Generate the markdown comparison report."""
     lines = [
-        "# EU-KIKI Eval Report: v1 vs v2",
+        "# AILIANCE Eval Report: v1 vs v2",
         "",
         f"**Generated**: {time.strftime('%Y-%m-%d %H:%M')}",
         f"**Mode**: {mode}",
@@ -1276,7 +1276,7 @@ def run_eval(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="EU-KIKI Eval Framework — v1 vs v2 adapter comparison"
+        description="AILIANCE Eval Framework — v1 vs v2 adapter comparison"
     )
     parser.add_argument(
         "--mode",

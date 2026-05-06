@@ -25,7 +25,7 @@ from pathlib import Path
 METHODOLOGY_TEMPLATE = """# Methodology — {label}
 
 **Generated:** {generated_at}
-**Schema:** eu-kiki-eval-result/1.0
+**Schema:** ailiance-eval-result/1.0
 
 ## Run identity
 
@@ -36,9 +36,9 @@ METHODOLOGY_TEMPLATE = """# Methodology — {label}
 | Model SHA-256 (first chunk) | `{model_sha}` |
 | Adapter | `{adapter_path}` |
 | Adapter SHA-256 | `{adapter_sha}` |
-| eu-kiki git commit | `{git_commit}` |
-| eu-kiki git describe | `{git_describe}` |
-| eu-kiki dirty? | `{git_dirty}` |
+| ailiance git commit | `{git_commit}` |
+| ailiance git describe | `{git_describe}` |
+| ailiance dirty? | `{git_dirty}` |
 | Hardware | `{hardware_node}` ({machine}, {processor}) |
 | Python | `{python_version}` |
 | MLX | `{mlx_version}` |
@@ -70,7 +70,7 @@ METHODOLOGY_TEMPLATE = """# Methodology — {label}
 
 ## How to reproduce
 
-1. Check out the eu-kiki repo at the commit above:
+1. Check out the ailiance repo at the commit above:
 
    ```bash
    git checkout {git_commit}
@@ -109,7 +109,7 @@ METHODOLOGY_TEMPLATE = """# Methodology — {label}
 ## EU AI Act Art. 53(1)(d)
 
 This methodology document is part of the technical documentation maintained
-under EU AI Act Art. 53(1)(d) for the eu-kiki system. See
+under EU AI Act Art. 53(1)(d) for the ailiance system. See
 `docs/eu-ai-act-transparency.md` for the broader transparency framework.
 """
 
@@ -129,7 +129,7 @@ ADAPTER="{adapter_path}"
 PORT={port}
 
 EVAL_DIR="$(cd "$(dirname "$0")/../../.." && pwd)/eval"
-cd "$EVAL_DIR/.."   # eu-kiki root
+cd "$EVAL_DIR/.."   # ailiance root
 
 bash eval/run_all.sh \\
     --model "$MODEL" \\
@@ -228,7 +228,7 @@ def write_report(output_dir: Path) -> Path:
     label = output_dir.name
 
     lines = [
-        f"# eu-kiki bench report — {label}",
+        f"# ailiance bench report — {label}",
         "",
         f"Generated: {time.strftime('%Y-%m-%dT%H:%M:%S%z')}",
         "",

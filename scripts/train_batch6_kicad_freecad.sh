@@ -2,17 +2,17 @@
 set -euo pipefail
 
 KIKI_TUNNER="$HOME/KIKI-Mac_tunner"
-EU_KIKI="$HOME/eu-kiki"
-HF_DATA="$EU_KIKI/data/hf-traced"
-ADAPTERS="$EU_KIKI/output/adapters"
-OUTPUT_ROOT="$KIKI_TUNNER/output/eu-kiki-hf"
-LOG_DIR="$EU_KIKI/output/training-logs"
+AILIANCE="$HOME/ailiance"
+HF_DATA="$AILIANCE/data/hf-traced"
+ADAPTERS="$AILIANCE/output/adapters"
+OUTPUT_ROOT="$KIKI_TUNNER/output/ailiance-hf"
+LOG_DIR="$AILIANCE/output/training-logs"
 DEVSTRAL_BF16="$KIKI_TUNNER/models/Devstral-Small-2-24B-BF16"
 
 mkdir -p "$LOG_DIR"
 
 echo "============================================================"
-echo " eu-kiki Batch 6 — KiCad + FreeCAD domains"
+echo " ailiance Batch 6 — KiCad + FreeCAD domains"
 echo " Date: $(date '+%Y-%m-%d %H:%M')"
 echo "============================================================"
 

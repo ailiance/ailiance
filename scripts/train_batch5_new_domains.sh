@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# eu-kiki LoRA Batch 5 — New domains on Devstral BF16
+# ailiance LoRA Batch 5 — New domains on Devstral BF16
 #
 # Trains 9 newly created domains. All on Devstral BF16 except spice-sim (Apertus).
 # ==============================================================================
@@ -8,11 +8,11 @@
 set -euo pipefail
 
 KIKI_TUNNER="$HOME/KIKI-Mac_tunner"
-EU_KIKI="$HOME/eu-kiki"
-HF_DATA="$EU_KIKI/data/hf-traced"
-ADAPTERS="$EU_KIKI/output/adapters"
-OUTPUT_ROOT="$KIKI_TUNNER/output/eu-kiki-hf"
-LOG_DIR="$EU_KIKI/output/training-logs"
+AILIANCE="$HOME/ailiance"
+HF_DATA="$AILIANCE/data/hf-traced"
+ADAPTERS="$AILIANCE/output/adapters"
+OUTPUT_ROOT="$KIKI_TUNNER/output/ailiance-hf"
+LOG_DIR="$AILIANCE/output/training-logs"
 
 DEVSTRAL_BF16="$KIKI_TUNNER/models/Devstral-Small-2-24B-BF16"
 APERTUS="$KIKI_TUNNER/models/Apertus-70B-Instruct-2509"
@@ -25,7 +25,7 @@ fi
 mkdir -p "$LOG_DIR"
 
 echo "============================================================"
-echo " eu-kiki LoRA Batch 5 — New Domains"
+echo " ailiance LoRA Batch 5 — New Domains"
 echo " Date: $(date '+%Y-%m-%d %H:%M')"
 if $DRY_RUN; then echo " Mode: DRY RUN"; fi
 echo "============================================================"

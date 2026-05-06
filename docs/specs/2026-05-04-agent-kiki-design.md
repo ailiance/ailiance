@@ -4,13 +4,13 @@
 **Statut :** Design validé, prêt pour plan d'implémentation
 **Auteur :** Clément Saillant
 **Brainstorming :** session interactive (8 sections validées)
-**Spec parent :** `docs/specs/2026-04-26-eu-kiki-design.md`
+**Spec parent :** `docs/specs/2026-04-26-ailiance-design.md`
 
 ---
 
 ## 0. Sommaire
 
-`agent-kiki` (alias `aki`) est une **CLI agentique** qui transforme une tâche en langage naturel en code écrit/édité sur disque, en pilotant l'infrastructure `eu-kiki` (gateway FastAPI + 3 workers MLX + adapters LoRA domaine-spécifiques).
+`agent-kiki` (alias `aki`) est une **CLI agentique** qui transforme une tâche en langage naturel en code écrit/édité sur disque, en pilotant l'infrastructure `ailiance` (gateway FastAPI + 3 workers MLX + adapters LoRA domaine-spécifiques).
 
 L'agent est **full-autonomous** (boucle ReAct sans humain à chaque tour, sauf approbations sécurité), **adaptatif** (s'ajuste au mode SCRATCH dossier vide ou EDIT codebase existant), et **multi-modèle interne** : Apertus 70B planifie, Devstral 24B 4-bit code, EuroLLM 22B compresse le contexte long. Il logue chaque tour en JSONL pour permettre, à terme, le fine-tune d'un adapter `agent-react` sur les traces réelles (V1).
 
@@ -24,9 +24,9 @@ Périmètre V0 : outil interne, MacStudio M3 Ultra, single-shot, 7 tools, 3 zone
 |---|---|
 | Nom | `agent-kiki` (binaire principal) |
 | Alias | `aki` (lien symbolique vers le même binaire) |
-| Repo GitHub | `L-electron-Rare/agent-kiki` (**privé**, séparé d'eu-kiki) |
+| Repo GitHub | `L-electron-Rare/agent-kiki` (**privé**, séparé d'ailiance) |
 | Path local | `/Users/electron/Documents/Projets/agent-kiki/` |
-| Couplage à eu-kiki | **Aucune dépendance Python** — communication via HTTP OpenAI-compatible (gateway `:9200`). Repo, CI, secrets et pyproject.toml indépendants. |
+| Couplage à ailiance | **Aucune dépendance Python** — communication via HTTP OpenAI-compatible (gateway `:9200`). Repo, CI, secrets et pyproject.toml indépendants. |
 | Statut produit | Outil interne (lab + Clément), pas de release publique au MVP |
 | Cible matérielle MVP | MacStudio M3 Ultra (workers MLX) ; client local sur GrosMac/macM1 via SSH/Tailscale |
 | Langage | Python 3.13+, géré par `uv`, layout `src/agent_kiki/`, `pyproject.toml` autonome, `hatchling` build (cohérence stack maison sans partage de lockfile) |
@@ -58,7 +58,7 @@ Périmètre V0 : outil interne, MacStudio M3 Ultra, single-shot, 7 tools, 3 zone
                │ Headers : X-Eu-Kiki-Hint, X-Eu-Kiki-Role
                ▼
 ┌────────────────────────────────────────────────┐
-│  eu-kiki gateway  studio:9200                  │
+│  ailiance gateway  studio:9200                  │
 │  ────────────────────────                      │
 │  • Jina v3 router (auto-domain)                │
 │  • domain hint override (X-Eu-Kiki-Hint)       │
@@ -86,9 +86,9 @@ Périmètre V0 : outil interne, MacStudio M3 Ultra, single-shot, 7 tools, 3 zone
 **Décisions structurantes :**
 
 - **Apertus ne génère jamais le code lui-même.** Il décide *quoi* faire (intentions), Devstral décide *comment* l'écrire (contenu). Apertus reste aveugle au code complet sauf si un futur `read_file` le lui montre — son contexte tient sur le plan.
-- **Routage par headers HTTP**, pas de modif du gateway eu-kiki au MVP. `extra_headers` du protocole OpenAI-compatible est utilisé. Patch trivial dans le gateway si les headers ne sont pas forwardés au routeur (à valider en intégration).
+- **Routage par headers HTTP**, pas de modif du gateway ailiance au MVP. `extra_headers` du protocole OpenAI-compatible est utilisé. Patch trivial dans le gateway si les headers ne sont pas forwardés au routeur (à valider en intégration).
 - **Pas de streaming** au MVP. Le format ReAct se parse complet, streaming = piège côté parsing partiel.
-- **Trois usages distincts du multi-modèle** : Apertus planifie, Devstral code, EuroLLM compresse les anciens tours quand le contexte d'Apertus sature. C'est la justification fonctionnelle de l'archi multi-worker d'eu-kiki.
+- **Trois usages distincts du multi-modèle** : Apertus planifie, Devstral code, EuroLLM compresse les anciens tours quand le contexte d'Apertus sature. C'est la justification fonctionnelle de l'archi multi-worker d'ailiance.
 
 ---
 
@@ -262,8 +262,8 @@ aki [OPTIONS] TASK              # alias court
 ```
 Configuration générale:
   -C, --cwd PATH               Dossier de travail (défaut: cwd actuel)
-  --hint domain=DOM            Force le routing eu-kiki (python|rust|kicad|...)
-  --gateway URL                URL du gateway eu-kiki (défaut: http://studio:9200)
+  --hint domain=DOM            Force le routing ailiance (python|rust|kicad|...)
+  --gateway URL                URL du gateway ailiance (défaut: http://studio:9200)
   --no-emoji                   Sortie ASCII pure
   --no-color                   Désactive les couleurs
 
@@ -298,7 +298,7 @@ Modes recherche [research]:
 
 Aide:
   --help                       Cette aide
-  --version                    Versions CLI + workers eu-kiki
+  --version                    Versions CLI + workers ailiance
 ```
 
 **Sortie terminale (mode défaut) :**
@@ -487,16 +487,16 @@ Précédence : CLI flags > env vars (`AGENT_KIKI_GATEWAY`, etc.) > config file >
 
 | Brique | Choix | Raison |
 |---|---|---|
-| Runtime | Python 3.13+ | Cohérence pyproject.toml partagé eu-kiki |
+| Runtime | Python 3.13+ | Cohérence pyproject.toml partagé ailiance |
 | Package mgr | `uv` | Standard maison |
-| HTTP client | `httpx` | Robuste, déjà dans eu-kiki |
+| HTTP client | `httpx` | Robuste, déjà dans ailiance |
 | Validation | `pydantic v2` + `jsonschema` | Schémas tools / traces |
 | CLI parser | `typer` | Commandes propres, auto-help, type hints |
 | Output coloré | `rich` | Tables, spinners, panels |
 | Parsing ReAct | regex + `json.loads` | XML enveloppe trivialement parseable |
 | Logging | `structlog` → JSONL | Performant, format-stable |
 | Tests | `pytest` + `pytest-asyncio` + `respx` | Mock httpx sans toucher gateway |
-| Lint/format | `ruff` | Cohérence eu-kiki |
+| Lint/format | `ruff` | Cohérence ailiance |
 
 **Pas de dépendances lourdes :** pas de LangChain/LangGraph/DSPy/smolagents.
 - Boucle ~300 lignes Python, écrite à la main.
@@ -549,7 +549,7 @@ agent-kiki/                            # repo autonome, GitHub privé
 │       │   ├── terminal.py            # rich layout, spinners
 │       │   └── json_stream.py         # mode --json
 │       └── orchestrators/
-│           ├── local_eu_kiki.py       # défaut: Apertus + Devstral + EuroLLM
+│           ├── local_ailiance.py       # défaut: Apertus + Devstral + EuroLLM
 │           └── claude.py              # mode recherche --orchestrator claude
 ├── tests/
 │   ├── unit/
@@ -568,7 +568,7 @@ agent-kiki/                            # repo autonome, GitHub privé
         └── 2026-05-04-agent-kiki-plan.md    # plan d'implémentation
 ```
 
-**Note de coexistence avec eu-kiki :** ce design vit aussi dans `eu-kiki/docs/specs/` parce qu'il a été pensé là (cohérent avec la convention "le spec vit où la conversation a eu lieu"). Le repo agent-kiki en a une **copie canonique** dans son propre `docs/specs/` qui devient la source de vérité. Tout amendement futur se fait côté agent-kiki ; le miroir dans eu-kiki devient un archive du design initial.
+**Note de coexistence avec ailiance :** ce design vit aussi dans `ailiance/docs/specs/` parce qu'il a été pensé là (cohérent avec la convention "le spec vit où la conversation a eu lieu"). Le repo agent-kiki en a une **copie canonique** dans son propre `docs/specs/` qui devient la source de vérité. Tout amendement futur se fait côté agent-kiki ; le miroir dans ailiance devient un archive du design initial.
 
 ---
 
@@ -579,7 +579,7 @@ agent-kiki/                            # repo autonome, GitHub privé
 | Unit | parser XML+JSON (cas valides, invalides, edge cases unicode), jail filesystem, whitelist shell 3 zones, budget enforcement | ~60 tests |
 | Integration | boucle ReAct contre gateway mocké (`respx`). 6 scénarios : SCRATCH-Rust, SCRATCH-Python, EDIT-add-feature, mode MIXED interactif, dépassement de budget, format invalide retry | ~10 tests |
 | Golden | 5 runs de référence sur tâches fixées, trace attendue snapshot. Test de non-régression sur le format de sortie (pas le contenu LLM, qui varie). | 5 traces |
-| Contract | Le gateway eu-kiki retourne bien des headers `X-Eu-Kiki-Role` et le routing correspond. | 3 tests |
+| Contract | Le gateway ailiance retourne bien des headers `X-Eu-Kiki-Role` et le routing correspond. | 3 tests |
 
 **Pas de tests E2E contre vrai gateway au CI** (besoin du MacStudio). E2E manuel via `make e2e-studio` quand opportun.
 
@@ -591,7 +591,7 @@ agent-kiki/                            # repo autonome, GitHub privé
 |---|---|---|
 | **V0 — MVP** | 2-3 semaines à partir du plan d'impl | Tout ce que ce spec décrit : 7 tools, modes SCRATCH/EDIT/MIXED, 3 zones safety, traces JSONL complètes, single-shot CLI. |
 | **V1 — Adapter `agent-react`** | Après ~200-500 traces collectées (~1 mois d'usage perso) | Export dataset via `aki-export-dataset`, fine-tune LoRA Apertus 70B sur tes propres traces ReAct, déploiement worker `:9304`, basculement par défaut. |
-| **V2 — Édition codebase RAG** | +1-2 mois après V1 | Indexation `tree-sitter` + embeddings (sentence-transformers déjà dans eu-kiki), tool `semantic_search`, mode EDIT dopé sur gros repos. **Variant possible** : s'en tenir à `search` ripgrep si V0+V1 marchent assez bien — décision data-driven. |
+| **V2 — Édition codebase RAG** | +1-2 mois après V1 | Indexation `tree-sitter` + embeddings (sentence-transformers déjà dans ailiance), tool `semantic_search`, mode EDIT dopé sur gros repos. **Variant possible** : s'en tenir à `search` ripgrep si V0+V1 marchent assez bien — décision data-driven. |
 | **V3 — AST edits** | Si V2 prouve qu'on touche le plafond textuel | Tools `replace_function`, `add_import`, `rename_symbol` via tree-sitter (Python, Rust, TS d'abord). Alternative : abandon si Devstral fait suffisamment bien des edits textuels chirurgicaux. |
 | **V4 — REPL & multi-agent collab** | Si V0-V3 sont stables | Mode interactif, agent qui peut spawner des sous-agents (Apertus principal délègue à un Apertus spécialisé "review"). Risqué, à n'envisager qu'avec preuves de stabilité. |
 
@@ -615,12 +615,12 @@ agent-kiki/                            # repo autonome, GitHub privé
 | Risque | Probabilité | Impact | Mitigation |
 |---|---|---|---|
 | Apertus 70B base diverge en tool-use sur runs longs (>10 tours) | Élevée | Boucle infinie / format invalide | `max_steps` strict + retry parsing limité à 1 + collecte traces pour V1 |
-| Headers `X-Eu-Kiki-Role` non-forwardés au routeur eu-kiki | Moyenne | Routing ne marche pas → tout passe par le routeur Jina auto | Patch trivial dans gateway (tâche dépendante du plan d'impl) |
+| Headers `X-Eu-Kiki-Role` non-forwardés au routeur ailiance | Moyenne | Routing ne marche pas → tout passe par le routeur Jina auto | Patch trivial dans gateway (tâche dépendante du plan d'impl) |
 | Devstral 4-bit produit du code syntaxiquement invalide | Moyenne | Tests échouent, agent re-itère | Boucle agentique le détecte via `run_cmd cargo build`, repair tour suivant |
 | Contexte Apertus sature avant fenêtre glissante (mode EDIT large repo) | Moyenne | Erreur HTTP du worker | Fenêtre glissante + résumé EuroLLM + fallback abort propre |
 | User clique Y par fatigue sur un `run_cmd` destructeur | Moyenne | Perte de fichiers locaux | Zone HARD-DENY étroite (jamais bypassable sans `--allow-destructive`) |
 | Adapter `agent-react` V1 pas assez bon avec 200-500 traces | Moyenne | V1 ne dépasse pas V0 | Continuer collecte jusqu'à 1000+, ajouter curation manuelle des bonnes traces |
-| Gateway eu-kiki indispo (MacStudio offline) | Faible | Agent inutilisable | Affichage erreur claire au démarrage + suggestion `--orchestrator claude` |
+| Gateway ailiance indispo (MacStudio offline) | Faible | Agent inutilisable | Affichage erreur claire au démarrage + suggestion `--orchestrator claude` |
 
 ---
 
@@ -637,7 +637,7 @@ agent-kiki/                            # repo autonome, GitHub privé
 
 ## 16. Références
 
-- Spec parent eu-kiki : `docs/specs/2026-04-26-eu-kiki-design.md`
-- Plan eu-kiki : `docs/specs/2026-04-26-eu-kiki-plan.md`
+- Spec parent ailiance : `docs/specs/2026-04-26-ailiance-design.md`
+- Plan ailiance : `docs/specs/2026-04-26-ailiance-plan.md`
 - Précédents pertinents : Aider (search/replace blocks), Claude Code (edit_file pattern), ReAct paper (Yao et al. 2022), ToolBench / BFCL (benchmarks tool-use OSS).
 - HumanEval+ baseline Devstral 24B 4-bit : 97.1 % pass@1 (validation intrinsèque de la qualité codegen, terrain où le design capitalise).

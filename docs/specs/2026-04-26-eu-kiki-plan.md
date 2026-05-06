@@ -1,4 +1,4 @@
-# EU-KIKI Implementation Plan
+# AILIANCE Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -8,14 +8,14 @@
 
 **Tech Stack:** Python 3.14, FastAPI, MLX, mlx-lm (fork), Jina Embeddings v3, Prometheus, safetensors.
 
-**Spec:** `docs/specs/2026-04-26-eu-kiki-design.md`
+**Spec:** `docs/specs/2026-04-26-ailiance-design.md`
 
 ---
 
 ## File Structure
 
 ```
-eu-kiki/
+ailiance/
 ├── src/
 │   ├── __init__.py
 │   ├── mlx_models/
@@ -78,7 +78,7 @@ eu-kiki/
 
 ```toml
 [project]
-name = "eu-kiki"
+name = "ailiance"
 version = "0.1.0-dev"
 description = "EU-sovereign multi-model LLM serving pipeline"
 requires-python = ">=3.13"
@@ -115,7 +115,7 @@ touch src/worker/__init__.py src/gateway/__init__.py tests/__init__.py
 - [ ] **Step 3: Create venv and install**
 
 ```bash
-cd ~/eu-kiki && uv venv && uv pip install -e ".[dev]"
+cd ~/ailiance && uv venv && uv pip install -e ".[dev]"
 ```
 
 - [ ] **Step 4: Verify**
@@ -902,7 +902,7 @@ def test_worker_metrics():
     client = TestClient(app)
     resp = client.get("/metrics")
     assert resp.status_code == 200
-    assert "eu_kiki_worker_requests_total" in resp.text
+    assert "ailiance_worker_requests_total" in resp.text
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -930,7 +930,7 @@ class ChatMessage(BaseModel):
 
 
 class ChatCompletionRequest(BaseModel, extra="ignore"):
-    model: str = "eu-kiki"
+    model: str = "ailiance"
     messages: list[ChatMessage]
     temperature: float = 0.7
     max_tokens: int = 2048
@@ -953,7 +953,7 @@ class ChatCompletion(BaseModel):
     id: str = Field(default_factory=lambda: f"chatcmpl-{uuid.uuid4().hex[:12]}")
     object: str = "chat.completion"
     created: int = Field(default_factory=lambda: int(time.time()))
-    model: str = "eu-kiki"
+    model: str = "ailiance"
     choices: list[Choice]
     usage: Usage = Field(default_factory=Usage)
 ```
@@ -980,10 +980,10 @@ log = logging.getLogger(__name__)
 
 
 def make_worker_app(cfg: WorkerConfig, skip_model_load: bool = False) -> FastAPI:
-    app = FastAPI(title=f"eu-kiki-worker-{cfg.port}")
+    app = FastAPI(title=f"ailiance-worker-{cfg.port}")
     reg = CollectorRegistry()
-    requests_total = Counter("eu_kiki_worker_requests_total", "Requests", ["status"], registry=reg)
-    inference_latency = Histogram("eu_kiki_worker_inference_seconds", "Inference latency", registry=reg)
+    requests_total = Counter("ailiance_worker_requests_total", "Requests", ["status"], registry=reg)
+    inference_latency = Histogram("ailiance_worker_inference_seconds", "Inference latency", registry=reg)
     semaphore = asyncio.Semaphore(1)
 
     runtime = MLXWorkerRuntime(cfg)
@@ -1083,10 +1083,10 @@ def test_gateway_models_list():
     assert resp.status_code == 200
     models = resp.json()["data"]
     ids = [m["id"] for m in models]
-    assert "eu-kiki" in ids
-    assert "eu-kiki-apertus" in ids
-    assert "eu-kiki-devstral" in ids
-    assert "eu-kiki-eurollm" in ids
+    assert "ailiance" in ids
+    assert "ailiance-apertus" in ids
+    assert "ailiance-devstral" in ids
+    assert "ailiance-eurollm" in ids
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1154,17 +1154,17 @@ WORKER_URLS = {
 }
 
 MODEL_FORCE_MAP = {
-    "eu-kiki-apertus": 9201,
-    "eu-kiki-devstral": 9202,
-    "eu-kiki-eurollm": 9203,
+    "ailiance-apertus": 9201,
+    "ailiance-devstral": 9202,
+    "ailiance-eurollm": 9203,
 }
 
 
 def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
-    app = FastAPI(title="eu-kiki-gateway")
+    app = FastAPI(title="ailiance-gateway")
     reg = CollectorRegistry()
-    requests_total = Counter("eu_kiki_gw_requests_total", "Gateway requests", ["model", "status"], registry=reg)
-    route_latency = Histogram("eu_kiki_gw_route_seconds", "Router latency", registry=reg)
+    requests_total = Counter("ailiance_gw_requests_total", "Gateway requests", ["model", "status"], registry=reg)
+    route_latency = Histogram("ailiance_gw_route_seconds", "Router latency", registry=reg)
 
     router = None
     if not skip_router_load:
@@ -1195,10 +1195,10 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         return {
             "object": "list",
             "data": [
-                {"id": "eu-kiki", "object": "model", "owned_by": "eu-kiki"},
-                {"id": "eu-kiki-apertus", "object": "model", "owned_by": "eu-kiki"},
-                {"id": "eu-kiki-devstral", "object": "model", "owned_by": "eu-kiki"},
-                {"id": "eu-kiki-eurollm", "object": "model", "owned_by": "eu-kiki"},
+                {"id": "ailiance", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-apertus", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-devstral", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-eurollm", "object": "model", "owned_by": "ailiance"},
             ],
         }
 
@@ -1330,16 +1330,16 @@ domains:
 
 ```bash
 #!/usr/bin/env bash
-# scripts/start.sh — Launch all eu-kiki workers + gateway
+# scripts/start.sh — Launch all ailiance workers + gateway
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(dirname "$SCRIPT_DIR")"
 PYTHON="${ROOT}/.venv/bin/python"
-LOG_DIR="/tmp/eu-kiki"
+LOG_DIR="/tmp/ailiance"
 mkdir -p "$LOG_DIR"
 
-echo "[$(date '+%H:%M:%S')] Starting eu-kiki workers..."
+echo "[$(date '+%H:%M:%S')] Starting ailiance workers..."
 
 # Workers
 "$PYTHON" -m uvicorn src.worker.server:make_apertus_app --factory \
@@ -1362,7 +1362,7 @@ sleep 5
     --host 127.0.0.1 --port 9200 > "$LOG_DIR/gateway.log" 2>&1 &
 echo "[$(date '+%H:%M:%S')] Gateway started (PID $!, port 9200)"
 
-echo "[$(date '+%H:%M:%S')] eu-kiki running. Logs in $LOG_DIR/"
+echo "[$(date '+%H:%M:%S')] ailiance running. Logs in $LOG_DIR/"
 echo "  Gateway:  http://localhost:9200"
 echo "  Apertus:  http://localhost:9201"
 echo "  Devstral: http://localhost:9202"
@@ -1453,7 +1453,7 @@ if __name__ == "__main__":
 
 ```python
 # scripts/train_router.py
-"""Train Jina v3 + MLP domain router for eu-kiki."""
+"""Train Jina v3 + MLP domain router for ailiance."""
 
 import argparse
 import json
@@ -1589,7 +1589,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Context
 
-EU-KIKI is a 100% EU-sovereign multi-model LLM serving pipeline. It routes requests to 3 European models via a Jina v3 domain classifier, each with LoRA adapters.
+AILIANCE is a 100% EU-sovereign multi-model LLM serving pipeline. It routes requests to 3 European models via a Jina v3 domain classifier, each with LoRA adapters.
 
 ## Architecture
 
@@ -1618,8 +1618,8 @@ Router: Jina Embeddings v3 (Berlin) + MLP classifier (39 domains)
     uv run python scripts/train_router.py
 
     # Logs
-    tail -f /tmp/eu-kiki/gateway.log
-    tail -f /tmp/eu-kiki/apertus.log
+    tail -f /tmp/ailiance/gateway.log
+    tail -f /tmp/ailiance/apertus.log
 
 ## Key Design Decisions
 

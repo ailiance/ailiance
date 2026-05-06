@@ -2,7 +2,7 @@
   "task": "humaneval+ (official EvalPlus, Linux sandbox)",
   "scorer": "evalplus.evaluate (official)",
   "host": "kx6tm-23 (Linux x86_64, Python 3.13.5)",
-  "samples_source": "macM1 codegen on Devstral-2-24B-MLX-4bit FUSED with eu-kiki v1 python adapter",
+  "samples_source": "macM1 codegen on Devstral-2-24B-MLX-4bit FUSED with ailiance v1 python adapter",
   "n_problems": 164,
   "metrics": {
     "humaneval_base_pass_at_1": 0.860,

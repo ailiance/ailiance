@@ -1,4 +1,4 @@
-# eu-kiki bench report — devstral-base-baseline-2026-05-04-v2
+# ailiance bench report — devstral-base-baseline-2026-05-04-v2
 
 Generated: 2026-05-04T18:32:39+0200
 

@@ -13,7 +13,7 @@ Domains enriched:
 All source datasets are Apache-2.0 or MIT licensed.
 
 Usage:
-    cd ~/eu-kiki && uv run python scripts/enrich_weak_domains.py
+    cd ~/ailiance && uv run python scripts/enrich_weak_domains.py
 """
 
 import json
@@ -591,7 +591,7 @@ def main() -> None:
     OUT_ROOT.mkdir(parents=True, exist_ok=True)
 
     print("=" * 60)
-    print("eu-kiki -- Weak domain enrichment")
+    print("ailiance -- Weak domain enrichment")
     print(f"Output root : {OUT_ROOT}")
     print(f"Target/domain: {TARGET} (-> ~{int(TARGET * (1 - VALID_RATIO))} train)")
     print(f"Split ratio : {int((1 - VALID_RATIO) * 100)}/{int(VALID_RATIO * 100)} (train/valid)")

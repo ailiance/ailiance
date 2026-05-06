@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """evalplus_runner — run HumanEval+ / MBPP+ against an MLX-LM server.
 
-Wraps EvalPlus (https://github.com/evalplus/evalplus) for the eu-kiki suite.
+Wraps EvalPlus (https://github.com/evalplus/evalplus) for the ailiance suite.
 Hits the local mlx_lm server (OpenAI-compatible) and produces a publishable
 JSON+Markdown report.
 

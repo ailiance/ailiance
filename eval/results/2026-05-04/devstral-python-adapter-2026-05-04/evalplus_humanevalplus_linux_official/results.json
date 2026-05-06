@@ -18,7 +18,7 @@
     "interpretation": "ADAPTER NEUTRAL on HumanEval — adapter does not degrade nor improve over base. Expected outcome (predicted scenario A, 50% probability). Adapter targets chat/instructional Python style (training data: bigcode/self-oss-instruct-sc2-exec-filter-50k, 2850 train samples, 500 iters), HumanEval expects raw signature->function completion which the EvalPlus sanitizer extracts cleanly from the verbose output. The fine-tuning is harmless on this benchmark — confirms safe deployment in production. Real adapter impact must be measured on MT-Bench or AlpacaEval (chat benchmarks)."
   },
   "compute_model": "Devstral-Small-2-24B-MLX-4bit + LoRA r16/alpha32 q/k/v/o_proj",
-  "adapter_path": "eu-kiki/output/adapters/devstral/python/adapters.safetensors (369 MB)",
+  "adapter_path": "ailiance/output/adapters/devstral/python/adapters.safetensors (369 MB)",
   "generation": "T=0.0 greedy n_samples=1, mlx_lm.server :8802 on macM1 M1 Max",
   "evaluated_at": "2026-05-04T21:15+0200"
 }

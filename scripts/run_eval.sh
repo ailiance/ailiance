@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# EU-KIKI Evaluation Runner — v1 vs v2 adapter comparison
+# AILIANCE Evaluation Runner — v1 vs v2 adapter comparison
 #
 # Usage:
 #   bash run_eval.sh --v1-only       # eval v1 adapters only
@@ -15,24 +15,24 @@
 #   bash run_eval.sh --compare --skip-generation
 #
 # Output:
-#   ~/eu-kiki/output/eval/eval_report_v1_vs_v2.md    — comparison report
-#   ~/eu-kiki/output/eval/raw/                        — raw JSON results
+#   ~/ailiance/output/eval/eval_report_v1_vs_v2.md    — comparison report
+#   ~/ailiance/output/eval/raw/                        — raw JSON results
 #
 # EU AI Act Art. 53(1)(d): eval methodology documented for transparency
 # ==============================================================================
 
 set -euo pipefail
 
-EU_KIKI="$HOME/eu-kiki"
+AILIANCE="$HOME/ailiance"
 KIKI_TUNNER="$HOME/KIKI-Mac_tunner"
-EVAL_SCRIPT="$EU_KIKI/scripts/eval_framework.py"
+EVAL_SCRIPT="$AILIANCE/scripts/eval_framework.py"
 
 # ---------------------------------------------------------------------------
 # Pre-flight checks
 # ---------------------------------------------------------------------------
 
 echo "============================================================"
-echo " EU-KIKI Evaluation Framework"
+echo " AILIANCE Evaluation Framework"
 echo " Date: $(date '+%Y-%m-%d %H:%M')"
 echo "============================================================"
 
@@ -122,7 +122,7 @@ echo "Mode: $MODE"
 echo ""
 
 # v1 adapters
-V1_DIR="$EU_KIKI/output/adapters"
+V1_DIR="$AILIANCE/output/adapters"
 echo "v1 adapters ($V1_DIR):"
 for model_dir in "$V1_DIR"/*/; do
     model_name=$(basename "$model_dir")
@@ -131,7 +131,7 @@ for model_dir in "$V1_DIR"/*/; do
 done
 
 # v2 adapters
-V2_DIR="$EU_KIKI/output/adapters-v2"
+V2_DIR="$AILIANCE/output/adapters-v2"
 echo ""
 echo "v2 adapters ($V2_DIR):"
 for model_dir in "$V2_DIR"/*/; do
@@ -157,7 +157,7 @@ if [[ "$MODE" == "v2-only" || "$MODE" == "compare" ]]; then
         if [[ "$MODE" == "v2-only" ]]; then
             echo "Training may still be running. Check with:"
             echo "  ps aux | grep train_batch"
-            echo "  tail -f $EU_KIKI/output/training-logs/batch9-*.log"
+            echo "  tail -f $AILIANCE/output/training-logs/batch9-*.log"
             echo ""
             read -rp "Continue anyway? [y/N] " confirm
             if [[ ! "$confirm" =~ ^[yY] ]]; then
@@ -189,9 +189,9 @@ fi
 
 PYTHON="$KIKI_TUNNER/.venv/bin/python"
 if [[ ! -x "$PYTHON" ]]; then
-    # Fallback: try eu-kiki's own venv or system python
-    if [[ -x "$EU_KIKI/.venv/bin/python" ]]; then
-        PYTHON="$EU_KIKI/.venv/bin/python"
+    # Fallback: try ailiance's own venv or system python
+    if [[ -x "$AILIANCE/.venv/bin/python" ]]; then
+        PYTHON="$AILIANCE/.venv/bin/python"
     else
         PYTHON=$(which python3)
     fi
@@ -223,11 +223,11 @@ echo ""
 echo "Running: ${CMD[*]}"
 echo ""
 
-mkdir -p "$EU_KIKI/output/eval/raw"
+mkdir -p "$AILIANCE/output/eval/raw"
 
 START_TIME=$(date +%s)
 
-"${CMD[@]}" 2>&1 | tee "$EU_KIKI/output/eval/eval_run_$(date +%Y%m%d_%H%M).log"
+"${CMD[@]}" 2>&1 | tee "$AILIANCE/output/eval/eval_run_$(date +%Y%m%d_%H%M).log"
 
 END_TIME=$(date +%s)
 ELAPSED=$(( END_TIME - START_TIME ))
@@ -236,7 +236,7 @@ ELAPSED_MIN=$(( ELAPSED / 60 ))
 echo ""
 echo "============================================================"
 echo " Evaluation complete in ${ELAPSED_MIN} minutes"
-echo " Report: $EU_KIKI/output/eval/eval_report_v1_vs_v2.md"
-echo " Raw data: $EU_KIKI/output/eval/raw/"
-echo " Log: $EU_KIKI/output/eval/eval_run_$(date +%Y%m%d_%H%M).log"
+echo " Report: $AILIANCE/output/eval/eval_report_v1_vs_v2.md"
+echo " Raw data: $AILIANCE/output/eval/raw/"
+echo " Log: $AILIANCE/output/eval/eval_run_$(date +%Y%m%d_%H%M).log"
 echo "============================================================"

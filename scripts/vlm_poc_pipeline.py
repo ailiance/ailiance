@@ -1,4 +1,4 @@
-"""VLM (Vision-Language Model) PoC pipeline for eu-kiki.
+"""VLM (Vision-Language Model) PoC pipeline for ailiance.
 
 Downloads electronics datasheets/app notes, extracts schematic pages as images,
 creates VLM training pairs, and prepares a dataset for mlx-vlm LoRA training.
@@ -38,7 +38,7 @@ VLM_IMAGES_DIR = DATA_ROOT / "vlm-images"
 VLM_DATASET_DIR = DATA_ROOT / "vlm-dataset"
 DOCS_DIR = PROJECT_ROOT / "docs"
 
-USER_AGENT = "eu-kiki-research/0.2 (EU DSM Art.4 TDM)"
+USER_AGENT = "ailiance-research/0.2 (EU DSM Art.4 TDM)"
 RATE_LIMIT_SECONDS = 3.0
 IMAGE_DPI = 200
 MIN_DRAWINGS_SCHEMATIC = 20
@@ -640,7 +640,7 @@ def save_vlm_dataset(
 
     # Save dataset info
     info = {
-        "name": "eu-kiki-vlm-poc",
+        "name": "ailiance-vlm-poc",
         "version": "0.1",
         "description": "VLM training dataset from electronics datasheets and app notes",
         "train_samples": len(train_pairs),
@@ -673,7 +673,7 @@ def generate_vlm_compliance_report(
     now = datetime.now(timezone.utc).isoformat()
     lines: list[str] = []
 
-    lines.append("# EU-KIKI VLM Pipeline — Compliance Audit Trail")
+    lines.append("# AILIANCE VLM Pipeline — Compliance Audit Trail")
     lines.append(f"\nGenerated: {now}")
     lines.append(f"Pipeline version: vlm-poc-0.1\n")
 
@@ -811,7 +811,7 @@ def run_pipeline(
     """Run the full VLM PoC pipeline."""
 
     print("=" * 65)
-    print("  EU-KIKI VLM Pipeline PoC v0.1")
+    print("  AILIANCE VLM Pipeline PoC v0.1")
     print("  EU AI Act & DSM Directive Compliant")
     print("=" * 65)
 
@@ -946,7 +946,7 @@ def run_pipeline(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="EU-KIKI VLM PoC Pipeline — extract schematic images, create VLM training pairs",
+        description="AILIANCE VLM PoC Pipeline — extract schematic images, create VLM training pairs",
     )
     parser.add_argument(
         "--skip-download", action="store_true",

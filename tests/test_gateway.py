@@ -22,13 +22,13 @@ def test_gateway_models_list():
     assert resp.status_code == 200
     models = resp.json()["data"]
     ids = [m["id"] for m in models]
-    # 5 production workers + the bare "eu-kiki" auto-router alias.
-    assert "eu-kiki" in ids
-    assert "eu-kiki-apertus" in ids
-    assert "eu-kiki-devstral" in ids
-    assert "eu-kiki-eurollm" in ids
-    assert "eu-kiki-gemma" in ids
-    assert "eu-kiki-qwen" in ids
+    # 5 production workers + the bare "ailiance" auto-router alias.
+    assert "ailiance" in ids
+    assert "ailiance-apertus" in ids
+    assert "ailiance-devstral" in ids
+    assert "ailiance-eurollm" in ids
+    assert "ailiance-gemma" in ids
+    assert "ailiance-qwen" in ids
 
 
 def test_gateway_force_map_has_all_workers():
@@ -36,13 +36,13 @@ def test_gateway_force_map_has_all_workers():
     from src.gateway.server import MODEL_FORCE_MAP
 
     assert set(MODEL_FORCE_MAP) == {
-        "eu-kiki-apertus",
-        "eu-kiki-devstral",
-        "eu-kiki-eurollm",
-        "eu-kiki-gemma",
-        "eu-kiki-qwen",
+        "ailiance-apertus",
+        "ailiance-devstral",
+        "ailiance-eurollm",
+        "ailiance-gemma",
+        "ailiance-qwen",
     }
     # Qwen is reached via the autossh tunnel on the gateway host (port 8002).
-    assert MODEL_FORCE_MAP["eu-kiki-qwen"] == 8002
+    assert MODEL_FORCE_MAP["ailiance-qwen"] == 8002
     # Gemma sits on tower:9304.
-    assert MODEL_FORCE_MAP["eu-kiki-gemma"] == 9304
+    assert MODEL_FORCE_MAP["ailiance-gemma"] == 9304

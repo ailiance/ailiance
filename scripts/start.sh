@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# scripts/start.sh — Launch all eu-kiki workers + gateway
+# scripts/start.sh — Launch all ailiance workers + gateway
 # Ports 930x to avoid conflict with micro-kiki (920x)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(dirname "$SCRIPT_DIR")"
 PYTHON="${ROOT}/.venv/bin/python"
-LOG_DIR="/tmp/eu-kiki"
+LOG_DIR="/tmp/ailiance"
 mkdir -p "$LOG_DIR"
 
-echo "[$(date '+%H:%M:%S')] Starting eu-kiki workers..."
+echo "[$(date '+%H:%M:%S')] Starting ailiance workers..."
 
 "$PYTHON" -m uvicorn src.worker.server:make_apertus_app --factory \
     --host 127.0.0.1 --port 9301 > "$LOG_DIR/apertus.log" 2>&1 &
@@ -29,7 +29,7 @@ sleep 15
     --host 127.0.0.1 --port 9300 > "$LOG_DIR/gateway.log" 2>&1 &
 echo "[$(date '+%H:%M:%S')] Gateway started (PID $!, port 9300)"
 
-echo "[$(date '+%H:%M:%S')] eu-kiki running. Logs in $LOG_DIR/"
+echo "[$(date '+%H:%M:%S')] ailiance running. Logs in $LOG_DIR/"
 echo "  Gateway:  http://localhost:9300"
 echo "  Apertus:  http://localhost:9301"
 echo "  Devstral: http://localhost:9302"

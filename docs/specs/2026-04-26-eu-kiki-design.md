@@ -1,4 +1,4 @@
-# EU-KIKI Design Specification
+# AILIANCE Design Specification
 
 **Date:** 2026-04-26
 **Status:** Draft
@@ -6,7 +6,7 @@
 
 ## 1. Vision
 
-EU-KIKI is a 100% EU-sovereign LLM serving pipeline running on a single Mac Studio M3 Ultra 512GB. It routes user requests to one of three specialized European open-source models, each enhanced with domain-specific LoRA adapters. The system follows the same proven pattern as micro-kiki (single-model LoRA routing) but extends it to multi-model dispatch with full European data sovereignty.
+AILIANCE is a 100% EU-sovereign LLM serving pipeline running on a single Mac Studio M3 Ultra 512GB. It routes user requests to one of three specialized European open-source models, each enhanced with domain-specific LoRA adapters. The system follows the same proven pattern as micro-kiki (single-model LoRA routing) but extends it to multi-model dispatch with full European data sovereignty.
 
 ## 2. Goals
 
@@ -229,22 +229,22 @@ Training can happen while serving (212 GB margin). Kill one worker at a time for
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/v1/chat/completions` | POST | OpenAI-compatible chat (auto-routed) |
-| `/v1/chat/completions` | POST | With `model: "eu-kiki-apertus"` to force model |
+| `/v1/chat/completions` | POST | With `model: "ailiance-apertus"` to force model |
 | `/v1/models` | GET | List available models and domains |
 | `/health` | GET | Gateway + all workers health |
 | `/metrics` | GET | Prometheus metrics (per-worker, per-domain) |
 
 ### 9.2 Model Aliases
 
-- `eu-kiki` — auto-routed (default)
-- `eu-kiki-apertus` — force Apertus-70B
-- `eu-kiki-devstral` — force Devstral Small 2
-- `eu-kiki-eurollm` — force EuroLLM-22B
+- `ailiance` — auto-routed (default)
+- `ailiance-apertus` — force Apertus-70B
+- `ailiance-devstral` — force Devstral Small 2
+- `ailiance-eurollm` — force EuroLLM-22B
 
 ## 10. Project Structure
 
 ```
-eu-kiki/
+ailiance/
 ├── src/
 │   ├── gateway/
 │   │   ├── server.py          # FastAPI gateway, routing logic
@@ -279,7 +279,7 @@ eu-kiki/
 ├── tests/
 ├── docs/
 │   └── specs/
-│       └── 2026-04-26-eu-kiki-design.md  # This file
+│       └── 2026-04-26-ailiance-design.md  # This file
 ├── pyproject.toml
 ├── CLAUDE.md
 └── README.md

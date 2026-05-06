@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# eu-kiki Batch 7 — KiCad curriculum retrain + FreeCAD
+# ailiance Batch 7 — KiCad curriculum retrain + FreeCAD
 #
 # Retrains kicad-dsl and kicad-pcb with curriculum (short→long) and higher max_seq
 # to avoid truncation. FreeCAD kept from batch 6 (only 62 records, no truncation).
@@ -11,12 +11,12 @@
 set -euo pipefail
 
 KIKI_TUNNER="$HOME/KIKI-Mac_tunner"
-EU_KIKI="$HOME/eu-kiki"
-HF_DATA="$EU_KIKI/data/hf-traced"
-ADAPTERS="$EU_KIKI/output/adapters"
-OUTPUT_ROOT="$KIKI_TUNNER/output/eu-kiki-hf"
-LOG_DIR="$EU_KIKI/output/training-logs"
-BACKUP_DIR="$EU_KIKI/output/adapters-backup-pre-kicad-curriculum"
+AILIANCE="$HOME/ailiance"
+HF_DATA="$AILIANCE/data/hf-traced"
+ADAPTERS="$AILIANCE/output/adapters"
+OUTPUT_ROOT="$KIKI_TUNNER/output/ailiance-hf"
+LOG_DIR="$AILIANCE/output/training-logs"
+BACKUP_DIR="$AILIANCE/output/adapters-backup-pre-kicad-curriculum"
 DEVSTRAL_BF16="$KIKI_TUNNER/models/Devstral-Small-2-24B-BF16"
 
 DRY_RUN=false
@@ -25,7 +25,7 @@ if [[ "${1:-}" == "--dry-run" ]]; then DRY_RUN=true; fi
 mkdir -p "$LOG_DIR"
 
 echo "============================================================"
-echo " eu-kiki Batch 7 — KiCad Curriculum Retrain"
+echo " ailiance Batch 7 — KiCad Curriculum Retrain"
 echo " Date: $(date '+%Y-%m-%d %H:%M')"
 if $DRY_RUN; then echo " Mode: DRY RUN"; fi
 echo "============================================================"

@@ -1,6 +1,6 @@
 {
   "_doc": "EU AI Act Annex IV §1(c) — model lineage / supply-chain record.",
-  "deployment_id": "eu-kiki/apertus-70b",
+  "deployment_id": "ailiance/apertus-70b",
   "deployed_at_utc": "2026-04-22T00:00:00Z",
   "deployed_on_host": "studio (Mac Studio M3 Ultra)",
   "served_via": "uvicorn FastAPI worker @ studio:9301, MLX inference (Metal)",
@@ -34,7 +34,7 @@
     "MLX 8-bit quantisation (mlx_lm.convert)",
     "Domain LoRA adapters loaded at runtime — see output/adapters/apertus/"
   ],
-  "intended_use": "Public chat playground at https://ml.saillant.cc/chat/eu-kiki/apertus-70b — multilingual EU reasoning + electronics/hardware domains via LoRA adapters.",
+  "intended_use": "Public chat playground at https://ailiance.fr/chat/ailiance/apertus-70b — multilingual EU reasoning + electronics/hardware domains via LoRA adapters.",
   "out_of_scope": [
     "Healthcare diagnosis without clinician review",
     "Legal advice",

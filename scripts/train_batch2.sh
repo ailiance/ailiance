@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# eu-kiki LoRA Batch 2 — Enriched/Rebuilt Domains
+# ailiance LoRA Batch 2 — Enriched/Rebuilt Domains
 #
 # Trains domains that were enriched or rebuilt after batch 1:
 #   Devstral: cpp (embedded MCU), shell, html-css, ml-training
@@ -10,8 +10,8 @@
 #   sudo sysctl -w iogpu.wired_limit_mb=458752
 #
 # Usage:
-#   bash ~/eu-kiki/scripts/train_batch2.sh
-#   bash ~/eu-kiki/scripts/train_batch2.sh --dry-run
+#   bash ~/ailiance/scripts/train_batch2.sh
+#   bash ~/ailiance/scripts/train_batch2.sh --dry-run
 #
 # Generated: 2026-04-29
 # ==============================================================================
@@ -19,11 +19,11 @@
 set -euo pipefail
 
 KIKI_TUNNER="$HOME/KIKI-Mac_tunner"
-EU_KIKI="$HOME/eu-kiki"
-HF_DATA="$EU_KIKI/data/hf-traced"
-ADAPTERS="$EU_KIKI/output/adapters"
-OUTPUT_ROOT="$KIKI_TUNNER/output/eu-kiki-hf"
-LOG_DIR="$EU_KIKI/output/training-logs"
+AILIANCE="$HOME/ailiance"
+HF_DATA="$AILIANCE/data/hf-traced"
+ADAPTERS="$AILIANCE/output/adapters"
+OUTPUT_ROOT="$KIKI_TUNNER/output/ailiance-hf"
+LOG_DIR="$AILIANCE/output/training-logs"
 
 DRY_RUN=false
 if [[ "${1:-}" == "--dry-run" ]]; then
@@ -159,7 +159,7 @@ DEVSTRAL="$KIKI_TUNNER/models/Devstral-Small-2-24B-Instruct-2512"
 # Execution plan — Batch 2
 # -----------------------------------------------------------------------------
 echo "============================================================"
-echo " eu-kiki LoRA Batch 2 — Enriched Domains"
+echo " ailiance LoRA Batch 2 — Enriched Domains"
 echo " Date: $(date '+%Y-%m-%d %H:%M')"
 echo " Data source: $HF_DATA"
 if $DRY_RUN; then

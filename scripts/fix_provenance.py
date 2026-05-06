@@ -132,7 +132,7 @@ def add_provenance_to_file(filepath: Path, source: str, license_id: str, access_
 
 def main() -> None:
     print("=" * 70)
-    print("EU-KIKI Provenance Fixer")
+    print("AILIANCE Provenance Fixer")
     print("=" * 70)
 
     # Load all manifests

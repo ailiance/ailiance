@@ -4,16 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Context
 
-EU-KIKI is a 100% EU-sovereign multi-model LLM serving pipeline. It routes requests to **3 European/Swiss foundation models** via a small MiniLM domain classifier, each fine-tuned with LoRA adapters on HF-traceable datasets. Distributed deployment: workers on Mac Studio M3 Ultra (512 GB) MLX, gateway on `electron-server` (systemd, FastAPI), public exposure via Cloudflare Tunnel → `kiki-cockpit`.
+AILIANCE is a 100% EU-sovereign multi-model LLM serving pipeline. It routes requests to **3 European/Swiss foundation models** via a small MiniLM domain classifier, each fine-tuned with LoRA adapters on HF-traceable datasets. Distributed deployment: workers on Mac Studio M3 Ultra (512 GB) MLX, gateway on `electron-server` (systemd, FastAPI), public exposure via Cloudflare Tunnel → `kiki-cockpit`.
 
 ## Architecture
 
 ```
-client → ml.saillant.cc (Cloudflare Tunnel)
+client → ailiance.fr (Cloudflare Tunnel)
        → kiki-cockpit (electron-server :443, Traefik)
-       → eu-kiki gateway (electron-server :9300, systemd `eu-kiki-gateway.service`)
+       → ailiance gateway (electron-server :9300, systemd `ailiance-gateway.service`)
        → router classifier (MiniLM v6, L1+L2 cache, smart truncation)
-       → worker via Tailscale (URLs from EU_KIKI_WORKERS_JSON env):
+       → worker via Tailscale (URLs from AILIANCE_WORKERS_JSON env):
             - Apertus :9301 (Studio, MLX BF16)
             - Devstral :9302 (Studio, MLX BF16, currently offline)
             - EuroLLM :9303 (Studio, MLX BF16)
@@ -32,7 +32,7 @@ Router: **all-MiniLM-L6-v2** (384d, 22M) + MLP head (256 hidden) → 32 domains,
 ## Repo layout
 
 ```
-eu-kiki/
+ailiance/
 ├── configs/                     # apertus.yaml, devstral.yaml, eurollm.yaml, gateway.yaml
 ├── src/
 │   ├── gateway/                 # FastAPI :9300, dispatch, Prometheus, env-driven worker URLs
@@ -43,7 +43,7 @@ eu-kiki/
 │   ├── scrape_*.py              # OSHWA, arXiv, Wikipedia, Hackaday, Arduino, ESP-IDF, STM32, Rust, KiCad
 │   ├── build_hf_datasets.py     # 729 lines — HF→JSONL orchestrator
 │   ├── train_apertus.py / train_devstral.py / train_eurollm.py
-│   ├── train_eu_kiki_batch.py / train_eu_kiki_hf_batch.py    # sequential
+│   ├── train_ailiance_batch.py / train_ailiance_hf_batch.py    # sequential
 │   ├── rebuild_router_dataset.py + augment_niche_domains.py + augment_short_greetings.py
 │   ├── build_router_data.py / encode_router_minilm.py / train_router_from_embeddings.py
 │   ├── build_confusion_matrix.py / calibrate_threshold.py    # router QA
@@ -81,7 +81,7 @@ uv run python scripts/build_hf_datasets.py
 uv run python scripts/scrape_oshwa.py              # 3265 OSHWA-certified projects
 
 # Train LoRA adapters (3 modèles, séquentiel)
-uv run python scripts/train_eu_kiki_batch.py
+uv run python scripts/train_ailiance_batch.py
 
 # Train router (full v6 pipeline, ~25 min on macM1 MPS)
 uv run python scripts/rebuild_router_dataset.py        # HF + niche + greetings → data/router-clean/
@@ -97,15 +97,15 @@ uv run python scripts/calibrate_threshold.py
 bash scripts/start.sh
 
 # Production deploy
-# - Gateway runs as systemd unit `eu-kiki-gateway.service` on electron-server
-#   with EU_KIKI_WORKERS_JSON env (Tailscale URLs to Studio MLX workers)
-# - Workers run as nohup uvicorn on Studio (PIDs in /tmp/eu-kiki-*.log)
+# - Gateway runs as systemd unit `ailiance-gateway.service` on electron-server
+#   with AILIANCE_WORKERS_JSON env (Tailscale URLs to Studio MLX workers)
+# - Workers run as nohup uvicorn on Studio (PIDs in /tmp/ailiance-*.log)
 # - Router weights deployed via rsync (output/router-vN/ is git-ignored)
 
 # Logs
-tail -f /tmp/eu-kiki-eurollm.log    # studio
-tail -f /tmp/eu-kiki-apertus.log    # studio
-ssh electron-server "sudo journalctl -u eu-kiki-gateway -f"
+tail -f /tmp/ailiance-eurollm.log    # studio
+tail -f /tmp/ailiance-apertus.log    # studio
+ssh electron-server "sudo journalctl -u ailiance-gateway -f"
 ```
 
 ## Domains par modèle
@@ -139,15 +139,15 @@ chat-fr, traduction-tech, redaction-multilingue, localisation-doc
 
 | Component | Host | Port | Notes |
 |---|---|---|---|
-| Cloudflare Tunnel | — | 443 | `ml.saillant.cc` → cockpit |
+| Cloudflare Tunnel | — | 443 | `ailiance.fr` → cockpit |
 | kiki-cockpit | electron-server | 443 | React SPA + Python API (`/api/public/chat`) |
-| eu-kiki gateway | electron-server | 9300 | systemd unit, FastAPI, MiniLM router |
+| ailiance gateway | electron-server | 9300 | systemd unit, FastAPI, MiniLM router |
 | EuroLLM worker | studio (Tailscale 100.116.92.12) | 9303 | MLX BF16, ~22 GB |
 | Apertus worker | studio | 9301 | MLX BF16, ~140 GB |
 | Devstral worker | (TBD) | 9302 | currently offline |
 | Gemma 3 worker | tower (100.78.6.122) | 9304 | llama-server |
 
-Worker URLs are supplied to the gateway via `EU_KIKI_WORKERS_JSON` env var (set in the systemd unit). Override at boot to redirect traffic without code changes.
+Worker URLs are supplied to the gateway via `AILIANCE_WORKERS_JSON` env var (set in the systemd unit). Override at boot to redirect traffic without code changes.
 
 ## Roadmap (audit 2026-05-04)
 
@@ -176,7 +176,7 @@ Worker URLs are supplied to the gateway via `EU_KIKI_WORKERS_JSON` env var (set 
 - ✅ **Router v6 trained** — top-1 65.5% → 87.7% (+22 pts), top-3 85.3% → 98.7%. 9 967 rows curated, niche-augmented, greetings-grounded.
 - ✅ **Smart truncation length-aware** — short (full), medium (left-trunc 128), long (head 256 + tail 256).
 - ✅ **L1 LRU + L2 cosine cache + auto-prewarm** — p95 spike éliminé, L1 hit ~0.01 ms.
-- ✅ **systemd unit gateway** — `eu-kiki-gateway.service` enabled+active sur electron-server, env `EU_KIKI_WORKERS_JSON` persisté.
+- ✅ **systemd unit gateway** — `ailiance-gateway.service` enabled+active sur electron-server, env `AILIANCE_WORKERS_JSON` persisté.
 - ✅ **Quarantine adapters mécanisme** — `MLXWorkerRuntime.QUARANTINED_DOMAINS` fallback base.
 - ✅ **Bench suite publishable** — HumanEval+, MT-Bench full, GSM8K, KIKI-DSL v3, model card v0.4.1.
 
@@ -189,7 +189,7 @@ Worker URLs are supplied to the gateway via `EU_KIKI_WORKERS_JSON` env var (set 
 
 ### 🟡 Cleanup
 
-- Publier sur HF les adapters EU validés (Apache-2.0, full provenance EU AI Act) — aucun adapter EU-KIKI sur `clemsail/` ni `electron-rare/` à ce jour (audit 2026-05-04). Le script existe en sister project (`KIKI-Mac_tunner/scripts/release_hf.py`). 3-4 h.
+- Publier sur HF les adapters EU validés (Apache-2.0, full provenance EU AI Act) — aucun adapter AILIANCE sur `clemsail/` ni `electron-rare/` à ce jour (audit 2026-05-04). Le script existe en sister project (`KIKI-Mac_tunner/scripts/release_hf.py`). 3-4 h.
 - Standardiser le format de sortie eval (`output/eval/<YYYY-MM-DD>-<scope>.{json,md}`).
 - Documenter le différentiel "20 domains HF-traced (48K examples)" du commit `f2c9cee` vs ~81K lignes mesurées sur 24 domaines (probablement sous-ensemble curé/dédupliqué).
 
@@ -202,10 +202,10 @@ Worker URLs are supplied to the gateway via `EU_KIKI_WORKERS_JSON` env var (set 
 ## Notes
 
 - **48K vs 81K examples** : commit `f2c9cee` annonce "20 domains HF-traced (48K examples)" — la mesure brute donne ~81K lignes train sur 24 domaines. Les 48K désignent vraisemblablement le sous-ensemble curé/dédupliqué. À confirmer.
-- **Repo GitHub** : `L-electron-Rare/eu-kiki` (privé) — poussé le 2026-05-04. Mirror local sur studio + electron-server + macM1.
-- **Router weights `output/router-vN/` git-ignored** — déploiement par rsync (`rsync -avz output/router-v6/ electron-server:/home/electron/eu-kiki/output/router-v6/`) puis `sudo systemctl restart eu-kiki-gateway`.
-- **kxkm-ai** : RTX 4090 24 GB, joignable via electron-server bastion (`ssh kxkm@10.2.0.237`). Actuellement sert llama-server Qwen3-Next-80B + ComfyUI + SearXNG + OpenWebUI (stack chat avec web-search tool). Pas utilisé par eu-kiki à ce jour.
+- **Repo GitHub** : `L-electron-Rare/ailiance` (privé) — poussé le 2026-05-04. Mirror local sur studio + electron-server + macM1.
+- **Router weights `output/router-vN/` git-ignored** — déploiement par rsync (`rsync -avz output/router-v6/ electron-server:/home/electron/ailiance/output/router-v6/`) puis `sudo systemctl restart ailiance-gateway`.
+- **kxkm-ai** : RTX 4090 24 GB, joignable via electron-server bastion (`ssh kxkm@10.2.0.237`). Actuellement sert llama-server Qwen3-Next-80B + ComfyUI + SearXNG + OpenWebUI (stack chat avec web-search tool). Pas utilisé par ailiance à ce jour.
 
 ## Sister project
 
-`~/Documents/Projets/KIKI-Mac_tunner/` — non-EU foundation distillation. Les scripts `train_eu_kiki_*.py` et configs `eu-kiki-*.yaml` y sont mirrorés.
+`~/Documents/Projets/KIKI-Mac_tunner/` — non-EU foundation distillation. Les scripts `train_ailiance_*.py` et configs `ailiance-*.yaml` y sont mirrorés.

@@ -1,4 +1,4 @@
-"""Side-by-side benchmark: MiniLM L6 vs Jina v3 on the eu-kiki router task.
+"""Side-by-side benchmark: MiniLM L6 vs Jina v3 on the ailiance router task.
 
 Both encode the same prompts; we measure:
   - encoding latency
@@ -24,7 +24,7 @@ from sentence_transformers import SentenceTransformer
 
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
-REPO = Path(__file__).resolve().parent.parent  # eu-kiki/
+REPO = Path(__file__).resolve().parent.parent  # ailiance/
 
 # Test set: prompt + ground-truth target domain
 TESTS = [

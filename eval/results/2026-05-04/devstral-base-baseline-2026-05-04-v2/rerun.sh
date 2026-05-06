@@ -13,7 +13,7 @@ ADAPTER=""
 PORT=8801
 
 EVAL_DIR="$(cd "$(dirname "$0")/../../.." && pwd)/eval"
-cd "$EVAL_DIR/.."   # eu-kiki root
+cd "$EVAL_DIR/.."   # ailiance root
 
 bash eval/run_all.sh \
     --model "$MODEL" \

@@ -28,7 +28,7 @@ MAX_SAMPLES=""
 JUDGE_BASE_URL="${JUDGE_BASE_URL:-http://127.0.0.1:8500/v1}"
 JUDGE_MODEL="${JUDGE_MODEL:-mlx-community/Mistral-Medium-3.5-128B-MLX-4bit}"
 SUITE_ROOT="$(cd "$(dirname "$0")" && pwd)"
-EU_KIKI_ROOT="$(cd "$SUITE_ROOT/.." && pwd)"
+AILIANCE_ROOT="$(cd "$SUITE_ROOT/.." && pwd)"
 DATE="$(date +%Y-%m-%d)"
 
 # ---- Parse -----------------------------------------------------------------
@@ -52,14 +52,14 @@ done
 [[ -n "$MODEL" ]] || { echo "ERROR: --model required" >&2; exit 2; }
 [[ -n "$LABEL" ]] || LABEL="$(basename "$MODEL")$([ -n "$ADAPTER" ] && echo "-$(basename "$ADAPTER")")"
 
-OUT="$EU_KIKI_ROOT/eval/results/$DATE/$LABEL"
+OUT="$AILIANCE_ROOT/eval/results/$DATE/$LABEL"
 mkdir -p "$OUT"
 
-PY="$EU_KIKI_ROOT/.venv/bin/python"
+PY="$AILIANCE_ROOT/.venv/bin/python"
 [[ -x "$PY" ]] || PY="$(command -v python3)"
 
 echo "============================================================"
-echo " eu-kiki publishable bench — $LABEL"
+echo " ailiance publishable bench — $LABEL"
 echo " Model:    $MODEL"
 echo " Adapter:  ${ADAPTER:-<none>}"
 echo " Output:   $OUT"

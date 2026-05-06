@@ -84,12 +84,12 @@ def test_sse_chunk_for_tool_call_format():
         "type": "function",
         "function": {"name": "read_file", "arguments": '{"path":"/x"}'},
     }]
-    chunk = sse_chunk_for_tool_call("eu-kiki", calls)
+    chunk = sse_chunk_for_tool_call("ailiance", calls)
     assert chunk.startswith("data: ")
     assert chunk.endswith("\n\n")
     payload = json.loads(chunk[len("data: "):].strip())
     assert payload["object"] == "chat.completion.chunk"
-    assert payload["model"] == "eu-kiki"
+    assert payload["model"] == "ailiance"
     delta = payload["choices"][0]["delta"]
     assert delta["role"] == "assistant"
     assert delta["tool_calls"][0]["function"]["name"] == "read_file"
@@ -97,14 +97,14 @@ def test_sse_chunk_for_tool_call_format():
 
 
 def test_sse_chunk_for_content_format():
-    chunk = sse_chunk_for_content("eu-kiki", "hello")
+    chunk = sse_chunk_for_content("ailiance", "hello")
     payload = json.loads(chunk[len("data: "):].strip())
     assert payload["choices"][0]["delta"]["content"] == "hello"
     assert payload["choices"][0]["finish_reason"] is None
 
 
 def test_sse_chunk_finish_includes_usage():
-    chunk = sse_chunk_finish("eu-kiki", "tool_calls", 10, 5)
+    chunk = sse_chunk_finish("ailiance", "tool_calls", 10, 5)
     payload = json.loads(chunk[len("data: "):].strip())
     assert payload["choices"][0]["finish_reason"] == "tool_calls"
     assert payload["usage"]["total_tokens"] == 15

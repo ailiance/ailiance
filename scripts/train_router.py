@@ -1,5 +1,5 @@
 # scripts/train_router.py
-"""Train Jina v3 + MLP domain router for eu-kiki.
+"""Train Jina v3 + MLP domain router for ailiance.
 
 Uses native JinaEmbeddingsV3Model from transformers (not SentenceTransformer)
 to avoid custom code compatibility issues.

@@ -1,16 +1,16 @@
 <div align="center">
 
-# eu-kiki
+# ailiance
 
 ### EU-sovereign LLM gateway — five production workers, full provenance, no cloud
 
-[![status](https://img.shields.io/badge/status-5%2F5%20healthy-success)](https://ml.saillant.cc/api/public/status)
+[![status](https://img.shields.io/badge/status-5%2F5%20healthy-success)](https://ailiance.fr/api/public/status)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![EU AI Act](https://img.shields.io/badge/EU%20AI%20Act-Art.%2052%2F53-1f4e8a)](docs/eu-ai-act-transparency.md)
 [![router](https://img.shields.io/badge/router--v6-87.7%25%20top--1-brightgreen)](docs/transparency/router-training-data.md)
-[![ml.saillant.cc](https://img.shields.io/badge/live-ml.saillant.cc-7e3af2)](https://ml.saillant.cc)
+[![ailiance.fr](https://img.shields.io/badge/live-ailiance.fr-7e3af2)](https://ailiance.fr)
 
-**Live now → [`ml.saillant.cc`](https://ml.saillant.cc)** · OpenAI-compatible API at [`/api/public/chat`](https://ml.saillant.cc/api/public/chat) · Health at [`/api/public/status`](https://ml.saillant.cc/api/public/status) · Transparency dossier at [`/transparency`](https://ml.saillant.cc/transparency)
+**Live now → [`ailiance.fr`](https://ailiance.fr)** · OpenAI-compatible API at [`/api/public/chat`](https://ailiance.fr/api/public/chat) · Health at [`/api/public/status`](https://ailiance.fr/api/public/status) · Transparency dossier at [`/transparency`](https://ailiance.fr/transparency)
 
 </div>
 
@@ -25,11 +25,11 @@ A **multi-model LLM serving pipeline** running on a home cluster — three EU/CH
 ```mermaid
 flowchart TB
     user([👤 User])
-    cf[/"Cloudflare Tunnel<br/>ml.saillant.cc"/]
+    cf[/"Cloudflare Tunnel<br/>ailiance.fr"/]
 
     subgraph electron["electron-server (Ubuntu, no GPU)"]
         cockpit["kiki-cockpit<br/>(Docker)"]
-        gateway["eu-kiki-gateway :9300<br/>FastAPI · MiniLM router-v6<br/>L1+L2 cache · /metrics"]
+        gateway["ailiance-gateway :9300<br/>FastAPI · MiniLM router-v6<br/>L1+L2 cache · /metrics"]
         cockpit --> gateway
     end
 
@@ -85,7 +85,7 @@ sequenceDiagram
     K->>K: rate-limit (Traefik 30/min)<br/>+ slowapi guard
     K->>G: POST /v1/chat/completions
 
-    alt model_id == eu-kiki/auto
+    alt model_id == ailiance/auto
         G->>R: encode(prompt)
         R-->>G: top-k domains<br/>(sigmoid, threshold 0.50)
         G->>G: pick best worker<br/>(domain → port)
@@ -106,25 +106,25 @@ sequenceDiagram
 
 ```bash
 # Pick any worker — same OpenAI shape
-curl -sN https://ml.saillant.cc/api/public/chat \
+curl -sN https://ailiance.fr/api/public/chat \
   -H 'Content-Type: application/json' \
-  -d '{"model_id":"eu-kiki/qwen3-next-80b-a3b-instruct",
+  -d '{"model_id":"ailiance/qwen3-next-80b-a3b-instruct",
        "messages":[{"role":"user","content":"Compare LoRA and QLoRA in two sentences."}]}'
 
 # Or let the router pick:
-curl -sN https://ml.saillant.cc/api/public/chat \
+curl -sN https://ailiance.fr/api/public/chat \
   -H 'Content-Type: application/json' \
-  -d '{"model_id":"eu-kiki/auto",
+  -d '{"model_id":"ailiance/auto",
        "messages":[{"role":"user","content":"Show me a Rust function that parses TOML"}]}'
 ```
 
 The route decision is surfaced in the SSE stream so you see *why* a worker was picked.
 
-## Why eu-kiki exists
+## Why ailiance exists
 
-> Most "open" inference stacks are SaaS-shaped: black-box routing, undisclosed training data, telemetry by default, vendor lock-in dressed up as a free tier. eu-kiki is the opposite.
+> Most "open" inference stacks are SaaS-shaped: black-box routing, undisclosed training data, telemetry by default, vendor lock-in dressed up as a free tier. ailiance is the opposite.
 
-| | eu-kiki | Typical hosted API |
+| | ailiance | Typical hosted API |
 |---|---|---|
 | **Where data goes** | Your LAN / Tailscale, period | Cloud egress to vendor |
 | **Where weights came from** | HF commit SHA + SHA-256 per file | "Latest" rolling tag |
@@ -134,19 +134,19 @@ The route decision is surfaced in the SSE stream so you see *why* a worker was p
 | **Risk classification** | EU AI Act Art. 52 (limited risk), documented | Usually unstated |
 | **License of every served weight** | Apache‑2.0 / Gemma TOS, called out per worker | Mixed, usually unstated |
 
-If you ship a product that needs to *prove* what model was used, on what data, under which license, eu-kiki gives you the receipts. If you're researching sovereign-AI patterns, the cluster + dossier are an honest reference.
+If you ship a product that needs to *prove* what model was used, on what data, under which license, ailiance gives you the receipts. If you're researching sovereign-AI patterns, the cluster + dossier are an honest reference.
 
 ## Production fleet
 
-5/5 healthy on 2026-05-06 — verifiable live at [`/api/public/status`](https://ml.saillant.cc/api/public/status).
+5/5 healthy on 2026-05-06 — verifiable live at [`/api/public/status`](https://ailiance.fr/api/public/status).
 
 | Alias | Model | Origin | Quant | Host | Port |
 |---|---|---|---|---|---|
-| `eu-kiki-apertus` | **Apertus 70B Instruct 2509** | EPFL · ETH Zürich · CSCS 🇨🇭 | MLX 8-bit | studio (Mac Studio M3 Ultra, 512 GB) | `:9301` |
-| `eu-kiki-devstral` | **Devstral Small 2 24B Instruct 2512** | Mistral AI 🇫🇷 | MLX 4-bit | macm1 (Mac mini M1, 32 GB) | `:9302` |
-| `eu-kiki-eurollm` | **EuroLLM 22B Instruct 2512** | utter-project 🇪🇺 | MLX 8-bit | studio (Mac Studio M3 Ultra) | `:9303` |
-| `eu-kiki-gemma` | **Gemma 3 4B IT** | Google DeepMind | GGUF Q4_K_M | tower (NVIDIA Quadro P2000 5 GB) | `:9304` |
-| `eu-kiki-qwen` | **Qwen3-Next 80B A3B Instruct** | Qwen / Alibaba Cloud | Q4_K_M GGUF, MoE expert offload | kxkm-ai (NVIDIA RTX 4090 24 GB + 64 GB RAM) | `:8002` * |
+| `ailiance-apertus` | **Apertus 70B Instruct 2509** | EPFL · ETH Zürich · CSCS 🇨🇭 | MLX 8-bit | studio (Mac Studio M3 Ultra, 512 GB) | `:9301` |
+| `ailiance-devstral` | **Devstral Small 2 24B Instruct 2512** | Mistral AI 🇫🇷 | MLX 4-bit | macm1 (Mac mini M1, 32 GB) | `:9302` |
+| `ailiance-eurollm` | **EuroLLM 22B Instruct 2512** | utter-project 🇪🇺 | MLX 8-bit | studio (Mac Studio M3 Ultra) | `:9303` |
+| `ailiance-gemma` | **Gemma 3 4B IT** | Google DeepMind | GGUF Q4_K_M | tower (NVIDIA Quadro P2000 5 GB) | `:9304` |
+| `ailiance-qwen` | **Qwen3-Next 80B A3B Instruct** | Qwen / Alibaba Cloud | Q4_K_M GGUF, MoE expert offload | kxkm-ai (NVIDIA RTX 4090 24 GB + 64 GB RAM) | `:8002` * |
 
 \* Qwen reaches the gateway via an `autossh` tunnel (`electron-server:8002` → `kxkm-ai:18888`); kxkm-ai is LAN-only and is a **different machine** from `kx6tm-23` (Proxmox PVE host, no GPU). Other workers are addressed over Tailscale magic DNS.
 
@@ -157,7 +157,7 @@ flowchart TB
     Internet([🌍 Public internet])
 
     subgraph Cloudflare["Cloudflare (proxied + tunnel)"]
-        ml["ml.saillant.cc"]
+        ml["ailiance.fr"]
     end
 
     Internet --> ml
@@ -272,7 +272,7 @@ flowchart LR
     JSON["docs/provenance/<br/>&lt;alias&gt;.json"]
     JSON --> CARD["MODEL_CARD.md §2"]
     JSON --> DOSSIER["eu-ai-act-transparency.md<br/>§2.x per worker"]
-    JSON --> SPA["ml.saillant.cc<br/>/models/&lt;owner&gt;/&lt;name&gt;<br/>(provenance JSON inlined)"]
+    JSON --> SPA["ailiance.fr<br/>/models/&lt;owner&gt;/&lt;name&gt;<br/>(provenance JSON inlined)"]
 
     classDef step fill:#ede9fe,stroke:#5b21b6
     classDef sink fill:#d1fae5,stroke:#065f46
@@ -310,7 +310,7 @@ uv run python scripts/scrape_arxiv_eess.py
 uv run python scripts/scrape_wikipedia_electronics.py
 
 # Train LoRA adapters (3 models, sequential)
-bash scripts/train_eu_kiki_batch.sh
+bash scripts/train_ailiance_batch.sh
 
 # Train router-v6 (~25 min on macM1 MPS)
 uv run python scripts/rebuild_router_dataset.py
@@ -423,14 +423,14 @@ flowchart LR
 
 ## Sister project
 
-[`KIKI-Mac_tunner`](https://github.com/L-electron-Rare/KIKI-Mac_tunner) — non-EU foundation distillation track (Mistral Large, Qwen3.5-122B, Devstral 2 123B dense). The eu-kiki training scripts (`train_eu_kiki_*.py`) and configs are mirrored there.
+[`KIKI-Mac_tunner`](https://github.com/L-electron-Rare/KIKI-Mac_tunner) — non-EU foundation distillation track (Mistral Large, Qwen3.5-122B, Devstral 2 123B dense). The ailiance training scripts (`train_ailiance_*.py`) and configs are mirrored there.
 
 ## License
 
-Apache-2.0 for the codebase and all eu-kiki adapters. Per-worker licenses called out per row in [Production fleet](#production-fleet) — Gemma 3 carries Google's Gemma Terms of Use, review obligations apply for downstream commercial use.
+Apache-2.0 for the codebase and all ailiance adapters. Per-worker licenses called out per row in [Production fleet](#production-fleet) — Gemma 3 carries Google's Gemma Terms of Use, review obligations apply for downstream commercial use.
 
 ---
 
 <div align="center">
-<sub>Built in France 🇫🇷 · No cloud · Apache-2.0 · <a href="https://ml.saillant.cc">ml.saillant.cc</a></sub>
+<sub>Built in France 🇫🇷 · No cloud · Apache-2.0 · <a href="https://ailiance.fr">ailiance.fr</a></sub>
 </div>

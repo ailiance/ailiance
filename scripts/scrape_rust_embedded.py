@@ -454,7 +454,7 @@ def sort_curriculum(records: list[dict]) -> list[dict]:
 
 def main() -> None:
     print("=" * 60)
-    print("Embedded Rust Scraper for EU-KIKI LoRA Fine-Tuning")
+    print("Embedded Rust Scraper for AILIANCE LoRA Fine-Tuning")
     print("=" * 60)
 
     # Phase 1: Scrape all repos

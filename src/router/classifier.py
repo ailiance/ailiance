@@ -30,11 +30,11 @@ try:
     from prometheus_client import Counter as _PromCounter
 
     _ROUTER_CACHE_HITS = _PromCounter(
-        "eu_kiki_router_cache_hits_total",
+        "ailiance_router_cache_hits_total",
         "Number of L1 LRU cache hits in DomainRouter.route()",
     )
     _ROUTER_CACHE_MISSES = _PromCounter(
-        "eu_kiki_router_cache_misses_total",
+        "ailiance_router_cache_misses_total",
         "Number of L1 LRU cache misses in DomainRouter.route()",
     )
 except Exception:  # pragma: no cover - optional dep / duplicate registration
@@ -49,7 +49,7 @@ try:
     from prometheus_client import Counter as _PromCounter2  # noqa: F401
 
     _ROUTER_L2_HITS = _PromCounter(
-        "eu_kiki_router_l2_hits_total",
+        "ailiance_router_l2_hits_total",
         "L2 semantic-cache hits (cosine match) in DomainRouter.route()",
     )
 except Exception:  # pragma: no cover

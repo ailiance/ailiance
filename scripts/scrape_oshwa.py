@@ -7,7 +7,7 @@ EU AI Act: Article 53 compliant — official API, documented access.
 
 Usage:
     export OSHWA_API_TOKEN="your_token"
-    cd ~/eu-kiki && uv run python scripts/scrape_oshwa.py
+    cd ~/ailiance && uv run python scripts/scrape_oshwa.py
 """
 import json
 import os

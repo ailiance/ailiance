@@ -27,16 +27,16 @@ log = logging.getLogger(__name__)
 
 
 def make_worker_app(cfg: WorkerConfig, skip_model_load: bool = False) -> FastAPI:
-    app = FastAPI(title=f"eu-kiki-worker-{cfg.port}")
+    app = FastAPI(title=f"ailiance-worker-{cfg.port}")
     reg = CollectorRegistry()
     requests_total = Counter(
-        "eu_kiki_worker_requests_total",
+        "ailiance_worker_requests_total",
         "Requests",
         ["status"],
         registry=reg,
     )
     inference_latency = Histogram(
-        "eu_kiki_worker_inference_seconds",
+        "ailiance_worker_inference_seconds",
         "Inference latency",
         registry=reg,
     )

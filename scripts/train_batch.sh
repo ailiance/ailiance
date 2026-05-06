@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# eu-kiki LoRA Batch Training — Solid Domains (>=1000 examples)
+# ailiance LoRA Batch Training — Solid Domains (>=1000 examples)
 #
 # Trains all pending model+domain combos sequentially within each model.
-# Uses HF-traced data at ~/eu-kiki/data/hf-traced/ for EU AI Act compliance.
+# Uses HF-traced data at ~/ailiance/data/hf-traced/ for EU AI Act compliance.
 #
 # Prerequisites:
 #   sudo sysctl -w iogpu.wired_limit_mb=458752
 #   cd ~/KIKI-Mac_tunner
 #
 # Usage:
-#   bash ~/eu-kiki/scripts/train_batch.sh           # run all
-#   bash ~/eu-kiki/scripts/train_batch.sh --dry-run  # show plan only
+#   bash ~/ailiance/scripts/train_batch.sh           # run all
+#   bash ~/ailiance/scripts/train_batch.sh --dry-run  # show plan only
 #
 # Generated: 2026-04-28
 # ==============================================================================
@@ -19,11 +19,11 @@
 set -euo pipefail
 
 KIKI_TUNNER="$HOME/KIKI-Mac_tunner"
-EU_KIKI="$HOME/eu-kiki"
-HF_DATA="$EU_KIKI/data/hf-traced"
-ADAPTERS="$EU_KIKI/output/adapters"
-OUTPUT_ROOT="$KIKI_TUNNER/output/eu-kiki-hf"
-LOG_DIR="$EU_KIKI/output/training-logs"
+AILIANCE="$HOME/ailiance"
+HF_DATA="$AILIANCE/data/hf-traced"
+ADAPTERS="$AILIANCE/output/adapters"
+OUTPUT_ROOT="$KIKI_TUNNER/output/ailiance-hf"
+LOG_DIR="$AILIANCE/output/training-logs"
 
 DRY_RUN=false
 if [[ "${1:-}" == "--dry-run" ]]; then
@@ -160,7 +160,7 @@ EUROLLM="$KIKI_TUNNER/models/EuroLLM-22B-Instruct-2512"
 # Execution plan
 # -----------------------------------------------------------------------------
 echo "============================================================"
-echo " eu-kiki LoRA Batch Training Plan"
+echo " ailiance LoRA Batch Training Plan"
 echo " Date: $(date '+%Y-%m-%d %H:%M')"
 echo " Data source: $HF_DATA"
 if $DRY_RUN; then

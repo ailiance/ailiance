@@ -1,6 +1,6 @@
-# eu-kiki — Evaluation Suite
+# ailiance — Evaluation Suite
 
-Reproducible, publishable benchmark pipeline for the eu-kiki adapters
+Reproducible, publishable benchmark pipeline for the ailiance adapters
 (Apertus 70B, Devstral 24B, EuroLLM 22B) and KIKI-Mac_tunner models
 (Mistral Large, Qwen3.5-122B/35B, Sonnet-Devstral 123B, Brainstacks).
 

@@ -14,7 +14,7 @@
 # Usage:
 #   bash eval/runners/fuse_adapter.sh \\
 #       --base   /Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-Instruct-2512 \\
-#       --adapter /Users/clems/eu-kiki/output/adapters/devstral/python \\
+#       --adapter /Users/clems/ailiance/output/adapters/devstral/python \\
 #       --out-name Devstral-2-24B-MLX-4bit-python \\
 #       --models-dir /Users/clems/KIKI-Mac_tunner/models
 #

@@ -1,6 +1,6 @@
 """Generate a markdown compliance audit trail for the PDF pipeline.
 
-Output: ~/eu-kiki/docs/pdf-compliance-report.md
+Output: ~/ailiance/docs/pdf-compliance-report.md
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ def generate_report() -> str:
     lines: list[str] = []
     now = datetime.now(timezone.utc).isoformat()
 
-    lines.append("# EU-KIKI PDF Pipeline — Compliance Audit Trail")
+    lines.append("# AILIANCE PDF Pipeline — Compliance Audit Trail")
     lines.append(f"\nGenerated: {now}\n")
     lines.append("## Legal Framework\n")
     lines.append("- **EU Digital Single Market Directive, Article 4**: Text and Data Mining")

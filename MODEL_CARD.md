@@ -1,27 +1,27 @@
-# eu-kiki — Model Card
+# ailiance — Model Card
 
-**System:** eu-kiki — EU-sovereign multi-model LLM serving pipeline
+**System:** ailiance — EU-sovereign multi-model LLM serving pipeline
 **Version:** 0.5.0
 **Date:** 2026-05-06
 **License:** Apache-2.0
 **Risk classification (EU AI Act):** Limited risk — Article 52
 **Operator:** L'Electron Rare (`electron-rare` / `L-electron-Rare`)
-**Repo:** https://github.com/L-electron-Rare/eu-kiki
+**Repo:** https://github.com/L-electron-Rare/ailiance
 
 ---
 
 ## 1. System overview
 
-eu-kiki dispatches user queries via a MiniLM-L6-v2 (384d) + MLP router
+ailiance dispatches user queries via a MiniLM-L6-v2 (384d) + MLP router
 (32 domains, sigmoid multi-label, threshold 0.50) to one of five
 foundation models (3 EU/CH + Gemma 3 + Qwen3-Next), some augmented with
 LoRA adapters trained on HF-traceable datasets. Local-only deployment,
 no cloud, no telemetry.
 
 ```
-client → ml.saillant.cc (Cloudflare Tunnel)
+client → ailiance.fr (Cloudflare Tunnel)
        → kiki-cockpit (electron-server :443)
-       → gateway:9300 (electron-server, systemd unit, EU_KIKI_WORKERS_JSON env)
+       → gateway:9300 (electron-server, systemd unit, AILIANCE_WORKERS_JSON env)
        → router (MiniLM v6 + L1+L2 cache, auto-prewarm)
        → worker :9301 / :9302 / :9303 / :9304 / :8002
               │       (Apertus / Devstral / EuroLLM / Gemma / Qwen)
@@ -43,11 +43,11 @@ Active fleet — verified healthy 5/5 on 2026-05-06.
 
 | Gateway alias | Model | Origin | Params | Quant | Host (hardware) | Port |
 |---|---|---|---:|---|---|---|
-| `eu-kiki-apertus` | Apertus-70B-Instruct-2509 | Swiss AI (EPFL/ETH/CSCS) 🇨🇭 | 70.6 B | MLX 8-bit | studio (Mac Studio M3 Ultra, 512 GB) | `:9301` |
-| `eu-kiki-devstral` | Devstral-Small-2-24B-Instruct-2512 | Mistral AI 🇫🇷 | 24 B | MLX 4-bit | macm1 (Mac mini M1, 32 GB) | `:9302` |
-| `eu-kiki-eurollm` | EuroLLM-22B-Instruct-2512 | utter-project 🇪🇺 | 22.6 B | MLX 8-bit | studio (Mac Studio M3 Ultra) | `:9303` |
-| `eu-kiki-gemma` | Gemma-3-4B-IT | Google DeepMind | 4.3 B | GGUF Q4_K_M | tower (NVIDIA Quadro P2000 5 GB VRAM) | `:9304` |
-| `eu-kiki-qwen` | Qwen3-Next-80B-A3B-Instruct | Qwen / Alibaba Cloud | 80 B (3 B active MoE) | Q4_K_M GGUF | kxkm-ai (NVIDIA RTX 4090 24 GB + 64 GB RAM, MoE expert offload via llama.cpp `--override-tensor`) | `:8002` (autossh tunnel: `electron-server:8002` → `kxkm-ai:18888`) |
+| `ailiance-apertus` | Apertus-70B-Instruct-2509 | Swiss AI (EPFL/ETH/CSCS) 🇨🇭 | 70.6 B | MLX 8-bit | studio (Mac Studio M3 Ultra, 512 GB) | `:9301` |
+| `ailiance-devstral` | Devstral-Small-2-24B-Instruct-2512 | Mistral AI 🇫🇷 | 24 B | MLX 4-bit | macm1 (Mac mini M1, 32 GB) | `:9302` |
+| `ailiance-eurollm` | EuroLLM-22B-Instruct-2512 | utter-project 🇪🇺 | 22.6 B | MLX 8-bit | studio (Mac Studio M3 Ultra) | `:9303` |
+| `ailiance-gemma` | Gemma-3-4B-IT | Google DeepMind | 4.3 B | GGUF Q4_K_M | tower (NVIDIA Quadro P2000 5 GB VRAM) | `:9304` |
+| `ailiance-qwen` | Qwen3-Next-80B-A3B-Instruct | Qwen / Alibaba Cloud | 80 B (3 B active MoE) | Q4_K_M GGUF | kxkm-ai (NVIDIA RTX 4090 24 GB + 64 GB RAM, MoE expert offload via llama.cpp `--override-tensor`) | `:8002` (autossh tunnel: `electron-server:8002` → `kxkm-ai:18888`) |
 
 Apertus, Devstral, EuroLLM, and Qwen3-Next are Apache-2.0; Gemma 3 is
 under the Google Gemma Terms (review obligations apply for downstream
@@ -81,7 +81,7 @@ All benchmarks reproducible from this repo
 `env.json` (hardware/git/pip), `methodology.md`, `rerun.sh`, and the
 official scorer artifacts.
 
-### 4.1 HumanEval+ — Devstral 24B 4-bit + eu-kiki v1 adapters
+### 4.1 HumanEval+ — Devstral 24B 4-bit + ailiance v1 adapters
 
 164 problems, 1 sample, temperature 0.0, greedy. Linux scoring on
 `kx6tm-23` (Proxmox PVE 6.17, EvalPlus official sandbox) for base/python.
@@ -190,8 +190,8 @@ base is near-ceiling.
 ## 8. Reproducibility
 
 ```bash
-git clone https://github.com/L-electron-Rare/eu-kiki
-cd eu-kiki
+git clone https://github.com/L-electron-Rare/ailiance
+cd ailiance
 uv venv && uv pip install -e ".[dev,router,data]"
 
 # Re-run any benchmark from its result directory
@@ -203,7 +203,7 @@ Each `rerun.sh` is self-contained and prints the captured `env.json`
 requires SSH access to a Linux host with EvalPlus installed (we used
 `kx6tm-23`).
 
-Three machines were involved in the eu-kiki bench runs:
+Three machines were involved in the ailiance bench runs:
 - **GrosMac** — code/git transit (M5, 16 GB)
 - **macM1** — codegen + 4-bit fuse + bench (M1 Max, 32 GB)
 - **studio** — heavy training + BF16 fuse + bench (M3 Ultra, 512 GB)
@@ -235,4 +235,4 @@ Topology + bug history + workarounds: [`eval/WORKFLOW.md`](eval/WORKFLOW.md).
 |---|---|---|
 | 2026-04-28 | 0.3.0 | Provenance remediation, license normalization (transparency.md) |
 | 2026-05-05 | 0.4.0 | First model card; full benchmark suite published (HumanEval+, MT-Bench, GSM8K, KIKI-DSL v3); cross-bench transfer analysis added; known-limitations section consolidates v3 taxonomy revision |
-| 2026-05-05 | 0.4.1 | Router v6 deployed (87.7 % top-1 vs v5 65.5 %, +22 pts); rebuilt dataset 9 967 rows curated; L1 LRU + L2 cosine semantic cache + auto-prewarm; MiniLM auto-device (MPS/CUDA/CPU); EuroLLM `chat-fr` + `traduction-tech` adapters quarantined (training chat-template leak → "user user" loop, fallback to base); systemd unit `eu-kiki-gateway.service` on electron-server with `EU_KIKI_WORKERS_JSON` env for Tailscale worker URLs |
+| 2026-05-05 | 0.4.1 | Router v6 deployed (87.7 % top-1 vs v5 65.5 %, +22 pts); rebuilt dataset 9 967 rows curated; L1 LRU + L2 cosine semantic cache + auto-prewarm; MiniLM auto-device (MPS/CUDA/CPU); EuroLLM `chat-fr` + `traduction-tech` adapters quarantined (training chat-template leak → "user user" loop, fallback to base); systemd unit `ailiance-gateway.service` on electron-server with `AILIANCE_WORKERS_JSON` env for Tailscale worker URLs |

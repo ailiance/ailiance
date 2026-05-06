@@ -9,7 +9,7 @@ Sources:
   - FreeCAD-macros (per-file license check; only permissive accepted)
 
 Usage:
-    cd ~/eu-kiki && uv run python scripts/build_kicad_freecad_domains.py
+    cd ~/ailiance && uv run python scripts/build_kicad_freecad_domains.py
 """
 
 from __future__ import annotations
@@ -55,7 +55,7 @@ def make_record(
     domain_tag: str,
     **extra: Any,
 ) -> dict:
-    """Create a training record in the standard eu-kiki format."""
+    """Create a training record in the standard ailiance format."""
     provenance = {
         "source": source,
         "license": license_,

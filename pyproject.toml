@@ -1,5 +1,5 @@
 [project]
-name = "eu-kiki"
+name = "ailiance"
 version = "0.1.0-dev"
 description = "EU-sovereign multi-model LLM serving pipeline"
 requires-python = ">=3.13"

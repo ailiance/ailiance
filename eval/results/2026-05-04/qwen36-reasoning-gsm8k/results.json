@@ -3,7 +3,7 @@
   "n": 200,
   "correct": 189,
   "accuracy": 0.945,
-  "model": "/Users/clems/eu-kiki/scratch/qwen-reasoning-fused-4bit",
+  "model": "/Users/clems/ailiance/scratch/qwen-reasoning-fused-4bit",
   "base_url": "http://127.0.0.1:8896/v1",
   "evaluated_at": "2026-05-05T11:59:42+0200"
 }

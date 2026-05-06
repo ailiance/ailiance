@@ -3,7 +3,7 @@
 build_hf_datasets.py — Download and convert HuggingFace datasets into LoRA training format.
 
 Usage:
-    cd ~/eu-kiki && uv run python scripts/build_hf_datasets.py
+    cd ~/ailiance && uv run python scripts/build_hf_datasets.py
 
 Output format (JSONL):
     {"messages": [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]}
@@ -673,7 +673,7 @@ def build_misra_domain() -> None:
 def main() -> None:
     OUT_ROOT.mkdir(parents=True, exist_ok=True)
     print("=" * 60)
-    print("eu-kiki  —  HuggingFace dataset builder")
+    print("ailiance  —  HuggingFace dataset builder")
     print(f"Output root : {OUT_ROOT}")
     print(f"Max/domain  : {MAX_PER_DOMAIN}")
     print(f"Split ratio : {int((1 - VALID_RATIO)*100)}/{int(VALID_RATIO*100)} (train/valid)")

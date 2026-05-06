@@ -5,7 +5,7 @@ Covers: docker, web-backend, llm-ops, embedded, kicad, music-audio,
         traduction-tech, misra-c (via CertiCoder configs)
 
 Usage:
-    cd ~/eu-kiki && uv run python scripts/build_hf_niche_datasets.py
+    cd ~/ailiance && uv run python scripts/build_hf_niche_datasets.py
 """
 import json
 import random
@@ -321,7 +321,7 @@ def build_misra():
 
 def main():
     print("=" * 60)
-    print("eu-kiki — Niche domain HF dataset builder")
+    print("ailiance — Niche domain HF dataset builder")
     print("=" * 60)
 
     build_docker_devops()

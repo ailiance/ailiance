@@ -1,6 +1,6 @@
 {
   "_doc": "EU AI Act Annex IV §1(c) — model lineage / supply-chain record.",
-  "deployment_id": "eu-kiki/devstral-24b",
+  "deployment_id": "ailiance/devstral-24b",
   "deployed_at_utc": "2026-02-26T00:00:00Z",
   "deployed_on_host": "macm1 (Mac mini M1)",
   "served_via": "uvicorn FastAPI worker @ macm1:9302, MLX inference (Metal)",
@@ -34,7 +34,7 @@
     "MLX 4-bit quantisation (mlx_lm.convert -q 4)",
     "Domain LoRA adapters loaded at runtime — see output/adapters/devstral/"
   ],
-  "intended_use": "Public chat playground at https://ml.saillant.cc/chat/eu-kiki/devstral-24b — code generation across Python/Rust/TS/C++/SQL via LoRA adapters.",
+  "intended_use": "Public chat playground at https://ailiance.fr/chat/ailiance/devstral-24b — code generation across Python/Rust/TS/C++/SQL via LoRA adapters.",
   "out_of_scope": [
     "Generating malware, exploits or vulnerability research without authorisation",
     "Code requiring formal verification (medical, avionics) without human review",

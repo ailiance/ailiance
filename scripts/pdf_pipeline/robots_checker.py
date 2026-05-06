@@ -192,7 +192,7 @@ def main(argv: list[str] | None = None) -> None:
         parser.print_help()
         sys.exit(1)
 
-    print("=== EU-KIKI PDF Pipeline — Robots.txt Verification ===\n")
+    print("=== AILIANCE PDF Pipeline — Robots.txt Verification ===\n")
 
     if args.all:
         results = check_all()

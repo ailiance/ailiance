@@ -19,7 +19,7 @@ PDF_RAW_DIR = DATA_ROOT / "pdf-raw"
 PDF_EXTRACTED_DIR = DATA_ROOT / "pdf-extracted"
 HF_TRACED_DIR = DATA_ROOT / "hf-traced"
 
-USER_AGENT = "eu-kiki-training-pipeline/0.2 (research, EU DSM Art.4 TDM)"
+USER_AGENT = "ailiance-training-pipeline/0.2 (research, EU DSM Art.4 TDM)"
 RATE_LIMIT_SECONDS = 2.0
 
 

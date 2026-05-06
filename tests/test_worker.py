@@ -34,4 +34,4 @@ def test_worker_metrics():
     client = TestClient(app)
     resp = client.get("/metrics")
     assert resp.status_code == 200
-    assert "eu_kiki_worker_requests_total" in resp.text
+    assert "ailiance_worker_requests_total" in resp.text

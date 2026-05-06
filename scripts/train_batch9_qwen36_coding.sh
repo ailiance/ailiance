@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# eu-kiki LoRA Batch 9 — Qwen3.6-35B-A3B: 22 coding domains (v2 pipeline)
+# ailiance LoRA Batch 9 — Qwen3.6-35B-A3B: 22 coding domains (v2 pipeline)
 #
 # Model: Qwen/Qwen3-35B-A3B (Apache-2.0 license)
 # Base model provenance: Qwen official BF16, MoE architecture (3B active params)
@@ -19,18 +19,18 @@
 #   sudo sysctl -w iogpu.wired_limit_mb=458752
 #
 # Usage:
-#   bash ~/eu-kiki/scripts/train_batch9_qwen36_coding.sh
-#   bash ~/eu-kiki/scripts/train_batch9_qwen36_coding.sh --dry-run
+#   bash ~/ailiance/scripts/train_batch9_qwen36_coding.sh
+#   bash ~/ailiance/scripts/train_batch9_qwen36_coding.sh --dry-run
 # ==============================================================================
 
 set -euo pipefail
 
 KIKI_TUNNER="$HOME/KIKI-Mac_tunner"
-EU_KIKI="$HOME/eu-kiki"
-HF_DATA="$EU_KIKI/data/hf-traced"
-ADAPTERS="$EU_KIKI/output/adapters-v2/qwen36"
-OUTPUT_ROOT="$KIKI_TUNNER/output/eu-kiki-v2"
-LOG_DIR="$EU_KIKI/output/training-logs"
+AILIANCE="$HOME/ailiance"
+HF_DATA="$AILIANCE/data/hf-traced"
+ADAPTERS="$AILIANCE/output/adapters-v2/qwen36"
+OUTPUT_ROOT="$KIKI_TUNNER/output/ailiance-v2"
+LOG_DIR="$AILIANCE/output/training-logs"
 
 MODEL="$KIKI_TUNNER/models/Qwen3.6-35B-A3B"
 MODEL_LICENSE="Apache-2.0"
@@ -43,7 +43,7 @@ fi
 mkdir -p "$LOG_DIR" "$ADAPTERS"
 
 echo "============================================================"
-echo " eu-kiki LoRA Batch 9 — Qwen3.6-35B-A3B: 22 coding domains"
+echo " ailiance LoRA Batch 9 — Qwen3.6-35B-A3B: 22 coding domains"
 echo " Date: $(date '+%Y-%m-%d %H:%M')"
 echo " Model: $MODEL"
 echo " License: $MODEL_LICENSE"
@@ -167,7 +167,7 @@ with open(config_path, "w") as f:
 
 # EU AI Act provenance tracking
 provenance = {
-    "pipeline": "eu-kiki-v2",
+    "pipeline": "ailiance-v2",
     "batch": "batch9",
     "base_model": Path(model_path).name,
     "base_model_license": model_license,

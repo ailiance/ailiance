@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# eu-kiki Batch 8 — KiCad PCB full-sequence retrain (max_seq=16384)
+# ailiance Batch 8 — KiCad PCB full-sequence retrain (max_seq=16384)
 #
 # Retrains kicad-pcb with max_seq=16384 so NO footprint is truncated.
 # Uses train_fullseq.jsonl (S-expression-aware splitting, curriculum sorted).
@@ -11,12 +11,12 @@
 set -euo pipefail
 
 KIKI_TUNNER="$HOME/KIKI-Mac_tunner"
-EU_KIKI="$HOME/eu-kiki"
-HF_DATA="$EU_KIKI/data/hf-traced"
-ADAPTERS="$EU_KIKI/output/adapters"
-OUTPUT_ROOT="$KIKI_TUNNER/output/eu-kiki-hf"
-LOG_DIR="$EU_KIKI/output/training-logs"
-BACKUP_DIR="$EU_KIKI/output/adapters-backup-pre-kicad-fullseq"
+AILIANCE="$HOME/ailiance"
+HF_DATA="$AILIANCE/data/hf-traced"
+ADAPTERS="$AILIANCE/output/adapters"
+OUTPUT_ROOT="$KIKI_TUNNER/output/ailiance-hf"
+LOG_DIR="$AILIANCE/output/training-logs"
+BACKUP_DIR="$AILIANCE/output/adapters-backup-pre-kicad-fullseq"
 DEVSTRAL_BF16="$KIKI_TUNNER/models/Devstral-Small-2-24B-BF16"
 
 DOMAIN="kicad-pcb"
@@ -30,7 +30,7 @@ if [[ "${1:-}" == "--dry-run" ]]; then DRY_RUN=true; fi
 mkdir -p "$LOG_DIR"
 
 echo "============================================================"
-echo " eu-kiki Batch 8 — KiCad PCB Full-Sequence Retrain"
+echo " ailiance Batch 8 — KiCad PCB Full-Sequence Retrain"
 echo " max_seq=$MAX_SEQ, grad_accum=$GRAD_ACCUM"
 echo " Date: $(date '+%Y-%m-%d %H:%M')"
 if $DRY_RUN; then echo " Mode: DRY RUN"; fi

@@ -1,9 +1,9 @@
 {
   "_doc": "EU AI Act Annex IV §1(c) — model lineage / supply-chain record.",
-  "deployment_id": "eu-kiki/auto",
+  "deployment_id": "ailiance/auto",
   "deployed_at_utc": "2026-05-05T13:55:00Z",
   "deployed_on_host": "electron-server (gateway-side, CPU)",
-  "served_via": "in-process MLP head invoked by the eu-kiki gateway (FastAPI :9300)",
+  "served_via": "in-process MLP head invoked by the ailiance gateway (FastAPI :9300)",
   "source": {
     "provider": "L'Électron Rare (head trained in-house) + Microsoft / Hugging Face (encoder)",
     "encoder": {
@@ -14,8 +14,8 @@
       "parameters": 22700000
     },
     "head": {
-      "checkpoint": "eu-kiki/output/router/router.safetensors",
-      "previous_checkpoint": "eu-kiki/output/router-v1-backup-1777983938 (rollback)",
+      "checkpoint": "ailiance/output/router/router.safetensors",
+      "previous_checkpoint": "ailiance/output/router-v1-backup-1777983938 (rollback)",
       "training_script": "scripts/train_router.py",
       "training_data_script": "scripts/build_router_data.py + scripts/augment_router_data.py"
     }

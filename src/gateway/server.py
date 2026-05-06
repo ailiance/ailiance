@@ -33,18 +33,18 @@ _DEFAULT_WORKER_URLS = {
 def _load_worker_urls() -> dict[int, str]:
     """Allow distributed deployments to override WORKER_URLS via env var.
 
-    Set ``EU_KIKI_WORKERS_JSON='{"9301":"http://studio:9301", ...}'`` to point
+    Set ``AILIANCE_WORKERS_JSON='{"9301":"http://studio:9301", ...}'`` to point
     each worker at a Tailscale/LAN address. Defaults stay localhost so a
     single-host setup just works.
     """
-    raw = os.environ.get("EU_KIKI_WORKERS_JSON")
+    raw = os.environ.get("AILIANCE_WORKERS_JSON")
     if not raw:
         return dict(_DEFAULT_WORKER_URLS)
     try:
         return {int(k): str(v) for k, v in json.loads(raw).items()}
     except Exception as exc:
         log.warning(
-            "failed to parse EU_KIKI_WORKERS_JSON (%s); using defaults", exc,
+            "failed to parse AILIANCE_WORKERS_JSON (%s); using defaults", exc,
         )
         return dict(_DEFAULT_WORKER_URLS)
 
@@ -52,14 +52,14 @@ def _load_worker_urls() -> dict[int, str]:
 WORKER_URLS = _load_worker_urls()
 
 MODEL_FORCE_MAP = {
-    "eu-kiki-apertus": 9301,
-    "eu-kiki-devstral": 9302,
-    "eu-kiki-eurollm": 9303,
-    "eu-kiki-gemma": 9304,  # Gemma 3 4B IT on tower
-    "eu-kiki-qwen": 8002,  # llama-server on kxkm-ai (RTX 4090) via autossh tunnel
+    "ailiance-apertus": 9301,
+    "ailiance-devstral": 9302,
+    "ailiance-eurollm": 9303,
+    "ailiance-gemma": 9304,  # Gemma 3 4B IT on tower
+    "ailiance-qwen": 8002,  # llama-server on kxkm-ai (RTX 4090) via autossh tunnel
 }
 
-# Per-port forward overrides for non-eu-kiki backends. The gateway rewrites
+# Per-port forward overrides for non-ailiance backends. The gateway rewrites
 # the request body's `model` field and injects an Authorization header before
 # proxying. Both pieces are sourced from env so secrets never land in source.
 WORKER_FORWARD_OVERRIDES: dict[int, dict[str, str]] = {
@@ -71,16 +71,16 @@ WORKER_FORWARD_OVERRIDES: dict[int, dict[str, str]] = {
 
 
 def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
-    app = FastAPI(title="eu-kiki-gateway")
+    app = FastAPI(title="ailiance-gateway")
     reg = CollectorRegistry()
     requests_total = Counter(
-        "eu_kiki_gw_requests_total",
+        "ailiance_gw_requests_total",
         "Gateway requests",
         ["model", "status"],
         registry=reg,
     )
     route_latency = Histogram(
-        "eu_kiki_gw_route_seconds",
+        "ailiance_gw_route_seconds",
         "Router latency",
         registry=reg,
     )
@@ -119,12 +119,12 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         return {
             "object": "list",
             "data": [
-                {"id": "eu-kiki", "object": "model", "owned_by": "eu-kiki"},
-                {"id": "eu-kiki-apertus", "object": "model", "owned_by": "eu-kiki"},
-                {"id": "eu-kiki-devstral", "object": "model", "owned_by": "eu-kiki"},
-                {"id": "eu-kiki-eurollm", "object": "model", "owned_by": "eu-kiki"},
-                {"id": "eu-kiki-gemma", "object": "model", "owned_by": "eu-kiki"},
-                {"id": "eu-kiki-qwen", "object": "model", "owned_by": "eu-kiki"},
+                {"id": "ailiance", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-apertus", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-devstral", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-eurollm", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-gemma", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-qwen", "object": "model", "owned_by": "ailiance"},
             ],
         }
 
@@ -147,12 +147,12 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         models = raw.get("models", {}) if isinstance(raw, dict) else {}
         # Enumerate the same id list as /v1/models so they stay aligned.
         ids = [
-            "eu-kiki",
-            "eu-kiki-apertus",
-            "eu-kiki-devstral",
-            "eu-kiki-eurollm",
-            "eu-kiki-gemma",
-            "eu-kiki-qwen",
+            "ailiance",
+            "ailiance-apertus",
+            "ailiance-devstral",
+            "ailiance-eurollm",
+            "ailiance-gemma",
+            "ailiance-qwen",
         ]
         return {
             "object": "list",
@@ -160,7 +160,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 {
                     "id": mid,
                     "object": "model",
-                    "owned_by": "eu-kiki",
+                    "owned_by": "ailiance",
                     **(models.get(mid) or {}),
                 }
                 for mid in ids
@@ -220,7 +220,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         body = req.model_dump(exclude_none=True)
 
         # Per-port forward rewrites: rename `model` and inject Authorization
-        # for backends that aren't part of the eu-kiki worker pool (kxkm-ai
+        # for backends that aren't part of the ailiance worker pool (kxkm-ai
         # llama-server expects an alias + bearer key).
         override = WORKER_FORWARD_OVERRIDES.get(worker_port)
         if override:

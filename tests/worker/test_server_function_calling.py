@@ -51,7 +51,7 @@ def test_non_stream_with_tool_call(monkeypatch):
     fake = 'sure: {"name":"read_file","arguments":{"path":"/etc/hosts"}}'
     client = _make_client(monkeypatch, fake)
     resp = client.post("/v1/chat/completions", json={
-        "model": "eu-kiki",
+        "model": "ailiance",
         "messages": [{"role": "user", "content": "read /etc/hosts"}],
         "tools": TOOLS,
         "stream": False,
@@ -70,7 +70,7 @@ def test_stream_with_tool_call(monkeypatch):
     fake = '{"name":"read_file","arguments":{"path":"/x"}}'
     client = _make_client(monkeypatch, fake)
     resp = client.post("/v1/chat/completions", json={
-        "model": "eu-kiki",
+        "model": "ailiance",
         "messages": [{"role": "user", "content": "go"}],
         "tools": TOOLS,
         "stream": True,
@@ -96,7 +96,7 @@ def test_stream_with_tool_call(monkeypatch):
 def test_stream_content_only_no_tool_call(monkeypatch):
     client = _make_client(monkeypatch, "just a plain answer")
     resp = client.post("/v1/chat/completions", json={
-        "model": "eu-kiki",
+        "model": "ailiance",
         "messages": [{"role": "user", "content": "hi"}],
         "tools": TOOLS,
         "stream": True,
@@ -117,7 +117,7 @@ def test_stream_content_only_no_tool_call(monkeypatch):
 def test_no_tools_preserves_legacy_behavior(monkeypatch):
     client = _make_client(monkeypatch, "hello world")
     resp = client.post("/v1/chat/completions", json={
-        "model": "eu-kiki",
+        "model": "ailiance",
         "messages": [{"role": "user", "content": "hi"}],
     })
     assert resp.status_code == 200
@@ -132,7 +132,7 @@ def test_assistant_history_with_tool_calls_accepted(monkeypatch):
     """Dirac sends back assistant messages containing tool_calls in history."""
     client = _make_client(monkeypatch, "ok")
     resp = client.post("/v1/chat/completions", json={
-        "model": "eu-kiki",
+        "model": "ailiance",
         "messages": [
             {"role": "user", "content": "do it"},
             {

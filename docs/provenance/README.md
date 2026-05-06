@@ -9,7 +9,7 @@ Each `*.json` in this directory documents a single served model:
 
 | Field | Meaning |
 |---|---|
-| `deployment_id` | Stable id used by the gateway (`eu-kiki/<alias>`) |
+| `deployment_id` | Stable id used by the gateway (`ailiance/<alias>`) |
 | `deployed_at_utc` | Timestamp of first-bring-up |
 | `deployed_on_host` | Tailscale hostname where the weights live |
 | `served_via` | Runtime stack (llama.cpp, MLX, vLLM…) and notable flags |

@@ -1,4 +1,4 @@
-"""PII scanner for EU-KIKI training data using Microsoft Presidio.
+"""PII scanner for AILIANCE training data using Microsoft Presidio.
 
 Scans all train.jsonl files in scraped/ and hf-traced/ directories,
 extracts text from message content fields, and reports PII entities found.
@@ -114,7 +114,7 @@ def main() -> None:
     random.seed(42)
 
     print("=" * 70)
-    print("EU-KIKI PII Scanner — Presidio + en_core_web_lg")
+    print("AILIANCE PII Scanner — Presidio + en_core_web_lg")
     print("=" * 70)
 
     # Build analyzer

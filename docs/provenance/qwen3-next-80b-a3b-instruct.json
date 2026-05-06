@@ -1,6 +1,6 @@
 {
   "_doc": "EU AI Act Annex IV §1(c) — model lineage / supply-chain record. Captured at first deployment.",
-  "deployment_id": "eu-kiki/qwen3-next-80b-a3b-instruct",
+  "deployment_id": "ailiance/qwen3-next-80b-a3b-instruct",
   "deployed_at_utc": "2026-05-05T14:00:00Z",
   "deployed_on_host": "kxkm-ai",
   "served_via": "llama.cpp on RTX 4090, MoE-offload (-ot 'ffn_(up|gate|down)_exps=CPU')",
@@ -33,7 +33,7 @@
     "produced_by": "Qwen team (official GGUF release)"
   },
   "modifications_post_download": [],
-  "intended_use": "Public chat playground at https://ml.saillant.cc/chat/eu-kiki/qwen3-next-80b-a3b-instruct — reasoning, multilingual chat. No fine-tuning applied; raw Qwen weights served.",
+  "intended_use": "Public chat playground at https://ailiance.fr/chat/ailiance/qwen3-next-80b-a3b-instruct — reasoning, multilingual chat. No fine-tuning applied; raw Qwen weights served.",
   "out_of_scope": [
     "Healthcare diagnosis",
     "Legal advice without human review",

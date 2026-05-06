@@ -4,7 +4,7 @@
 # Edit freely — gateway re-reads this file on each request (no restart).
 
 models:
-  eu-kiki:
+  ailiance:
     display_name: "Auto-router"
     base_model: "MiniLM L6 v2 + 2-layer MLP"
     domain: "router"
@@ -14,7 +14,7 @@ models:
       Qwen 35B / Gemma 3 4B). Decision exposed via /v1/route.
     headline: "MiniLM 384d · 40 domains · top1≈65% top3≈86%"
 
-  eu-kiki-apertus:
+  ailiance-apertus:
     display_name: "Apertus 70B"
     base_model: "Apertus 70B Instruct (EPFL + ETH + CSCS)"
     domain: "general / hardware / EU norms"
@@ -25,7 +25,7 @@ models:
       Studio M3 Ultra (studio:9301).
     headline: "70B params · MLX 8-bit · Mac Studio M3 Ultra"
 
-  eu-kiki-devstral:
+  ailiance-devstral:
     display_name: "Devstral 24B"
     base_model: "Mistral Small 3.1 (Devstral fine-tune)"
     domain: "code"
@@ -35,7 +35,7 @@ models:
       MLX 4-bit · ~13 GB · runs on Mac mini M1 (macm1:9302).
     headline: "24B params · MLX 4-bit · Mac mini M1"
 
-  eu-kiki-eurollm:
+  ailiance-eurollm:
     display_name: "EuroLLM 22B"
     base_model: "EuroLLM 22B Instruct (utter-project)"
     domain: "multilingual"
@@ -44,7 +44,7 @@ models:
       MLX 8-bit · ~22 GB · runs on Mac Studio M3 Ultra (studio:9303).
     headline: "22B params · MLX 8-bit · Mac Studio M3 Ultra"
 
-  eu-kiki-qwen:
+  ailiance-qwen:
     display_name: "Qwen3.5 35B A3B"
     base_model: "Qwen3.5 35B (MoE 256 experts, 3B active)"
     domain: "reasoning"
@@ -54,7 +54,7 @@ models:
       via SSH tunnel to kxkm-ai:8002).
     headline: "35B MoE / 3B active · Q3_K_XL · KXKM-AI"
 
-  eu-kiki-gemma:
+  ailiance-gemma:
     display_name: "Gemma 3 4B IT"
     base_model: "Google Gemma 3 4B Instruction-Tuned"
     domain: "quick / fallback"

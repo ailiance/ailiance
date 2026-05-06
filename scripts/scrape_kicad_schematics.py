@@ -9,7 +9,7 @@ Also generates synthetic schematic block templates for common circuit patterns
 that are underrepresented in scraped data.
 
 Usage:
-    cd ~/eu-kiki && uv run python scripts/scrape_kicad_schematics.py
+    cd ~/ailiance && uv run python scripts/scrape_kicad_schematics.py
 """
 
 from __future__ import annotations
@@ -461,7 +461,7 @@ def verify_repo_license(repo_path: Path, expected: str) -> str | None:
 
 
 # ──────────────────────────────────────────────────────────────
-# Record creation (matches eu-kiki format)
+# Record creation (matches ailiance format)
 # ──────────────────────────────────────────────────────────────
 
 
@@ -474,7 +474,7 @@ def make_record(
     domain_tag: str,
     **extra: Any,
 ) -> dict:
-    """Create a training record in the standard eu-kiki format."""
+    """Create a training record in the standard ailiance format."""
     provenance = {
         "source": source,
         "license": license_,
@@ -891,7 +891,7 @@ def generate_synthetic_blocks() -> list[dict]:
         records.append(make_record(
             user=tmpl["instruction"],
             assistant=tmpl["content"],
-            source="synthetic/eu-kiki",
+            source="synthetic/ailiance",
             license_="synthetic",
             file_path=f"synthetic/{tmpl['title'].replace(' ', '_')}.kicad_sch",
             domain_tag="kicad-dsl",
@@ -917,7 +917,7 @@ def _kicad8_header(title: str) -> str:
   (title_block
     (title "{title}")
     (date "2024-01-01")
-    (company "EU-KIKI Synthetic Training Data")
+    (company "AILIANCE Synthetic Training Data")
   )
 """
 
@@ -2051,7 +2051,7 @@ def merge_and_build_curriculum() -> None:
 
 def main() -> None:
     print("=" * 60)
-    print("KiCad Schematic Scraper — EU-KIKI Dataset Enrichment")
+    print("KiCad Schematic Scraper — AILIANCE Dataset Enrichment")
     print("=" * 60)
 
     CLONE_BASE.mkdir(parents=True, exist_ok=True)

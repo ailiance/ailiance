@@ -1,6 +1,6 @@
 {
   "_doc": "EU AI Act Annex IV §1(c) — model lineage / supply-chain record.",
-  "deployment_id": "eu-kiki/gemma3-4b (production worker; surfaced as chat-eligible card on https://ml.saillant.cc since 2026-05-06)",
+  "deployment_id": "ailiance/gemma3-4b (production worker; surfaced as chat-eligible card on https://ailiance.fr since 2026-05-06)",
   "deployed_at_utc": "2025-04-12T00:00:00Z",
   "deployed_on_host": "tower (Linux + NVIDIA Quadro P2000 5GB VRAM)",
   "served_via": "llama.cpp on tower:9304 — used as fallback / quick-response worker by the auto-router",
@@ -34,7 +34,7 @@
   "modifications_post_download": [
     "Quantisation to Q4_K_M GGUF"
   ],
-  "intended_use": "Production worker for short, latency-sensitive prompts and as routing fallback when the MiniLM domain classifier can't confidently match a labelled domain. Surfaced as a primary card on https://ml.saillant.cc since 2026-05-06.",
+  "intended_use": "Production worker for short, latency-sensitive prompts and as routing fallback when the MiniLM domain classifier can't confidently match a labelled domain. Surfaced as a primary card on https://ailiance.fr since 2026-05-06.",
   "out_of_scope": [
     "Production-quality answers on domain-specific prompts (use the routed worker instead)",
     "Long-context retrieval (8 k context only)",

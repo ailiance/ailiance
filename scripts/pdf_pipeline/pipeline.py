@@ -124,7 +124,7 @@ def run_source(source: PdfSource, max_pdfs: int = 20) -> dict[str, int | str]:
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        description="EU-KIKI PDF Pipeline — scrape, extract, convert with DSM compliance",
+        description="AILIANCE PDF Pipeline — scrape, extract, convert with DSM compliance",
     )
     parser.add_argument("--source", type=str, help="Process a specific source by name")
     parser.add_argument("--all", action="store_true", help="Process all sources")
@@ -139,7 +139,7 @@ def main(argv: list[str] | None = None) -> None:
     max_pdfs = args.max_pdfs_per_source or args.max_pdfs
 
     print("=" * 60)
-    print("  EU-KIKI PDF Pipeline v0.2")
+    print("  AILIANCE PDF Pipeline v0.2")
     print("  EU AI Act & DSM Directive Compliant")
     print("=" * 60)
 

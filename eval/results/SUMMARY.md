@@ -1,10 +1,10 @@
-# eu-kiki Benchmark Results — Summary
+# ailiance Benchmark Results — Summary
 
 Aggregated table of all publishable benchmark runs. Each result entry
 links to its self-contained directory with `env.json`, `methodology.md`,
 `rerun.sh`, and the official scoring artifacts.
 
-## HumanEval+ — Devstral-Small-2-24B-MLX-4bit (eu-kiki v1 adapters)
+## HumanEval+ — Devstral-Small-2-24B-MLX-4bit (ailiance v1 adapters)
 
 | Run | HE base | HE+ | Δ HE+ vs base | Scorer |
 |---|---:|---:|---:|---|
@@ -125,7 +125,7 @@ use `kicad_dsl_v3.json`.
 
 ## KIKI-DSL v1 (10 prompts, biased — historical reference)
 
-First valid measurement of an eu-kiki adapter delta on a custom KIKI-native bench. Workflow: `mlx_lm fuse` produces a self-contained 4-bit model with adapter weights baked in (workaround for `--adapter-path` runtime bug), evaluated by [`runners/kiki_native_runner.py`](../runners/kiki_native_runner.py) on 10 hand-curated KiCad prompts.
+First valid measurement of an ailiance adapter delta on a custom KIKI-native bench. Workflow: `mlx_lm fuse` produces a self-contained 4-bit model with adapter weights baked in (workaround for `--adapter-path` runtime bug), evaluated by [`runners/kiki_native_runner.py`](../runners/kiki_native_runner.py) on 10 hand-curated KiCad prompts.
 
 | Run | Base model | Adapter | Pass rate | Avg score | Notes |
 |-----|------------|---------|----------:|----------:|-------|
@@ -189,7 +189,7 @@ First valid measurement of an eu-kiki adapter delta on a custom KIKI-native benc
 
 → Adapter helps RC filter (component-light, format-driven) but hurts every prompt requiring named ICs.
 
-### Implications for eu-kiki adapters
+### Implications for ailiance adapters
 
 - v4-sota training likely used SPICE-style netlist as canonical output → over-specialized
 - Future adapter retraining should preserve verbose KiCad sch format OR provide format-mode controls
@@ -198,7 +198,7 @@ First valid measurement of an eu-kiki adapter delta on a custom KIKI-native benc
 
 ## MT-Bench (LLM-as-judge, local Mistral-Medium-128B)
 
-**First MT-Bench score** for eu-kiki, fully local pipeline. Subject and judge both run on Studio (M3 Ultra 512 GB). No external API dependency — judge is Mistral-Medium-3.5-128B-MLX-4bit (~73 GB), reproducible.
+**First MT-Bench score** for ailiance, fully local pipeline. Subject and judge both run on Studio (M3 Ultra 512 GB). No external API dependency — judge is Mistral-Medium-3.5-128B-MLX-4bit (~73 GB), reproducible.
 
 | Run | Subject | Judge | Score | Turns judged |
 |-----|---------|-------|------:|-------------:|
@@ -225,17 +225,17 @@ First valid measurement of an eu-kiki adapter delta on a custom KIKI-native benc
 ### Next
 
 - MT-Bench **full** (80 questions × 2 turns × 8 categories) for publishable result
-- A/B: Devstral 24B base vs Devstral 24B + eu-kiki v1 python adapter (fused)
+- A/B: Devstral 24B base vs Devstral 24B + ailiance v1 python adapter (fused)
 - Consider stronger judge (GPT-4 or human) for calibration of Mistral-Medium leniency
 
-## eu-kiki v1 Devstral on HumanEval+ (FIRST VALID adapter delta)
+## ailiance v1 Devstral on HumanEval+ (FIRST VALID adapter delta)
 
 Replaces the invalidated `devstral-python-adapter-2026-05-04` run (which silently used the base via the broken `--adapter-path`). This time the adapter is **fused** into the base via `mlx_lm fuse` on macM1, producing a self-contained 4-bit checkpoint where the LoRA contributions are guaranteed to be active.
 
 | Run | Setup | HumanEval base | HumanEval+ |
 |-----|-------|---------------:|-----------:|
 | [`devstral-base-baseline-2026-05-04-v2`](2026-05-04/devstral-base-baseline-2026-05-04-v2/) | Devstral-Small-2-24B-MLX-4bit BASE | **87.20 %** | **82.90 %** |
-| [`devstral-python-fused-humanevalplus`](2026-05-04/devstral-python-fused-humanevalplus/) | + eu-kiki v1 python adapter (FUSED) | **86.00 %** | **81.10 %** |
+| [`devstral-python-fused-humanevalplus`](2026-05-04/devstral-python-fused-humanevalplus/) | + ailiance v1 python adapter (FUSED) | **86.00 %** | **81.10 %** |
 | **Δ** | | **-1.20 pts** | **-1.80 pts** |
 
 → Adapter slightly degrades HumanEval+ — matches the initial prediction (scenario A "maintain or slight regression"). The adapter targets verbose chat-assistant Python (Stack-Overflow-style instructional code), not the terse algorithmic completion HumanEval expects. Net effect: 3 additional failures on extra tests (133 vs 136 passing).
@@ -247,7 +247,7 @@ Safe to deploy for chat/assistant; should not be relied on for code-generation b
 | Run | Model | Adapter | HumanEval base | HumanEval+ | Notes |
 |-----|-------|---------|---------------:|-----------:|-------|
 | [`devstral-base-baseline-2026-05-04-v2`](2026-05-04/devstral-base-baseline-2026-05-04-v2/) | Devstral-Small-2-24B-MLX-4bit | — | **87.20 %** | **82.90 %** | Valid baseline |
-| [`devstral-python-adapter-2026-05-04`](2026-05-04/devstral-python-adapter-2026-05-04/) | Devstral-Small-2-24B-MLX-4bit | python (eu-kiki) | 87.20 % | 82.90 % | ⚠️ **INVALIDATED** — adapter silently NOT applied (mlx_lm `load_adapters` skips QuantizedLinear modules; 11/11 outputs bit-identical to base on a control test). Run actually measures base again. |
+| [`devstral-python-adapter-2026-05-04`](2026-05-04/devstral-python-adapter-2026-05-04/) | Devstral-Small-2-24B-MLX-4bit | python (ailiance) | 87.20 % | 82.90 % | ⚠️ **INVALIDATED** — adapter silently NOT applied (mlx_lm `load_adapters` skips QuantizedLinear modules; 11/11 outputs bit-identical to base on a control test). Run actually measures base again. |
 
 **Lesson learned (2026-05-04, confirmed via Studio test):** mlx_lm.server `--adapter-path` succeeds without error but does NOT apply LoRA weights — neither on 4-bit MLX models NOR on BF16. The bug is widespread: tested both Devstral 2 24B 4-bit + python adapter and Qwen 35B-A3B BF16 + v4-sota kicad-dsl adapter — in both cases outputs are bit-identical to base.
 
@@ -282,7 +282,7 @@ All previously committed "adapter" results that used `--adapter-path` are invali
 
 ### Adapter delta interpretation
 
-The eu-kiki Python adapter does **not degrade** the base model on HumanEval, confirming **safe deployment in production**. It also does not improve (the base is already saturated on this benchmark family). Real adapter impact will be measured on:
+The ailiance Python adapter does **not degrade** the base model on HumanEval, confirming **safe deployment in production**. It also does not improve (the base is already saturated on this benchmark family). Real adapter impact will be measured on:
 
 - **MT-Bench** (chat, LLM-as-judge) — where the adapter's chat/instructional training shines
 - **AlpacaEval 2.0** — win-rate vs reference
@@ -293,7 +293,7 @@ The eu-kiki Python adapter does **not degrade** the base model on HumanEval, con
 Every result above is fully reproducible from its `env.json` + `rerun.sh`:
 
 - **Model SHA** (first chunk safetensors) and **adapter SHA** logged
-- **eu-kiki git commit** locked at run time
+- **ailiance git commit** locked at run time
 - **Hardware** (`MacBookPro.lan`, `MacStudio-de-MonsieurB.local`, `kx6tm-23`) recorded
 - **MLX version**, **Python version**, **pip freeze** captured
 - **Sampling config** (T=0, greedy, n=1, seed=42)
@@ -306,7 +306,7 @@ Codegen (macM1 M1 Max 32 GB)
   └─ mlx_lm.server :8801 / :8802
   └─ EvalPlus codegen via OpenAI-compat API
                 ↓
-        ~/Projets/eu-kiki/eval/results/<run>/
+        ~/Projets/ailiance/eval/results/<run>/
         evalplus_humanevalplus/humaneval/*.jsonl
                 ↓
 Transit (GrosMac, scp two-hop)
@@ -316,7 +316,7 @@ Scoring (kx6tm-23, Linux x86_64, Python 3.13.5)
                 ↓
         eval_results.json + pass@1 official
                 ↓
-Tracked artifacts back in eu-kiki/eval/results/.../
+Tracked artifacts back in ailiance/eval/results/.../
         evalplus_humanevalplus_linux_official/results.json
 ```
 

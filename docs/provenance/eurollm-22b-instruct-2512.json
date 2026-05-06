@@ -1,6 +1,6 @@
 {
   "_doc": "EU AI Act Annex IV §1(c) — model lineage / supply-chain record.",
-  "deployment_id": "eu-kiki/eurollm-22b",
+  "deployment_id": "ailiance/eurollm-22b",
   "deployed_at_utc": "2026-02-10T00:00:00Z",
   "deployed_on_host": "studio (Mac Studio M3 Ultra)",
   "served_via": "uvicorn FastAPI worker @ studio:9303, MLX inference (Metal)",
@@ -35,7 +35,7 @@
     "MLX 8-bit quantisation",
     "Domain LoRA adapters loaded at runtime — see output/adapters/eurollm/"
   ],
-  "intended_use": "Public chat playground at https://ml.saillant.cc/chat/eu-kiki/eurollm-22b — multilingual EU chat, technical translation, multilingual editing.",
+  "intended_use": "Public chat playground at https://ailiance.fr/chat/ailiance/eurollm-22b — multilingual EU chat, technical translation, multilingual editing.",
   "out_of_scope": [
     "Healthcare / legal advice without human review",
     "Translation of safety-critical documentation without certified linguist verification"

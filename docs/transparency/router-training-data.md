@@ -1,7 +1,7 @@
 # Router training data — full transparency record
 
 **EU AI Act Annex IV §2(b) — training data documentation for the
-`eu-kiki/auto` domain router.**
+`ailiance/auto` domain router.**
 
 This document is the canonical training-data record for the router head
 classifier. It is intentionally honest about known issues; do not treat
@@ -21,7 +21,7 @@ this artefact as a high-quality classifier without reading below.
 | Top-1 accuracy on validation | **87.7 %** |
 | Top-3 accuracy on validation | ~98 % |
 | Threshold | 0.50 (calibrated on v6 head — see scripts/calibrate_threshold.py) |
-| HuggingFace mirror | https://huggingface.co/clemsail/eu-kiki-router-v6-minilm |
+| HuggingFace mirror | https://huggingface.co/clemsail/ailiance-router-v6-minilm |
 
 The §4 limitation that affected v3 (label drift in the noisy auto-classified
 corpus) is now resolved: v6 trains on the AI-Act-traceable clean corpus
@@ -149,7 +149,7 @@ the §2.1 corpus is too small to begin with (`stm32`, `platformio`,
 
 ```bash
 # regenerate splits + retrain from scratch
-cd eu-kiki
+cd ailiance
 ~/KIKI-Mac_tunner/.venv/bin/python scripts/build_router_data.py
 ~/KIKI-Mac_tunner/.venv/bin/python scripts/train_router.py \
   --embedding-model sentence-transformers/all-MiniLM-L6-v2 \

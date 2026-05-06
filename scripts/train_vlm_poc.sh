@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# eu-kiki VLM PoC — Vision LoRA training on Devstral Small 2
+# ailiance VLM PoC — Vision LoRA training on Devstral Small 2
 #
 # Trains a vision-enabled LoRA adapter using schematic/diagram images
 # from ST Application Notes and Espressif datasheets.
@@ -20,19 +20,19 @@
 set -euo pipefail
 
 KIKI_TUNNER="$HOME/KIKI-Mac_tunner"
-EU_KIKI="$HOME/eu-kiki"
+AILIANCE="$HOME/ailiance"
 PYTHON="$KIKI_TUNNER/.venv/bin/python3"
 MODEL="$KIKI_TUNNER/models/Devstral-Small-2-24B-BF16"
-DATA="$EU_KIKI/data/vlm-dataset"
-OUTPUT="$KIKI_TUNNER/output/eu-kiki-hf/devstral-vlm-schematic"
-ADAPTER_DEST="$EU_KIKI/output/adapters/devstral/vlm-schematic"
-LOG_DIR="$EU_KIKI/output/training-logs"
+DATA="$AILIANCE/data/vlm-dataset"
+OUTPUT="$KIKI_TUNNER/output/ailiance-hf/devstral-vlm-schematic"
+ADAPTER_DEST="$AILIANCE/output/adapters/devstral/vlm-schematic"
+LOG_DIR="$AILIANCE/output/training-logs"
 LOG_FILE="$LOG_DIR/devstral-vlm-schematic.log"
 
 mkdir -p "$LOG_DIR" "$OUTPUT"
 
 echo "============================================================"
-echo " eu-kiki VLM PoC — Vision LoRA Training"
+echo " ailiance VLM PoC — Vision LoRA Training"
 echo " Date: $(date '+%Y-%m-%d %H:%M')"
 echo " Model: $(basename $MODEL)"
 echo " Dataset: $DATA ($(wc -l < $DATA/train.jsonl | tr -d ' ') train)"
@@ -69,7 +69,7 @@ $PYTHON -m mlx_vlm.lora \
 ENDED=$(date +%s)
 ELAPSED=$(( (ENDED - STARTED) / 60 ))
 
-# Copy adapter to eu-kiki output
+# Copy adapter to ailiance output
 if [[ -f "$OUTPUT/adapters.safetensors" ]]; then
     mkdir -p "$ADAPTER_DEST"
     cp "$OUTPUT/adapters.safetensors" "$ADAPTER_DEST/"

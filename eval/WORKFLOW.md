@@ -1,4 +1,4 @@
-# eu-kiki Benchmark Workflow — Complete Trace
+# ailiance Benchmark Workflow — Complete Trace
 
 Comprehensive trace of the eval pipeline architecture, every decision made,
 every bug found, every workaround applied. Designed to be auditable end-to-end
@@ -13,7 +13,7 @@ and reproducible by an external reviewer.
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │  GrosMac (M5, 16 GB) — dev machine                                  │
-│    repo: ~/Documents/Projets/eu-kiki/                               │
+│    repo: ~/Documents/Projets/ailiance/                               │
 │    role: write code, push to GitHub, transit results                │
 └─────────────────┬───────────────────────────────────────────────────┘
                   │ Tailscale
@@ -38,7 +38,7 @@ Why 3 machines : codegen needs MLX (Apple Silicon), heavy fuse needs RAM
 ## 2. Repo structure of the eval pipeline
 
 ```
-eu-kiki/
+ailiance/
 ├── eval/
 │   ├── README.md           # methodology + benchmark suite spec
 │   ├── HOSTS.md            # machine matrix + sync workflow
@@ -131,7 +131,7 @@ Lesson : always run a control prompt with **expected divergent output**
 │ 1. macM1 — Build fused 4-bit model                            │
 │    mlx_lm fuse                                                 │
 │      --model Devstral-Small-2-24B-MLX-4bit                     │
-│      --adapter-path eu-kiki/output/adapters/devstral/python    │
+│      --adapter-path ailiance/output/adapters/devstral/python    │
 │      --save-path /tmp/devstral-python-fused-4bit               │
 │    → 12 GB self-contained checkpoint (~25 min)                 │
 └─────────────────────────────────┬──────────────────────────────┘
@@ -202,12 +202,12 @@ Total per adapter: **~30-35 min** (fuse + bench), fully autonomous on macM1.
 
 ## 7. Results summary
 
-### eu-kiki v1 — HumanEval+ (official Linux scoring)
+### ailiance v1 — HumanEval+ (official Linux scoring)
 
 | Run | Pass@1 base | Pass@1 + |
 |-----|-----------:|---------:|
 | Devstral-Small-2-24B-MLX-4bit BASE | **87.20 %** | **82.90 %** |
-| + eu-kiki v1 python (FUSED) | 86.00 % | 81.10 % |
+| + ailiance v1 python (FUSED) | 86.00 % | 81.10 % |
 | **Δ** | -1.20 pts | -1.80 pts |
 
 → Adapter is style-drift on academic prompts (verbose Stack-Overflow
@@ -371,7 +371,7 @@ GrosMac (dev)                 macM1 (runner)            kx6tm-23 (Linux)
 ### macM1
 - `~/.local/bin/uv` (curl install, astral.sh)
 - `~/.local/bin/gh` 2.62.0 (binary direct from GitHub releases)
-- `~/Projets/eu-kiki/.venv` Python 3.13.13
+- `~/Projets/ailiance/.venv` Python 3.13.13
   - mlx_lm 0.31.3
   - lighteval 0.13.0
   - evalplus
@@ -414,8 +414,8 @@ b5f58d1  results: electronics adapter (-20 pts pass)
 49f1f22  results: chat-fr adapter (+10 pts pass!)
 cbb739d  results: components adapter (-30 pts pass)
 2ab6aaa  results: kicad-pcb adapter (neutral)
-ade2bfd  results: first valid eu-kiki adapter delta
-eeb21c2  results: eu-kiki v1 Devstral python (-1.8 pts)
+ade2bfd  results: first valid ailiance adapter delta
+eeb21c2  results: ailiance v1 Devstral python (-1.8 pts)
 c5288d5  fix(eval): disable thinking + reasoning fallback
 f1dac4d  fix(eval): accept SPICE-like netlist in KIKI-DSL
 c5dcde4  feat(eval): KIKI-native runner + KiCad-DSL task

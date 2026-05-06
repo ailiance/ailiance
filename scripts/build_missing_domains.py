@@ -5,7 +5,7 @@ All sources must have verified SPDX licenses (Apache-2.0, MIT, BSD, CC-BY, CC0)
 for EU AI Act compliance. No GPL, LGPL, or CC-BY-SA sources.
 
 Usage:
-    cd ~/eu-kiki && uv run python scripts/build_missing_domains.py
+    cd ~/ailiance && uv run python scripts/build_missing_domains.py
 
 Domains covered:
   GROUP A (repo scraping):
@@ -52,7 +52,7 @@ VALID_RATIO = 0.05
 MIN_RECORDS = 500
 OUT = Path("data/hf-traced")
 MANIFEST_PATH = OUT / "MANIFEST_niche.json"
-CLONE_BASE = Path("/tmp/eu-kiki-scrape")
+CLONE_BASE = Path("/tmp/ailiance-scrape")
 
 # ── Report accumulator ────────────────────────────────────────
 report: list[dict[str, Any]] = []
@@ -1315,7 +1315,7 @@ def update_manifest() -> None:
 
 def main() -> None:
     print("=" * 60)
-    print("EU-KIKI — Missing domains dataset builder")
+    print("AILIANCE — Missing domains dataset builder")
     print(f"Date: {datetime.now(timezone.utc).isoformat()}")
     print(f"Allowed SPDX: Apache-2.0, MIT, BSD-*, CC-BY-4.0, CC0-1.0")
     print("=" * 60)

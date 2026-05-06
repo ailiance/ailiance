@@ -57,7 +57,7 @@ class ToolDef(BaseModel, extra="ignore"):
 
 
 class ChatCompletionRequest(BaseModel, extra="ignore"):
-    model: str = "eu-kiki"
+    model: str = "ailiance"
     messages: list[ChatMessage]
     temperature: float = 0.7
     max_tokens: int = 2048
@@ -84,6 +84,6 @@ class ChatCompletion(BaseModel):
     id: str = Field(default_factory=lambda: f"chatcmpl-{uuid.uuid4().hex[:12]}")
     object: str = "chat.completion"
     created: int = Field(default_factory=lambda: int(time.time()))
-    model: str = "eu-kiki"
+    model: str = "ailiance"
     choices: list[Choice]
     usage: Usage = Field(default_factory=Usage)
