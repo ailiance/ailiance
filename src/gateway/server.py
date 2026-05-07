@@ -74,6 +74,9 @@ WORKER_FORWARD_OVERRIDES: dict[int, dict[str, str]] = {
     9301: {
         "model": "/Users/clems/KIKI-Mac_tunner/models/Mistral-Medium-3.5-128B-MLX-Q8",
     },
+    8502: {
+        "model": "lmstudio-community/gemma-4-E4B-it-MLX-4bit",  # base model id loaded with curriculum LoRA adapter
+    },
 }
 
 
