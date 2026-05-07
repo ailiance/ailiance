@@ -158,3 +158,7 @@ def make_devstral_app() -> FastAPI:
 
 def make_eurollm_app() -> FastAPI:
     return make_worker_app(_load_config_from_yaml("configs/eurollm.yaml"))
+
+
+def make_gemma4_app() -> FastAPI:
+    return make_worker_app(_load_config_from_yaml("configs/gemma4.yaml"))

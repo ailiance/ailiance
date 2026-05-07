@@ -1,0 +1,19 @@
+model_path: lmstudio-community/gemma-4-E4B-it-MLX-4bit
+adapters_dir: /Users/electron/lora-adapters/gemma4-e4b-eukiki/phase4_full
+port: 8502
+precision: bf16
+domains:
+  - electronics-hw
+  - python
+  - typescript
+  - cpp
+  - shell
+  - sql
+  - docker
+  - devops
+  - yaml-json
+  - kicad
+  - stm32
+  - embedded
+  - iot
+  - platformio
