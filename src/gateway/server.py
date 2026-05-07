@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 
 _DEFAULT_WORKER_URLS = {
     9301: "http://localhost:9301",
-    9302: "http://localhost:9302",
+    8502: "http://localhost:8502",  # eu-kiki / ailiance worker on macm1 (Gemma 4 E4B + LoRA)
     9303: "http://localhost:9303",
     9304: "http://localhost:9304",
     # Qwen3.5 35B A3B on kxkm-ai (llama-server, alias 'qwen-32b-awq')
@@ -54,8 +54,8 @@ WORKER_URLS = _load_worker_urls()
 MODEL_FORCE_MAP = {
     "ailiance-apertus": 9301,
     "ailiance-mistral": 9301,  # Mistral Medium 3.5 128B Q8 (replaces Apertus on studio:9301)
-    "ailiance-devstral": 9302,  # legacy alias — port now serves Gemma 4 E4B curriculum
-    "ailiance-gemma4": 9302,  # Gemma 4 E4B + ailiance curriculum LoRA (macm1)
+    "ailiance-devstral": 8502,  # legacy alias — macm1 worker now serves Gemma 4
+    "ailiance-gemma4": 8502,  # Gemma 4 E4B + ailiance curriculum LoRA (macm1)
     "ailiance-eurollm": 9303,
     "ailiance-gemma": 9304,  # Gemma 3 4B IT on tower
     "ailiance-qwen": 8002,  # llama-server on kxkm-ai (RTX 4090) via autossh tunnel
