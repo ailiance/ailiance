@@ -54,7 +54,8 @@ WORKER_URLS = _load_worker_urls()
 MODEL_FORCE_MAP = {
     "ailiance-apertus": 9301,
     "ailiance-mistral": 9301,  # Mistral Medium 3.5 128B Q8 (replaces Apertus on studio:9301)
-    "ailiance-devstral": 9302,
+    "ailiance-devstral": 9302,  # legacy alias — port now serves Gemma 4 E4B curriculum
+    "ailiance-gemma4": 9302,  # Gemma 4 E4B + ailiance curriculum LoRA (macm1)
     "ailiance-eurollm": 9303,
     "ailiance-gemma": 9304,  # Gemma 3 4B IT on tower
     "ailiance-qwen": 8002,  # llama-server on kxkm-ai (RTX 4090) via autossh tunnel
@@ -128,7 +129,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 {"id": "ailiance", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-apertus", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-mistral", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-devstral", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-gemma4", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-eurollm", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-gemma", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-qwen", "object": "model", "owned_by": "ailiance"},
@@ -157,7 +158,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             "ailiance",
             "ailiance-apertus",
             "ailiance-mistral",
-            "ailiance-devstral",
+            "ailiance-gemma4",
             "ailiance-eurollm",
             "ailiance-gemma",
             "ailiance-qwen",
