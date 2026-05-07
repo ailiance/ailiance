@@ -68,6 +68,11 @@ WORKER_FORWARD_OVERRIDES: dict[int, dict[str, str]] = {
         "model": "qwen-32b-awq",  # the alias llama-server expects
         "auth_env": "KXKM_QWEN_KEY",
     },
+    # mlx_lm.server resolves an unknown `model` field as a HF repo and tries to
+    # download it; rewrite to the on-disk path the server already has loaded.
+    9301: {
+        "model": "/Users/clems/KIKI-Mac_tunner/models/Mistral-Medium-3.5-128B-MLX-Q8",
+    },
 }
 
 
