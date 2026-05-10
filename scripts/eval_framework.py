@@ -453,7 +453,7 @@ def load_model_and_tokenizer(model_path: str, adapter_path: str | None = None):
     """Load an MLX model with optional LoRA adapter. Returns (model, tokenizer)."""
     import mlx.core as mx
 
-    mx.set_memory_limit(480 * 1024**3)
+    mx.set_memory_limit(440 * 1024**3)
     mx.set_cache_limit(32 * 1024**3)
 
     from mlx_lm_fork import load as mlx_load
