@@ -104,7 +104,7 @@ _DEVSTRAL_DOMAINS = [
     "python", "rust", "typescript", "cpp", "shell", "html-css", "sql",
     "web-backend", "web-frontend", "docker-devops", "llm-ops", "llm-orch",
     "ml-training", "lua-upy", "platformio", "iot", "music-audio", "freecad",
-    "kicad-dsl", "kicad-pcb", "rust-embedded",
+    "kicad-dsl", "kicad-pcb", "rust-embedded", "yaml-json",
 ]
 for _d in _DEVSTRAL_DOMAINS:
     V1_DOMAIN_MAP[_d] = "devstral"
