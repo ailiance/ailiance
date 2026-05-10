@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>cc.ailiance.mistral</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/clems/.venv-mistral/bin/python</string>
+    <string>-m</string>
+    <string>mlx_lm.server</string>
+    <string>--model</string>
+    <string>/Users/clems/KIKI-Mac_tunner/models/Mistral-Medium-3.5-128B-MLX-Q8</string>
+    <string>--host</string>
+    <string>0.0.0.0</string>
+    <string>--port</string>
+    <string>9301</string>
+    <string>--log-level</string>
+    <string>INFO</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+    <key>NetworkState</key>
+    <true/>
+  </dict>
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+  <key>StandardOutPath</key>
+  <string>/Users/clems/KIKI-Mac_tunner/logs/mistral.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/clems/KIKI-Mac_tunner/logs/mistral.err.log</string>
+  <key>WorkingDirectory</key>
+  <string>/Users/clems/KIKI-Mac_tunner</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+</dict>
+</plist>
