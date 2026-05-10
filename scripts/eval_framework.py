@@ -31,7 +31,12 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Optional
 
-import mlx.core as mx  # noqa: E402  module-level handle for monkey-patchable probe
+import mlx.core as mx  # module-level handle for monkey-patchable probe (kept here so tests can monkeypatch eval_framework.mx)
+
+# Wired-memory budget for MLX. Stays under macOS iogpu.wired_limit_mb=458752
+# (= 448 GiB) hard cap with 8 GiB headroom for kernel + non-Metal allocations.
+# Going above the wired cap triggers kernel SIGKILL at MLX import time.
+WIRED_MEMORY_BUDGET_GIB = 440
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -455,7 +460,7 @@ def load_model_and_tokenizer(model_path: str, adapter_path: str | None = None):
     """Load an MLX model with optional LoRA adapter. Returns (model, tokenizer)."""
     import mlx.core as mx
 
-    mx.set_memory_limit(440 * 1024**3)
+    mx.set_memory_limit(WIRED_MEMORY_BUDGET_GIB * 1024**3)
     mx.set_cache_limit(32 * 1024**3)
 
     from mlx_lm_fork import load as mlx_load
@@ -482,7 +487,7 @@ def unload_model():
     gc.collect()
 
 
-def _assert_within_budget(budget_gib: int = 440) -> None:
+def _assert_within_budget(budget_gib: int = WIRED_MEMORY_BUDGET_GIB) -> None:
     """Abort cleanly with RuntimeError if Metal peak memory has exceeded the
     configured budget. Called between every model transition in
     sequential-strict mode so an overrun produces a structured error

@@ -17,9 +17,15 @@ def _read_set_memory_limit_call() -> int:
         / "eval_framework.py"
     ).read_text()
     import re
-    m = re.search(r"mx\.set_memory_limit\((\d+)\s*\*\s*1024\*\*3\)", src)
+    m = re.search(r"mx\.set_memory_limit\(([A-Za-z_][A-Za-z0-9_]*|\d+)\s*\*\s*1024\*\*3\)", src)
     assert m, "mx.set_memory_limit(<gib> * 1024**3) call not found"
-    return int(m.group(1))
+    token = m.group(1)
+    if token.isdigit():
+        return int(token)
+    # Resolve module-level constant by name (e.g. WIRED_MEMORY_BUDGET_GIB = 440).
+    cm = re.search(rf"^{re.escape(token)}\s*=\s*(\d+)\s*$", src, re.MULTILINE)
+    assert cm, f"constant {token} not found at module level in eval_framework.py"
+    return int(cm.group(1))
 
 
 def test_memory_limit_below_wired_cap():
