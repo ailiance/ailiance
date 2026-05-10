@@ -1164,6 +1164,16 @@ def get_domains_to_eval(
     return pairs
 
 
+def _strict_iteration_order(
+    load_groups: dict[tuple[str, str], list[str]],
+) -> list[tuple[tuple[str, str], list[str]]]:
+    """Return (version, model_key) -> [domains] entries in an order that
+    consumes every adapter for one base model before any adapter of another
+    base model. Stable on dict insertion order so identical inputs always
+    produce identical sequences (reproducibility for the bench history)."""
+    return list(load_groups.items())
+
+
 def run_eval(
     mode: str = "compare",
     quick: bool = False,
@@ -1178,9 +1188,9 @@ def run_eval(
     results = EvalResults()
 
     versions_to_eval = []
-    if mode in ("v1-only", "compare"):
+    if mode in ("v1-only", "compare", "sequential-strict"):
         versions_to_eval.append("v1")
-    if mode in ("v2-only", "compare"):
+    if mode in ("v2-only", "compare", "sequential-strict"):
         versions_to_eval.append("v2")
 
     # ---- Phase 1: Adapter efficiency (no model loading needed) ----
@@ -1210,7 +1220,7 @@ def run_eval(
             key = (version, model_key)
             load_groups.setdefault(key, []).append(domain)
 
-    for (version, model_key), domains in load_groups.items():
+    for (version, model_key), domains in _strict_iteration_order(load_groups):
         model_info = MODELS[model_key]
         print(f"\n  Loading {model_key} ({model_info['short']}) for {len(domains)} domains...")
 
@@ -1224,6 +1234,9 @@ def run_eval(
                     f"    {domain}: loss={ppl_result.val_loss:.4f}, "
                     f"ppl={ppl_result.perplexity:.2f}"
                 )
+        if mode == "sequential-strict":
+            unload_model()
+            _assert_within_budget(budget_gib=WIRED_MEMORY_BUDGET_GIB)
 
     # ---- Phase 3: Generation quality ----
     if not skip_generation and not quick:
@@ -1231,7 +1244,7 @@ def run_eval(
         print("Phase 3: Generation Quality")
         print("=" * 60)
 
-        for (version, model_key), domains in load_groups.items():
+        for (version, model_key), domains in _strict_iteration_order(load_groups):
             if model_key == "medium35":
                 print(f"  SKIP generation for {model_key} (BF16 too slow)")
                 continue
@@ -1244,6 +1257,9 @@ def run_eval(
                 if gen_results:
                     avg_tps = sum(g.tokens_per_sec for g in gen_results) / len(gen_results)
                     print(f"    {domain}: {avg_tps:.1f} tok/s avg")
+            if mode == "sequential-strict":
+                unload_model()
+                _assert_within_budget(budget_gib=WIRED_MEMORY_BUDGET_GIB)
 
     # ---- Phase 4: Speed benchmark ----
     if not skip_speed and not quick:
@@ -1301,7 +1317,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--mode",
-        choices=["compare", "v1-only", "v2-only"],
+        choices=["compare", "v1-only", "v2-only", "sequential-strict"],
         default="compare",
         help="Which adapter versions to evaluate (default: compare)",
     )

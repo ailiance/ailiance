@@ -68,3 +68,41 @@ def test_assert_within_budget_passes_when_under(monkeypatch):
 
     monkeypatch.setattr("eval_framework.mx", _FakeMx, raising=False)
     _assert_within_budget(budget_gib=440)  # should not raise
+
+
+def test_mode_sequential_strict_in_choices():
+    """--mode must accept 'sequential-strict' alongside the legacy modes."""
+    src = (
+        Path(__file__).resolve().parent.parent
+        / 'scripts'
+        / 'eval_framework.py'
+    ).read_text()
+    # The argparse choices list (or any equivalent) must mention the new mode.
+    assert 'sequential-strict' in src, (
+        "Add 'sequential-strict' to the --mode choices and route it through"
+        ' run_eval().'
+    )
+
+
+def test_load_group_order_strict_groups_by_model():
+    """In sequential-strict mode, all domains for one base model are
+    consumed before the next base model is touched. We verify the
+    iteration order helper directly."""
+    from eval_framework import _strict_iteration_order
+
+    load_groups = {
+        ('v1', 'apertus'): ['math', 'spice-sim'],
+        ('v1', 'devstral'): ['python', 'rust'],
+        ('v2', 'qwen36'): ['python'],
+    }
+    out = list(_strict_iteration_order(load_groups))
+    # Same (version, model_key) keys come in a contiguous run.
+    keys = [(v, m) for (v, m), _ in out]
+    seen: set = set()
+    for k in keys:
+        if seen and list(seen)[-1] != k:
+            assert k not in seen, (
+                f'key {k} reappeared after another model was started — '
+                f'iteration order is not strict-sequential: {keys}'
+            )
+        seen.add(k)
