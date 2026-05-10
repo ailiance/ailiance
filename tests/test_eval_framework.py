@@ -71,38 +71,69 @@ def test_assert_within_budget_passes_when_under(monkeypatch):
 
 
 def test_mode_sequential_strict_in_choices():
-    """--mode must accept 'sequential-strict' alongside the legacy modes."""
+    """The argparse parser's --mode choices list must include
+    'sequential-strict'. A substring scan over the whole file would also
+    match the constant's docstring, so we anchor on the choices=[...]
+    literal next to add_argument('--mode', ...)."""
     src = (
         Path(__file__).resolve().parent.parent
-        / 'scripts'
-        / 'eval_framework.py'
+        / "scripts"
+        / "eval_framework.py"
     ).read_text()
-    # The argparse choices list (or any equivalent) must mention the new mode.
-    assert 'sequential-strict' in src, (
-        "Add 'sequential-strict' to the --mode choices and route it through"
-        ' run_eval().'
+    import re
+    # Find the --mode argument's choices list. Tolerate single or double
+    # quotes around each value and arbitrary whitespace within the list.
+    m = re.search(
+        r'add_argument\(\s*'
+        + r"(?:'|\")"
+        + r'--mode'
+        + r"(?:'|\")"
+        + r'[^)]*choices\s*=\s*\[([^\]]+)\]',
+        src, re.DOTALL,
+    )
+    assert m, "Could not locate add_argument('--mode', ..., choices=[...]) literal"
+    choices_text = m.group(1)
+    assert '"sequential-strict"' in choices_text or "'sequential-strict'" in choices_text, (
+        f"--mode choices list missing 'sequential-strict': {choices_text!r}"
     )
 
 
-def test_load_group_order_strict_groups_by_model():
-    """In sequential-strict mode, all domains for one base model are
-    consumed before the next base model is touched. We verify the
-    iteration order helper directly."""
+def test_strict_iteration_order_preserves_insertion_order():
+    """Identical inputs must produce identical sequences. The helper is a
+    thin wrapper around list(load_groups.items()) — the dict's insertion
+    order IS the iteration contract."""
     from eval_framework import _strict_iteration_order
 
     load_groups = {
-        ('v1', 'apertus'): ['math', 'spice-sim'],
-        ('v1', 'devstral'): ['python', 'rust'],
-        ('v2', 'qwen36'): ['python'],
+        ("v1", "apertus"): ["math", "spice-sim"],
+        ("v1", "devstral"): ["python", "rust"],
+        ("v2", "qwen36"): ["python"],
     }
-    out = list(_strict_iteration_order(load_groups))
-    # Same (version, model_key) keys come in a contiguous run.
-    keys = [(v, m) for (v, m), _ in out]
-    seen: set = set()
-    for k in keys:
-        if seen and list(seen)[-1] != k:
-            assert k not in seen, (
-                f'key {k} reappeared after another model was started — '
-                f'iteration order is not strict-sequential: {keys}'
+    out = _strict_iteration_order(load_groups)
+    assert out == list(load_groups.items()), (
+        f"Helper must preserve dict.items() order, got {out}"
+    )
+
+
+def test_strict_iteration_order_groups_each_model_contiguously():
+    """A (version, model_key) must not reappear after a different one was
+    started. Uses an ordered list (not a set) for previous-key tracking so
+    the assertion logic is deterministic on CPython where set iteration is
+    insertion-order-independent."""
+    from eval_framework import _strict_iteration_order
+
+    load_groups = {
+        ("v1", "apertus"): ["math"],
+        ("v1", "devstral"): ["python"],
+        ("v2", "qwen36"): ["math"],
+    }
+    out = _strict_iteration_order(load_groups)
+    seen_keys: list = []
+    for (version, model_key), _ in out:
+        key = (version, model_key)
+        if seen_keys and seen_keys[-1] != key:
+            assert key not in seen_keys, (
+                f"key {key} reappeared after another model was started: "
+                f"{[k for k, _ in out]}"
             )
-        seen.add(k)
+        seen_keys.append(key)

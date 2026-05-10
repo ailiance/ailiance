@@ -1247,6 +1247,8 @@ def run_eval(
         for (version, model_key), domains in _strict_iteration_order(load_groups):
             if model_key == "medium35":
                 print(f"  SKIP generation for {model_key} (BF16 too slow)")
+                # Skipping the budget probe below is safe: Phase 2's
+                # sequential-strict epilogue already unloaded medium35.
                 continue
 
             for domain in domains:
