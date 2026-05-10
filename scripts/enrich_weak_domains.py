@@ -13,7 +13,7 @@ Domains enriched:
 All source datasets are Apache-2.0 or MIT licensed.
 
 Usage:
-    cd ~/ailiance && uv run python scripts/enrich_weak_domains.py
+    cd ~/eu-kiki && uv run python scripts/enrich_weak_domains.py
 """
 
 import json

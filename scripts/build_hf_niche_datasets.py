@@ -5,7 +5,7 @@ Covers: docker, web-backend, llm-ops, embedded, kicad, music-audio,
         traduction-tech, misra-c (via CertiCoder configs)
 
 Usage:
-    cd ~/ailiance && uv run python scripts/build_hf_niche_datasets.py
+    cd ~/eu-kiki && uv run python scripts/build_hf_niche_datasets.py
 """
 import json
 import random

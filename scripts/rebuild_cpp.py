@@ -9,7 +9,7 @@ Sources (priority order, all verified SPDX):
 Filtering: at least 2 C++ markers per record, exclude Java/Python contamination.
 
 Usage:
-    cd ~/ailiance && uv run python scripts/rebuild_cpp.py
+    cd ~/eu-kiki && uv run python scripts/rebuild_cpp.py
 """
 import json
 import random

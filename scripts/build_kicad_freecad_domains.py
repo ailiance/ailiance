@@ -9,7 +9,7 @@ Sources:
   - FreeCAD-macros (per-file license check; only permissive accepted)
 
 Usage:
-    cd ~/ailiance && uv run python scripts/build_kicad_freecad_domains.py
+    cd ~/eu-kiki && uv run python scripts/build_kicad_freecad_domains.py
 """
 
 from __future__ import annotations
