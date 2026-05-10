@@ -104,6 +104,61 @@ WORKER_FORWARD_OVERRIDES: dict[int, dict[str, str]] = {
 }
 
 
+
+# Liveness gating — populated by a background probe task started by the
+# FastAPI lifespan. When a worker fails its /v1/models probe, requests
+# routed to it fall back to the Gemma worker (:9304) before dispatch,
+# avoiding the 33% Russian-roulette pattern where the router classifies
+# code/ML prompts to a backend that's currently down.
+_healthy_ports: set[int] = set(WORKER_URLS.keys())  # cold-start optimistic
+_health_probe_task = None
+HEALTH_PROBE_INTERVAL_S = 30.0
+HEALTH_PROBE_TIMEOUT_S = 2.0
+HEALTH_FALLBACK_PORT = 9304  # Gemma 3 4B on Tower — fast + reachable
+
+
+async def _probe_workers(client: "httpx.AsyncClient") -> None:
+    """Single round: probe every unique worker URL, update _healthy_ports."""
+    import asyncio as _asyncio
+    new_healthy: set[int] = set()
+    async def probe(port: int, url: str) -> None:
+        try:
+            r = await client.get(f"{url}/v1/models", timeout=HEALTH_PROBE_TIMEOUT_S)
+            if r.status_code < 500:
+                new_healthy.add(port)
+        except Exception:
+            pass
+    await _asyncio.gather(
+        *(probe(port, url) for port, url in WORKER_URLS.items()),
+        return_exceptions=True,
+    )
+    # Atomic swap.
+    global _healthy_ports
+    _healthy_ports = new_healthy or set(WORKER_URLS.keys())  # never empty
+
+
+async def _health_probe_loop(client: "httpx.AsyncClient") -> None:
+    import asyncio as _asyncio
+    while True:
+        try:
+            await _probe_workers(client)
+        except Exception as exc:
+            log.warning("health probe round failed: %s", exc)
+        await _asyncio.sleep(HEALTH_PROBE_INTERVAL_S)
+
+
+def _gate_port(classified_port: int | None) -> int:
+    """Return classified port if healthy, else fallback to Gemma (or any
+    other healthy port if Gemma itself is down)."""
+    if classified_port is not None and classified_port in _healthy_ports:
+        return classified_port
+    if HEALTH_FALLBACK_PORT in _healthy_ports:
+        return HEALTH_FALLBACK_PORT
+    if _healthy_ports:
+        return next(iter(_healthy_ports))
+    return classified_port or HEALTH_FALLBACK_PORT  # all dead — let it fail loud
+
+
 def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
     app = FastAPI(title="ailiance-gateway")
     reg = CollectorRegistry()
@@ -134,6 +189,19 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
 
     start_time = time.time()
     http_client = httpx.AsyncClient(timeout=600.0)
+
+    @app.on_event("startup")
+    async def _start_health_probe() -> None:
+        import asyncio as _asyncio
+        global _health_probe_task
+        # Run one immediate probe so first-request decisions aren't blind.
+        try:
+            await _probe_workers(http_client)
+        except Exception:
+            pass
+        _health_probe_task = _asyncio.create_task(_health_probe_loop(http_client))
+        log.info("health probe started (interval=%ss, healthy=%s)",
+                 HEALTH_PROBE_INTERVAL_S, sorted(_healthy_ports))
 
     @app.get("/health")
     def health():
@@ -240,7 +308,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         forced_port = MODEL_FORCE_MAP.get(req.model)
         if forced_port:
             domain = ""
-            worker_port = forced_port
+            worker_port = _gate_port(forced_port)
         elif router is not None:
             user_msg = next(
                 (m.content for m in reversed(req.messages) if m.role == "user"), ""
@@ -251,10 +319,14 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             domain = selections[0][0] if selections else "python"
             # Fallback to Gemma (9304): reachable + fast for unmapped domains.
             worker_port = get_worker_for_domain(domain) or 9304
+            # Health gate: if the classified worker is currently down, fall
+            # back to a healthy worker so prompts don't 500 just because the
+            # router happened to classify them to a temporarily dead backend.
+            worker_port = _gate_port(worker_port)
         else:
             # No router loaded → default to Gemma (fast, reachable).
             domain = "general"
-            worker_port = 9304
+            worker_port = _gate_port(9304)
 
         worker_url = WORKER_URLS[worker_port]
         headers = {"X-Lora-Domain": domain}
