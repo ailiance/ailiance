@@ -22,15 +22,24 @@ if [[ $EC -gt 128 && $EC -lt 160 ]]; then
     SIGNAL=$((EC - 128))
 fi
 
-cat > "$STATUS_FILE" <<JSON
-{
-  "stamp_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "exit_code": $EC,
-  "signal": ${SIGNAL:-null},
-  "wall_seconds": $WALL,
-  "log_path": "$LOG",
-  "args": "$*"
+# JSON encoded via Python so quotes/backslashes/newlines/control chars in
+# args or paths can never break the file.
+EC=$EC SIGNAL_JSON="${SIGNAL:-null}" WALL=$WALL \
+python3 - "$LOG" "$@" <<'PY' > "$STATUS_FILE"
+import json, os, sys, time
+log_path = sys.argv[1]
+args_list = sys.argv[2:]
+sig_raw = os.environ.get("SIGNAL_JSON", "null")
+status = {
+    "stamp_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    "exit_code": int(os.environ["EC"]),
+    "signal": None if sig_raw == "null" else int(sig_raw),
+    "wall_seconds": int(os.environ["WALL"]),
+    "log_path": log_path,
+    "args": args_list,
 }
-JSON
+print(json.dumps(status, indent=2))
+PY
+
 echo "Status: $STATUS_FILE (exit=$EC, signal=${SIGNAL:-none}, wall=${WALL}s)"
 exit $EC
