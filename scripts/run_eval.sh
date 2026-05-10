@@ -72,6 +72,10 @@ while [[ $# -gt 0 ]]; do
             MODE="compare"
             shift
             ;;
+        --sequential-strict)
+            MODE="sequential-strict"
+            shift
+            ;;
         --quick)
             QUICK=true
             shift
@@ -98,6 +102,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --v1-only          Evaluate v1 adapters only"
             echo "  --v2-only          Evaluate v2 adapters only"
             echo "  --compare          Evaluate both and compare (default)"
+            echo "  --sequential-strict Same as --compare but unloads + budget-probes between models"
             echo "  --quick            Quick mode (5 records/domain, no generation/speed)"
             echo "  --skip-generation  Skip generation quality evaluation"
             echo "  --skip-speed       Skip inference speed benchmark"
