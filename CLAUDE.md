@@ -209,3 +209,44 @@ Worker URLs are supplied to the gateway via `AILIANCE_WORKERS_JSON` env var (set
 ## Sister project
 
 `~/Documents/Projets/KIKI-Mac_tunner/` — non-EU foundation distillation. Les scripts `train_ailiance_*.py` et configs `ailiance-*.yaml` y sont mirrorés.
+
+## EU-KIKI eval — sequential-strict runbook (added 2026-05-10)
+
+Use `--mode sequential-strict` whenever the bench has to load multiple
+base models in one run. The launcher `scripts/launch_eval_safe.sh` writes
+`output/eval/last_run_status.json` so background pollers can detect
+SIGKILL (`signal: 9`) without parsing logs.
+
+```bash
+# Stop EuroLLM worker first so :9303 is free.
+kill -TERM $(lsof -tiTCP:9303 -sTCP:LISTEN)
+bash ~/eu-kiki/scripts/launch_eval_safe.sh --sequential-strict
+# Restart EuroLLM after.
+cd ~/eu-kiki && nohup .venv/bin/python -m uvicorn src.worker.server:make_eurollm_app --factory --host 0.0.0.0 --port 9303 > logs/eurollm.log 2>&1 &
+```
+
+**v1-only fallback** (use until v2/qwen36 SwitchLinear LoRA support lands):
+
+```bash
+bash ~/eu-kiki/scripts/launch_eval_safe.sh --v1-only
+```
+
+`--mode sequential-strict` aborts at v2/qwen36/python with
+`ValueError: Can't convert layer of type SwitchLinear to LoRA` because
+`mlx_lm_fork.tuner.utils:74` does not yet support MoE SwitchLinear layers.
+Until that gap is closed, use `--v1-only` for the production v1 matrix
+(31 cells: 6 Apertus + 22 Devstral + 3 EuroLLM).
+
+**Memory budget**: `scripts/eval_framework.py` sets the MLX soft cap to
+440 GiB via the module-level constant `WIRED_MEMORY_BUDGET_GIB`. Stays
+8 GiB under the macOS `iogpu.wired_limit_mb=458752` (= 448 GiB) hard
+cap. Going above the wired cap caused the kernel to SIGKILL the eval at
+import time on 2026-05-10. The probe `_assert_within_budget(...)` is
+called between every model transition in sequential-strict mode and
+raises a clean RuntimeError if peak ever crosses the budget — so an
+overrun produces a Python traceback instead of a `Killed: 9` line.
+
+**Validation 2026-05-10**: 31-cell v1 run (Apertus + Devstral + EuroLLM,
+`--quick`) completed in 550s with exit 0. 28 of 31 cells produced ppl
+values; 3 cells were skipped silently (missing or unevaluable adapters
+— audit `output/adapters/{apertus,devstral}/` to identify).

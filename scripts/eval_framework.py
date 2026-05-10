@@ -31,17 +31,24 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Optional
 
+import mlx.core as mx  # module-level handle for monkey-patchable probe (kept here so tests can monkeypatch eval_framework.mx)
+
+# Wired-memory budget for MLX. Stays under macOS iogpu.wired_limit_mb=458752
+# (= 448 GiB) hard cap with 8 GiB headroom for kernel + non-Metal allocations.
+# Going above the wired cap triggers kernel SIGKILL at MLX import time.
+WIRED_MEMORY_BUDGET_GIB = 440
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-AILIANCE = Path.home() / "ailiance"
+EU_KIKI = Path.home() / "eu-kiki"
 KIKI_TUNNER = Path.home() / "KIKI-Mac_tunner"
-HF_DATA = AILIANCE / "data" / "hf-traced"
-ADAPTERS_V1 = AILIANCE / "output" / "adapters"
-ADAPTERS_V2 = AILIANCE / "output" / "adapters-v2"
-EVAL_OUTPUT = AILIANCE / "output" / "eval"
+HF_DATA = EU_KIKI / "data" / "hf-traced"
+ADAPTERS_V1 = EU_KIKI / "output" / "adapters"
+ADAPTERS_V2 = EU_KIKI / "output" / "adapters-v2"
+EVAL_OUTPUT = EU_KIKI / "output" / "eval"
 RAW_OUTPUT = EVAL_OUTPUT / "raw"
-LOG_DIR = AILIANCE / "output" / "training-logs"
+LOG_DIR = EU_KIKI / "output" / "training-logs"
 
 # Inject mlx_lm_fork before mlx_lm
 sys.path.insert(0, str(KIKI_TUNNER / "lib"))
@@ -453,7 +460,7 @@ def load_model_and_tokenizer(model_path: str, adapter_path: str | None = None):
     """Load an MLX model with optional LoRA adapter. Returns (model, tokenizer)."""
     import mlx.core as mx
 
-    mx.set_memory_limit(480 * 1024**3)
+    mx.set_memory_limit(WIRED_MEMORY_BUDGET_GIB * 1024**3)
     mx.set_cache_limit(32 * 1024**3)
 
     from mlx_lm_fork import load as mlx_load
@@ -478,6 +485,20 @@ def unload_model():
     mx.metal.clear_cache()
     time.sleep(1)
     gc.collect()
+
+
+def _assert_within_budget(budget_gib: int = WIRED_MEMORY_BUDGET_GIB) -> None:
+    """Abort cleanly with RuntimeError if Metal peak memory has exceeded the
+    configured budget. Called between every model transition in
+    sequential-strict mode so an overrun produces a structured error
+    instead of a kernel SIGKILL.
+    """
+    peak_b = mx.get_peak_memory() if hasattr(mx, "get_peak_memory") else mx.metal.get_peak_memory()
+    peak_gib = peak_b / (1024 ** 3)
+    if peak_gib > budget_gib:
+        raise RuntimeError(
+            f"peak memory {peak_gib:.1f} GiB exceeds budget {budget_gib} GiB"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1143,6 +1164,16 @@ def get_domains_to_eval(
     return pairs
 
 
+def _strict_iteration_order(
+    load_groups: dict[tuple[str, str], list[str]],
+) -> list[tuple[tuple[str, str], list[str]]]:
+    """Return (version, model_key) -> [domains] entries in an order that
+    consumes every adapter for one base model before any adapter of another
+    base model. Stable on dict insertion order so identical inputs always
+    produce identical sequences (reproducibility for the bench history)."""
+    return list(load_groups.items())
+
+
 def run_eval(
     mode: str = "compare",
     quick: bool = False,
@@ -1157,9 +1188,9 @@ def run_eval(
     results = EvalResults()
 
     versions_to_eval = []
-    if mode in ("v1-only", "compare"):
+    if mode in ("v1-only", "compare", "sequential-strict"):
         versions_to_eval.append("v1")
-    if mode in ("v2-only", "compare"):
+    if mode in ("v2-only", "compare", "sequential-strict"):
         versions_to_eval.append("v2")
 
     # ---- Phase 1: Adapter efficiency (no model loading needed) ----
@@ -1189,7 +1220,7 @@ def run_eval(
             key = (version, model_key)
             load_groups.setdefault(key, []).append(domain)
 
-    for (version, model_key), domains in load_groups.items():
+    for (version, model_key), domains in _strict_iteration_order(load_groups):
         model_info = MODELS[model_key]
         print(f"\n  Loading {model_key} ({model_info['short']}) for {len(domains)} domains...")
 
@@ -1203,6 +1234,9 @@ def run_eval(
                     f"    {domain}: loss={ppl_result.val_loss:.4f}, "
                     f"ppl={ppl_result.perplexity:.2f}"
                 )
+        if mode == "sequential-strict":
+            unload_model()
+            _assert_within_budget(budget_gib=WIRED_MEMORY_BUDGET_GIB)
 
     # ---- Phase 3: Generation quality ----
     if not skip_generation and not quick:
@@ -1210,9 +1244,11 @@ def run_eval(
         print("Phase 3: Generation Quality")
         print("=" * 60)
 
-        for (version, model_key), domains in load_groups.items():
+        for (version, model_key), domains in _strict_iteration_order(load_groups):
             if model_key == "medium35":
                 print(f"  SKIP generation for {model_key} (BF16 too slow)")
+                # Skipping the budget probe below is safe: Phase 2's
+                # sequential-strict epilogue already unloaded medium35.
                 continue
 
             for domain in domains:
@@ -1223,6 +1259,9 @@ def run_eval(
                 if gen_results:
                     avg_tps = sum(g.tokens_per_sec for g in gen_results) / len(gen_results)
                     print(f"    {domain}: {avg_tps:.1f} tok/s avg")
+            if mode == "sequential-strict":
+                unload_model()
+                _assert_within_budget(budget_gib=WIRED_MEMORY_BUDGET_GIB)
 
     # ---- Phase 4: Speed benchmark ----
     if not skip_speed and not quick:
@@ -1280,7 +1319,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--mode",
-        choices=["compare", "v1-only", "v2-only"],
+        choices=["compare", "v1-only", "v2-only", "sequential-strict"],
         default="compare",
         help="Which adapter versions to evaluate (default: compare)",
     )
