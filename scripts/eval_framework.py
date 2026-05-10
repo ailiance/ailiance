@@ -51,7 +51,7 @@ sys.path.insert(0, str(KIKI_TUNNER / "lib"))
 # ---------------------------------------------------------------------------
 MODELS = {
     "devstral": {
-        "path": str(KIKI_TUNNER / "models" / "Devstral-Small-2-24B-BF16"),
+        "path": str(KIKI_TUNNER / "models" / "Devstral-Small-2-24B-Instruct-2512"),
         "version": "v1",
         "short": "Devstral 24B",
         "params_b": 24,
@@ -457,14 +457,14 @@ def load_model_and_tokenizer(model_path: str, adapter_path: str | None = None):
     mx.set_cache_limit(32 * 1024**3)
 
     from mlx_lm_fork import load as mlx_load
-    from mlx_lm_fork.tuner.utils import apply_lora_layers
+    from mlx_lm_fork.tuner.utils import load_adapters
 
     model, tokenizer = mlx_load(model_path)
 
     if adapter_path and Path(adapter_path).exists():
         adapter_file = Path(adapter_path) / "adapters.safetensors"
         if adapter_file.exists():
-            model = apply_lora_layers(model, str(adapter_file))
+            model = load_adapters(model, str(adapter_path))
             print(f"  Applied LoRA adapter from {adapter_path}")
 
     return model, tokenizer
