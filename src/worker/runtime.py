@@ -231,17 +231,31 @@ class MLXWorkerRuntime:
         messages: list[dict],
         max_tokens: int = 2048,
         temperature: float = 0.7,
+        top_p: float = 0.95,
     ) -> tuple[str, dict]:
+        """Run a chat completion through the active model.
+
+        mlx_lm 0.30+ removed the legacy ``temp`` kwarg from
+        ``mlx_lm.generate``; sampling is configured via a sampler callable
+        produced by ``make_sampler``. Without an explicit sampler the
+        default is greedy (temp=0.0), which on EuroLLM-22B causes EOS to
+        be sampled at step 1 for many prompts → empty content surfaced
+        as 200 OK by the HTTP wrapper (issue #10). Passing a temperature
+        > 0 sampler restores expected stochastic decoding.
+        """
         from mlx_lm import generate as mlx_generate
+        from mlx_lm.sample_utils import make_sampler
 
         prompt = self._tokenizer.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True,
         )
+        sampler = make_sampler(temp=temperature, top_p=top_p)
         response = mlx_generate(
             self._model,
             self._tokenizer,
             prompt=prompt,
             max_tokens=max_tokens,
+            sampler=sampler,
         )
         return response, {"domain": self._active_domain}
 
