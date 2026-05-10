@@ -34,3 +34,31 @@ def test_memory_limit_below_wired_cap():
         f"mx.set_memory_limit({gib} GiB) must stay <= 440 GiB to leave"
         " 8 GiB headroom under the 448 GiB iogpu.wired_limit_mb hard cap."
     )
+
+
+def test_assert_within_budget_raises_on_overrun(monkeypatch):
+    """The probe must raise a clean RuntimeError instead of letting the
+    kernel SIGKILL us when peak memory crosses the configured ceiling."""
+    from eval_framework import _assert_within_budget  # noqa: WPS433
+
+    class _FakeMx:
+        @staticmethod
+        def get_peak_memory():
+            return 460 * 1024 ** 3  # 460 GiB peak — over budget
+
+    monkeypatch.setattr("eval_framework.mx", _FakeMx, raising=False)
+    import pytest
+    with pytest.raises(RuntimeError, match="peak memory .* exceeds budget"):
+        _assert_within_budget(budget_gib=440)
+
+
+def test_assert_within_budget_passes_when_under(monkeypatch):
+    from eval_framework import _assert_within_budget
+
+    class _FakeMx:
+        @staticmethod
+        def get_peak_memory():
+            return 200 * 1024 ** 3
+
+    monkeypatch.setattr("eval_framework.mx", _FakeMx, raising=False)
+    _assert_within_budget(budget_gib=440)  # should not raise

@@ -31,6 +31,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Optional
 
+import mlx.core as mx  # noqa: E402  module-level handle for monkey-patchable probe
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -478,6 +480,20 @@ def unload_model():
     mx.metal.clear_cache()
     time.sleep(1)
     gc.collect()
+
+
+def _assert_within_budget(budget_gib: int = 440) -> None:
+    """Abort cleanly with RuntimeError if Metal peak memory has exceeded the
+    configured budget. Called between every model transition in
+    sequential-strict mode so an overrun produces a structured error
+    instead of a kernel SIGKILL.
+    """
+    peak_b = mx.get_peak_memory() if hasattr(mx, "get_peak_memory") else mx.metal.get_peak_memory()
+    peak_gib = peak_b / (1024 ** 3)
+    if peak_gib > budget_gib:
+        raise RuntimeError(
+            f"peak memory {peak_gib:.1f} GiB exceeds budget {budget_gib} GiB"
+        )
 
 
 # ---------------------------------------------------------------------------
