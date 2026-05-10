@@ -58,7 +58,7 @@ sys.path.insert(0, str(KIKI_TUNNER / "lib"))
 # ---------------------------------------------------------------------------
 MODELS = {
     "devstral": {
-        "path": str(KIKI_TUNNER / "models" / "Devstral-Small-2-24B-Instruct-2512"),
+        "path": str(KIKI_TUNNER / "models" / "Devstral-Small-2-24B-MLX-4bit"),
         "version": "v1",
         "short": "Devstral 24B",
         "params_b": 24,
