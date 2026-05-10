@@ -27,6 +27,9 @@ _DEFAULT_WORKER_URLS = {
     # Qwen3.5 35B A3B on kxkm-ai (llama-server, alias 'qwen-32b-awq')
     # reached via the autossh tunnel listening on 0.0.0.0:8002.
     8002: "http://localhost:8002",
+    # Granite 4.1 30B Q4_K_M GGUF on kxkm-ai (llama-server :18889)
+    # via autossh tunnel electron-server:8003.
+    8003: "http://localhost:8003",
 }
 
 
@@ -59,11 +62,32 @@ MODEL_FORCE_MAP = {
     "ailiance-eurollm": 9303,
     "ailiance-gemma": 9304,  # Gemma 3 4B IT on tower
     "ailiance-qwen": 8002,  # llama-server on kxkm-ai (RTX 4090) via autossh tunnel
+    "ailiance-granite": 8003,  # Granite 4.1 30B Q4_K_M GGUF on kxkm-ai
+    "ailiance-ministral": 8502,  # Ministral-3-14B-Instruct MLX 4-bit on macM1
+    "ailiance-ministral-reasoning": 8502,  # Ministral-3-14B-Reasoning MLX 4-bit on macM1
+    "ailiance-gemma2": 8502,  # Gemma-4-E2B-it MLX 4-bit on macM1 (lighter than E4B)
 }
 
 # Per-port forward overrides for non-ailiance backends. The gateway rewrites
 # the request body's `model` field and injects an Authorization header before
 # proxying. Both pieces are sourced from env so secrets never land in source.
+
+
+# Per-alias overrides keyed by the inbound `req.model`. Takes precedence over
+# the per-port WORKER_FORWARD_OVERRIDES below. Lets multiple ailiance-* aliases
+# share a single backend port (e.g. macM1 :8502 hosts Gemma E4B + Granite 30B
+# + 2 Ministral 14B + Gemma E2B simultaneously, each selected by `model` body).
+ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
+    # macM1 mlx_lm.server :8502 - rewrite to actual HF model id loaded.
+    "ailiance-gemma4": {"model": "lmstudio-community/gemma-4-E4B-it-MLX-4bit"},
+    "ailiance-gemma2": {"model": "lmstudio-community/gemma-4-E2B-it-MLX-4bit"},
+    "ailiance-ministral": {"model": "mlx-community/Ministral-3-14B-Instruct-2512-4bit"},
+    "ailiance-ministral-reasoning": {"model": "mlx-community/Ministral-3-14B-Reasoning-2512-4bit"},
+    # kxkm-ai llama-server :8003 (via tunnel) - alias is granite-30b, bearer key.
+    "ailiance-granite": {"model": "granite-30b", "auth_env": "KXKM_QWEN_KEY"},
+}
+
+
 WORKER_FORWARD_OVERRIDES: dict[int, dict[str, str]] = {
     8002: {
         "model": "qwen-32b-awq",  # the alias llama-server expects
@@ -136,6 +160,10 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 {"id": "ailiance-eurollm", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-gemma", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-qwen", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-granite", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-ministral", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-ministral-reasoning", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-gemma2", "object": "model", "owned_by": "ailiance"},
             ],
         }
 
@@ -165,6 +193,10 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             "ailiance-eurollm",
             "ailiance-gemma",
             "ailiance-qwen",
+            "ailiance-granite",
+            "ailiance-ministral",
+            "ailiance-ministral-reasoning",
+            "ailiance-gemma2",
         ]
         return {
             "object": "list",
@@ -231,10 +263,10 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         # their JSON schema validation.
         body = req.model_dump(exclude_none=True)
 
-        # Per-port forward rewrites: rename `model` and inject Authorization
-        # for backends that aren't part of the ailiance worker pool (kxkm-ai
-        # llama-server expects an alias + bearer key).
-        override = WORKER_FORWARD_OVERRIDES.get(worker_port)
+        # Forward rewrites: per-alias takes precedence over per-port. Lets a
+        # single backend port host multiple ailiance-* aliases each rewritten
+        # to a distinct upstream model id.
+        override = ALIAS_MODEL_REWRITES.get(req.model) or WORKER_FORWARD_OVERRIDES.get(worker_port)
         if override:
             if "model" in override:
                 body["model"] = override["model"]
