@@ -14,14 +14,14 @@ client → ailiance.fr (Cloudflare Tunnel)
        → ailiance gateway (electron-server :9300, systemd `ailiance-gateway.service`)
        → router classifier (MiniLM v6, L1+L2 cache, smart truncation)
        → worker via Tailscale (URLs from AILIANCE_WORKERS_JSON env):
-            - Apertus :9301 (Studio, MLX BF16)
+            - Mistral Medium 3.5 128B :9301 (Studio, MLX Q8, alias `ailiance-apertus` retained)
             - Devstral :9302 (Studio, MLX BF16, currently offline)
             - EuroLLM :9303 (Studio, MLX BF16)
             - Gemma 3 :9304 (Tower, llama-server)
 ```
 
 Workers (3 EU/CH base models):
-- **Apertus-70B-Instruct-2509** (`:9301`) — EPFL+ETH+CSCS — reasoning, hardware, EU normative (20 LoRA domains)
+- **Mistral-Medium-3.5-128B-Instruct** (`:9301`) — Mistral AI 🇫🇷 — replaces Apertus 70B on studio (R2 refactor 2026-05-10). Deployed via `scripts/deploy_mistral_studio.sh` with mlx<0.31 pinned (thread-stream regression workaround). Alias `ailiance-apertus` retained for back-compat.
 - **Devstral-Small-2-24B-MLX-4bit** (`:9302`) — Mistral AI — code generation (16 LoRA domains)
 - **EuroLLM-22B-Instruct-2512** (`:9303`) — utter-project — multilingual EU (4 LoRA domains)
 
@@ -143,7 +143,7 @@ chat-fr, traduction-tech, redaction-multilingue, localisation-doc
 | kiki-cockpit | electron-server | 443 | React SPA + Python API (`/api/public/chat`) |
 | ailiance gateway | electron-server | 9300 | systemd unit, FastAPI, MiniLM router |
 | EuroLLM worker | studio (Tailscale 100.116.92.12) | 9303 | MLX BF16, ~22 GB |
-| Apertus worker | studio | 9301 | MLX BF16, ~140 GB |
+| Mistral 128B worker | studio | 9301 | MLX Q8, ~130 GB (alias `ailiance-apertus`) |
 | Devstral worker | (TBD) | 9302 | currently offline |
 | Gemma 3 worker | tower (100.78.6.122) | 9304 | llama-server |
 

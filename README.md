@@ -36,7 +36,7 @@ flowchart TB
     user -->|HTTPS| cf --> cockpit
 
     subgraph studio["studio · Mac Studio M3 Ultra · 512 GB"]
-        apertus["🇨🇭 Apertus 70B<br/>MLX 8-bit · :9301"]
+        apertus["🇫🇷 Mistral Medium 3.5 128B<br/>MLX Q8 · :9301"]
         eurollm["🇪🇺 EuroLLM 22B<br/>MLX 8-bit · :9303"]
     end
 
@@ -142,7 +142,7 @@ If you ship a product that needs to *prove* what model was used, on what data, u
 
 | Alias | Model | Origin | Quant | Host | Port |
 |---|---|---|---|---|---|
-| `ailiance-apertus` | **Apertus 70B Instruct 2509** | EPFL · ETH Zürich · CSCS 🇨🇭 | MLX 8-bit | studio (Mac Studio M3 Ultra, 512 GB) | `:9301` |
+| `ailiance-mistral` (alias `ailiance-apertus`) | **Mistral Medium 3.5 128B Instruct** | Mistral AI 🇫🇷 | MLX Q8 | studio (Mac Studio M3 Ultra, 512 GB) | `:9301` |
 | `ailiance-devstral` | **Devstral Small 2 24B Instruct 2512** | Mistral AI 🇫🇷 | MLX 4-bit | macm1 (Mac mini M1, 32 GB) | `:9302` |
 | `ailiance-eurollm` | **EuroLLM 22B Instruct 2512** | utter-project 🇪🇺 | MLX 8-bit | studio (Mac Studio M3 Ultra) | `:9303` |
 | `ailiance-gemma` | **Gemma 3 4B IT** | Google DeepMind | GGUF Q4_K_M | tower (NVIDIA Quadro P2000 5 GB) | `:9304` |
@@ -341,7 +341,7 @@ src/
 
 | File | Role |
 |------|------|
-| `configs/apertus.yaml` | Apertus 70B worker — port 9301, MLX 8-bit on studio, 20 domains |
+| `configs/apertus.yaml` | (legacy) Apertus 70B config — `:9301` on studio now serves Mistral Medium 3.5 128B Q8 via `scripts/deploy_mistral_studio.sh` (mlx<0.31 pinned for thread-stream regression). Alias `ailiance-apertus` retained for back-compat. |
 | `configs/devstral.yaml` | Devstral 24B worker — port 9302, MLX 4-bit on macm1, 16 domains |
 | `configs/eurollm.yaml` | EuroLLM 22B worker — port 9303, MLX 8-bit on studio, 4 domains |
 | `configs/gateway.yaml` | FastAPI gateway + router config (Gemma 3 on tower :9304, Qwen3-Next on kxkm-ai :8002 via autossh) |
