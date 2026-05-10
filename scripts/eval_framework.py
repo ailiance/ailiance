@@ -41,14 +41,14 @@ WIRED_MEMORY_BUDGET_GIB = 440
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-AILIANCE = Path.home() / "ailiance"
+EU_KIKI = Path.home() / "eu-kiki"
 KIKI_TUNNER = Path.home() / "KIKI-Mac_tunner"
-HF_DATA = AILIANCE / "data" / "hf-traced"
-ADAPTERS_V1 = AILIANCE / "output" / "adapters"
-ADAPTERS_V2 = AILIANCE / "output" / "adapters-v2"
-EVAL_OUTPUT = AILIANCE / "output" / "eval"
+HF_DATA = EU_KIKI / "data" / "hf-traced"
+ADAPTERS_V1 = EU_KIKI / "output" / "adapters"
+ADAPTERS_V2 = EU_KIKI / "output" / "adapters-v2"
+EVAL_OUTPUT = EU_KIKI / "output" / "eval"
 RAW_OUTPUT = EVAL_OUTPUT / "raw"
-LOG_DIR = AILIANCE / "output" / "training-logs"
+LOG_DIR = EU_KIKI / "output" / "training-logs"
 
 # Inject mlx_lm_fork before mlx_lm
 sys.path.insert(0, str(KIKI_TUNNER / "lib"))
