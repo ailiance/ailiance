@@ -8,11 +8,11 @@
 set -euo pipefail
 
 KIKI_TUNNER="$HOME/KIKI-Mac_tunner"
-AILIANCE="$HOME/ailiance"
-HF_DATA="$AILIANCE/data/hf-traced"
-ADAPTERS="$AILIANCE/output/adapters"
+EU_KIKI="$HOME/eu-kiki"
+HF_DATA="$EU_KIKI/data/hf-traced"
+ADAPTERS="$EU_KIKI/output/adapters"
 OUTPUT_ROOT="$KIKI_TUNNER/output/ailiance-hf"
-LOG_DIR="$AILIANCE/output/training-logs"
+LOG_DIR="$EU_KIKI/output/training-logs"
 
 DEVSTRAL_BF16="$KIKI_TUNNER/models/Devstral-Small-2-24B-BF16"
 APERTUS="$KIKI_TUNNER/models/Apertus-70B-Instruct-2509"

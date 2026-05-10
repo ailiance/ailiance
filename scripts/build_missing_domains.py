@@ -5,7 +5,7 @@ All sources must have verified SPDX licenses (Apache-2.0, MIT, BSD, CC-BY, CC0)
 for EU AI Act compliance. No GPL, LGPL, or CC-BY-SA sources.
 
 Usage:
-    cd ~/ailiance && uv run python scripts/build_missing_domains.py
+    cd ~/eu-kiki && uv run python scripts/build_missing_domains.py
 
 Domains covered:
   GROUP A (repo scraping):

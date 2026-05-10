@@ -15,8 +15,8 @@
 #   bash run_eval.sh --compare --skip-generation
 #
 # Output:
-#   ~/ailiance/output/eval/eval_report_v1_vs_v2.md    — comparison report
-#   ~/ailiance/output/eval/raw/                        — raw JSON results
+#   ~/eu-kiki/output/eval/eval_report_v1_vs_v2.md    — comparison report
+#   ~/eu-kiki/output/eval/raw/                        — raw JSON results
 #
 # EU AI Act Art. 53(1)(d): eval methodology documented for transparency
 # ==============================================================================

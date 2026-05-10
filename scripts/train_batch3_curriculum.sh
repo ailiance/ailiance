@@ -16,8 +16,8 @@
 #   sudo sysctl -w iogpu.wired_limit_mb=458752
 #
 # Usage:
-#   bash ~/ailiance/scripts/train_batch3_curriculum.sh           # run all
-#   bash ~/ailiance/scripts/train_batch3_curriculum.sh --dry-run  # show plan only
+#   bash ~/eu-kiki/scripts/train_batch3_curriculum.sh           # run all
+#   bash ~/eu-kiki/scripts/train_batch3_curriculum.sh --dry-run  # show plan only
 #
 # Generated: 2026-04-28
 # ==============================================================================
@@ -25,12 +25,12 @@
 set -euo pipefail
 
 KIKI_TUNNER="$HOME/KIKI-Mac_tunner"
-AILIANCE="$HOME/ailiance"
-HF_DATA="$AILIANCE/data/hf-traced"
-ADAPTERS="$AILIANCE/output/adapters"
+EU_KIKI="$HOME/eu-kiki"
+HF_DATA="$EU_KIKI/data/hf-traced"
+ADAPTERS="$EU_KIKI/output/adapters"
 OUTPUT_ROOT="$KIKI_TUNNER/output/ailiance-hf"
-LOG_DIR="$AILIANCE/output/training-logs"
-BACKUP_DIR="$AILIANCE/output/adapters-backup-pre-curriculum"
+LOG_DIR="$EU_KIKI/output/training-logs"
+BACKUP_DIR="$EU_KIKI/output/adapters-backup-pre-curriculum"
 
 DRY_RUN=false
 if [[ "${1:-}" == "--dry-run" ]]; then
@@ -59,29 +59,29 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo " STEP 1: Prepare curriculum data (split + sort short->long)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-PREPARE_SCRIPT="$AILIANCE/scripts/prepare_curriculum.py"
+PREPARE_SCRIPT="$EU_KIKI/scripts/prepare_curriculum.py"
 
 if $DRY_RUN; then
     echo ""
     echo "  [Devstral domains — max_seq=8192]"
     echo "  Would run: prepare_curriculum.py --domains cpp --max-seq 8192 --stats-only"
-    cd "$AILIANCE" && uv run python "$PREPARE_SCRIPT" \
+    cd "$EU_KIKI" && uv run python "$PREPARE_SCRIPT" \
         --domains "cpp" --max-seq 8192 --stats-only
 
     echo ""
     echo "  [Apertus domains — max_seq=4096]"
     echo "  Would run: prepare_curriculum.py --domains emc-dsp-power,security-fenrir --max-seq 4096 --stats-only"
-    cd "$AILIANCE" && uv run python "$PREPARE_SCRIPT" \
+    cd "$EU_KIKI" && uv run python "$PREPARE_SCRIPT" \
         --domains "emc-dsp-power,security-fenrir" --max-seq 4096 --stats-only
 else
     echo ""
     echo "  [Devstral domains — max_seq=8192]"
-    cd "$AILIANCE" && uv run python "$PREPARE_SCRIPT" \
+    cd "$EU_KIKI" && uv run python "$PREPARE_SCRIPT" \
         --domains "cpp" --max-seq 8192
 
     echo ""
     echo "  [Apertus domains — max_seq=4096]"
-    cd "$AILIANCE" && uv run python "$PREPARE_SCRIPT" \
+    cd "$EU_KIKI" && uv run python "$PREPARE_SCRIPT" \
         --domains "emc-dsp-power,security-fenrir" --max-seq 4096
 fi
 

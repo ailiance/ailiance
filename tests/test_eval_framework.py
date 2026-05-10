@@ -137,3 +137,30 @@ def test_strict_iteration_order_groups_each_model_contiguously():
                 f"{[k for k, _ in out]}"
             )
         seen_keys.append(key)
+
+
+def test_no_ailiance_path_constants_in_scripts():
+    """Sibling scripts must not write to ~/ailiance/. The disk root is
+    ~/eu-kiki/ — the GitHub repo is named 'ailiance' but the on-disk
+    path stayed eu-kiki to avoid breaking sibling tooling. This
+    regression test was added 2026-05-10 after multiple cycles of
+    the same path bug being introduced and reverted.
+    """
+    import re
+    from pathlib import Path
+    scripts_dir = Path(__file__).resolve().parent.parent / "scripts"
+    violations = []
+    pat = re.compile(
+        r"(AILIANCE=\"\$HOME/ailiance\"|\$HOME/ailiance|~/ailiance|Path\.home\(\)\s*/\s*\"ailiance\")"
+    )
+    for p in scripts_dir.rglob("*"):
+        if not p.is_file() or p.suffix not in (".sh", ".py"):
+            continue
+        text = p.read_text()
+        for ln, line in enumerate(text.splitlines(), 1):
+            if pat.search(line):
+                violations.append(f"{p.name}:{ln}: {line.strip()[:80]}")
+    assert not violations, (
+        "Path constants pointing at ~/ailiance/ found:\n  "
+        + "\n  ".join(violations)
+    )

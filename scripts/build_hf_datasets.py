@@ -3,7 +3,7 @@
 build_hf_datasets.py — Download and convert HuggingFace datasets into LoRA training format.
 
 Usage:
-    cd ~/ailiance && uv run python scripts/build_hf_datasets.py
+    cd ~/eu-kiki && uv run python scripts/build_hf_datasets.py
 
 Output format (JSONL):
     {"messages": [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]}

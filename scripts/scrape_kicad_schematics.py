@@ -9,7 +9,7 @@ Also generates synthetic schematic block templates for common circuit patterns
 that are underrepresented in scraped data.
 
 Usage:
-    cd ~/ailiance && uv run python scripts/scrape_kicad_schematics.py
+    cd ~/eu-kiki && uv run python scripts/scrape_kicad_schematics.py
 """
 
 from __future__ import annotations

@@ -20,13 +20,13 @@
 set -euo pipefail
 
 KIKI_TUNNER="$HOME/KIKI-Mac_tunner"
-AILIANCE="$HOME/ailiance"
+EU_KIKI="$HOME/eu-kiki"
 PYTHON="$KIKI_TUNNER/.venv/bin/python3"
 MODEL="$KIKI_TUNNER/models/Devstral-Small-2-24B-BF16"
-DATA="$AILIANCE/data/vlm-dataset"
+DATA="$EU_KIKI/data/vlm-dataset"
 OUTPUT="$KIKI_TUNNER/output/ailiance-hf/devstral-vlm-schematic"
-ADAPTER_DEST="$AILIANCE/output/adapters/devstral/vlm-schematic"
-LOG_DIR="$AILIANCE/output/training-logs"
+ADAPTER_DEST="$EU_KIKI/output/adapters/devstral/vlm-schematic"
+LOG_DIR="$EU_KIKI/output/training-logs"
 LOG_FILE="$LOG_DIR/devstral-vlm-schematic.log"
 
 mkdir -p "$LOG_DIR" "$OUTPUT"

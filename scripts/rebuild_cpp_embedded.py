@@ -12,7 +12,7 @@ Target: 60%+ embedded-MCU content, remainder useful general C++ for embedded dev
 Output: 2850 train / 150 valid in data/hf-traced/cpp/
 
 Usage:
-    cd ~/ailiance && uv run python scripts/rebuild_cpp_embedded.py
+    cd ~/eu-kiki && uv run python scripts/rebuild_cpp_embedded.py
 """
 import json
 import random

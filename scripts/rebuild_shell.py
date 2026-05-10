@@ -6,7 +6,7 @@ Sources (priority order):
   B) bigcode/commitpackft lang=Shell  (MIT, backup)
 
 Usage:
-    cd ~/ailiance && uv run python scripts/rebuild_shell.py
+    cd ~/eu-kiki && uv run python scripts/rebuild_shell.py
 """
 import json
 import random
