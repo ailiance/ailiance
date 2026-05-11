@@ -21,7 +21,10 @@ policies:
   kicad-dsl:        { policy: deliberate, tool: atopile-build,     max_retries: 2 }
   cpp:              { policy: deliberate, tool: compile-cpp,       max_retries: 2 }
   embedded:         { policy: deliberate, tool: compile-arm-gcc,   max_retries: 2 }
-  python:           { policy: deliberate, tool: pass-rate-execute, max_retries: 1 }
+  # TODO(iact-bench v0.3): re-enable deliberate when pass-rate-execute lands.
+  # iact-bench v0.2.0 ships no Python execution validator, so DELIBERATE
+  # would degrade to DIRECT on every request anyway -- make that explicit.
+  python:           { policy: direct }
   spice-sim:        { policy: deliberate, tool: ngspice-converge,  max_retries: 2 }
   freecad:          { policy: deliberate, tool: freecad-script,    max_retries: 1 }
   shell:            { policy: deliberate, tool: compile-shell,     max_retries: 1 }
