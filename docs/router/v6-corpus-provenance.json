@@ -1,0 +1,320 @@
+{
+  "_doc": "EU AI Act Annex IV §2(b) — per-source training-data record.",
+  "rebuilt_at_utc": "2026-05-05",
+  "seed": 42,
+  "target_per_domain": 800,
+  "sources": [
+    {
+      "domain": "freecad",
+      "huggingface_repo": "Yas1n/FreeCAD_Sketches",
+      "config": "filename-derived prompts (no row download)",
+      "split": null,
+      "license_spdx": "cc-by-4.0",
+      "rows_used": 600
+    },
+    {
+      "domain": "kicad-pcb",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 12,
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "kicad-dsl",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 11,
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "stm32",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 12,
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "embedded",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 11,
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "dsp",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 11,
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "iot",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 11,
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "music-audio",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 11,
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "platformio",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 11,
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "ml-training",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 12,
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "llm-orch",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 12,
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "web-backend",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 12,
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "web-frontend",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 12,
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "yaml-json",
+      "huggingface_repo": null,
+      "config": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 12,
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
+    },
+    {
+      "domain": "python",
+      "huggingface_repo": "sahil2801/CodeAlpaca-20k",
+      "config": null,
+      "split": "train",
+      "license_spdx": "cc-by-4.0",
+      "rows_used": 800
+    },
+    {
+      "domain": "rust",
+      "huggingface_repo": "sahil2801/CodeAlpaca-20k",
+      "config": null,
+      "split": "train",
+      "license_spdx": "cc-by-4.0",
+      "rows_used": 12
+    },
+    {
+      "domain": "typescript",
+      "huggingface_repo": "sahil2801/CodeAlpaca-20k",
+      "config": null,
+      "split": "train",
+      "license_spdx": "cc-by-4.0",
+      "rows_used": 600
+    },
+    {
+      "domain": "cpp",
+      "huggingface_repo": "sahil2801/CodeAlpaca-20k",
+      "config": null,
+      "split": "train",
+      "license_spdx": "cc-by-4.0",
+      "rows_used": 478
+    },
+    {
+      "domain": "shell",
+      "huggingface_repo": "sahil2801/CodeAlpaca-20k",
+      "config": null,
+      "split": "train",
+      "license_spdx": "cc-by-4.0",
+      "rows_used": 593
+    },
+    {
+      "domain": "sql",
+      "huggingface_repo": "b-mc2/sql-create-context",
+      "config": null,
+      "split": "train",
+      "license_spdx": "cc-by-4.0",
+      "rows_used": 800
+    },
+    {
+      "domain": "html-css",
+      "huggingface_repo": "sahil2801/CodeAlpaca-20k",
+      "config": null,
+      "split": "train",
+      "license_spdx": "cc-by-4.0",
+      "rows_used": 600
+    },
+    {
+      "domain": "chat-fr",
+      "huggingface_repo": "OpenAssistant/oasst1",
+      "config": null,
+      "split": "train",
+      "license_spdx": "apache-2.0",
+      "rows_used": 800
+    },
+    {
+      "domain": "math",
+      "huggingface_repo": "openai/gsm8k",
+      "config": "main",
+      "split": "train",
+      "license_spdx": "mit",
+      "rows_used": 800
+    },
+    {
+      "domain": "reasoning",
+      "huggingface_repo": "AI-MO/NuminaMath-CoT",
+      "config": null,
+      "split": "train",
+      "license_spdx": "apache-2.0",
+      "rows_used": 800
+    },
+    {
+      "domain": "security",
+      "huggingface_repo": "sahil2801/CodeAlpaca-20k",
+      "config": null,
+      "split": "train",
+      "license_spdx": "cc-by-4.0",
+      "rows_used": 188
+    },
+    {
+      "domain": "spice",
+      "huggingface_repo": "theprint/Electronics-QA",
+      "config": null,
+      "split": "train",
+      "license_spdx": "apache-2.0",
+      "rows_used": 600
+    },
+    {
+      "domain": "power",
+      "huggingface_repo": "theprint/Electronics-QA",
+      "config": null,
+      "split": "train",
+      "license_spdx": "apache-2.0",
+      "rows_used": 192
+    },
+    {
+      "domain": "electronics",
+      "huggingface_repo": "theprint/Electronics-QA",
+      "config": null,
+      "split": "train",
+      "license_spdx": "apache-2.0",
+      "rows_used": 600
+    },
+    {
+      "domain": "devops",
+      "huggingface_repo": "sahil2801/CodeAlpaca-20k",
+      "config": null,
+      "split": "train",
+      "license_spdx": "cc-by-4.0",
+      "rows_used": 71
+    },
+    {
+      "domain": "lua-upy",
+      "huggingface_repo": "Roblox/luau_corpus",
+      "config": null,
+      "split": "train",
+      "license_spdx": "mit",
+      "rows_used": 600
+    },
+    {
+      "domain": "calcul-normatif",
+      "huggingface_repo": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 223,
+      "note": "Curated by Ailiance in May 2026. See scripts/augment_router_data.py."
+    },
+    {
+      "domain": "docker",
+      "huggingface_repo": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 103,
+      "note": "Curated by Ailiance in May 2026. See scripts/augment_router_data.py."
+    },
+    {
+      "domain": "spice",
+      "huggingface_repo": null,
+      "split": null,
+      "license_spdx": "apache-2.0",
+      "rows_used": 699,
+      "note": "Curated by Ailiance in May 2026. See scripts/augment_router_data.py."
+    }
+  ],
+  "totals": {
+    "chat-fr": 956,
+    "python": 807,
+    "sql": 805,
+    "math": 803,
+    "reasoning": 803,
+    "spice": 702,
+    "typescript": 603,
+    "electronics": 603,
+    "lua-upy": 603,
+    "freecad": 602,
+    "html-css": 602,
+    "shell": 597,
+    "cpp": 478,
+    "calcul-normatif": 223,
+    "power": 196,
+    "security": 192,
+    "docker": 106,
+    "devops": 76,
+    "stm32": 17,
+    "embedded": 16,
+    "llm-orch": 16,
+    "web-backend": 16,
+    "rust": 16,
+    "kicad-pcb": 15,
+    "music-audio": 15,
+    "ml-training": 15,
+    "web-frontend": 15,
+    "yaml-json": 15,
+    "dsp": 14,
+    "iot": 14,
+    "kicad-dsl": 13,
+    "platformio": 13
+  },
+  "grand_total": 9967
+}
