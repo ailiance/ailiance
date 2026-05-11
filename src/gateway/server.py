@@ -492,6 +492,23 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 {"id": "ailiance-components-review", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-coder", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-embed", "object": "model", "owned_by": "ailiance"},
+                # Devstral 24B 4-bit MLX + 5 LoRAs on Studio :9316-9321
+                {"id": "ailiance-devstral-base", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-python", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-cpp", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-rust-emb", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-html", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-ml-training", "object": "model", "owned_by": "ailiance"},
+                # Apertus 70B 4-bit MLX multi-LoRA on Studio :9322
+                {"id": "ailiance-apertus-real", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-apertus-electronics-hw", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-apertus-math-reasoning", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-apertus-math-gsm8k", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-apertus-math", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-apertus-security-fenrir", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-apertus-spice-sim", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-apertus-emc-dsp-power", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-apertus-embedded", "object": "model", "owned_by": "ailiance"},
             ],
         }
 
