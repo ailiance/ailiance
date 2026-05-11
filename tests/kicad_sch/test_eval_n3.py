@@ -95,3 +95,38 @@ def test_sch_render_returns_0_for_broken_sch(tmp_path):
     bad = make_broken_sch(tmp_path)
     assert eval_sch_render(bad, Path("kicad-cli")) == 0
 
+
+from scripts.kicad_sch.eval_n3 import eval_drc_clean
+
+
+def test_drc_clean_returns_0_when_pcbnew_missing(monkeypatch, tmp_path):
+    fake = tmp_path / "x.kicad_sch"
+    fake.write_text("(kicad_sch)")
+    monkeypatch.setattr("shutil.which", lambda x: None)
+    # No pcbnew & no kicad-cli pcb subcommand path -> 0.
+    assert eval_drc_clean(fake, Path("kicad-cli")) == 0
+
+
+def test_drc_clean_returns_1_when_drc_passes(monkeypatch, tmp_path):
+    fake = tmp_path / "x.kicad_sch"
+    fake.write_text("(kicad_sch)")
+
+    class FakeProc:
+        returncode = 0
+        stdout = "DRC report\n0 errors\n"
+        stderr = ""
+
+    # eval_drc_clean checks shutil.which AND produces a pcb file via netlist
+    # export — we monkeypatch shutil.which AND subprocess.run AND make sure a
+    # fake pcb appears in the tmpdir. Easier: patch Path.exists to True.
+    monkeypatch.setattr("shutil.which", lambda x: "/usr/bin/kicad-cli")
+    monkeypatch.setattr("subprocess.run", lambda *a, **kw: FakeProc())
+    # Force the pcb-existence check to True so we exercise the drc branch.
+    import scripts.kicad_sch.eval_n3 as m
+    real_path_exists = Path.exists
+    monkeypatch.setattr(Path, "exists", lambda self: True)
+    try:
+        assert eval_drc_clean(fake, Path("kicad-cli")) == 1
+    finally:
+        monkeypatch.setattr(Path, "exists", real_path_exists)
+

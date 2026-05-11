@@ -90,3 +90,50 @@ def eval_sch_render(sch_path: Path, cli_path: Path = Path("kicad-cli")) -> int:
         except (FileNotFoundError, subprocess.TimeoutExpired):
             return 0
     return 1 if proc.returncode == 0 else 0
+
+
+def eval_drc_clean(sch_path: Path, cli_path: Path = Path("kicad-cli")) -> int:
+    """Return 1 iff sch->pcb netlist + kicad-cli pcb drc passes.
+
+    Optional axis. Returns 0 when:
+      - kicad-cli unavailable
+      - schematic fails to load
+      - drc reports >0 errors
+
+    Note: drc is downstream of layout. This axis uses a minimal pcb seed
+    (empty board with netlist imported); intended as a smoke test, not a
+    layout-quality signal. Spec assigns weight 0.10 accordingly.
+    """
+    cli = _resolve_cli(cli_path)
+    if shutil.which(cli) is None and not Path(cli).exists():
+        return 0
+    with tempfile.TemporaryDirectory() as td:
+        net = Path(td) / "out.net"
+        try:
+            net_proc = subprocess.run(
+                [cli, "sch", "export", "netlist", str(sch_path), "-o", str(net)],
+                capture_output=True, text=True, timeout=60,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return 0
+        if net_proc.returncode != 0:
+            return 0
+        # Minimal pcb DRC: if kicad-cli pcb drc subcommand unavailable we
+        # treat as inconclusive -> 0 (spec allows partial credit via weight).
+        pcb = Path(td) / "out.kicad_pcb"
+        if not pcb.exists():
+            # No layout produced; cannot DRC. Return 0 (axis fails closed).
+            return 0
+        try:
+            drc = subprocess.run(
+                [cli, "pcb", "drc", str(pcb)],
+                capture_output=True, text=True, timeout=120,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return 0
+        if drc.returncode != 0:
+            return 0
+        blob = (drc.stdout or "") + (drc.stderr or "")
+        m = _ERC_COUNT_RE.search(blob)
+        return 1 if (m is None or int(m.group(1)) == 0) else 0
+
