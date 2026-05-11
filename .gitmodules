@@ -1,0 +1,3 @@
+[submodule "vendored/iact-bench"]
+	path = vendored/iact-bench
+	url = https://github.com/electron-rare/iact-bench.git
