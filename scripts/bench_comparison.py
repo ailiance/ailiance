@@ -15,6 +15,10 @@ Computes per (model_key, domain) cell:
 - lift_pct: (base - tuned) / base * 100  (positive = training improved)
 - lift_log: ln(base) - ln(tuned)         (log-space lift, scale-invariant)
 
+Headline metric is lift_log (scale-invariant across baseline strengths).
+Cells with n_samples < MIN_SAMPLES_FOR_MEDIAN are flagged and excluded from
+the median computation, but still appear in raw rows + markdown table.
+
 CLI:
     .venv/bin/python scripts/bench_comparison.py
     .venv/bin/python scripts/bench_comparison.py --base path/to/base.json --tuned path/to/tuned.json
@@ -32,6 +36,8 @@ EU_KIKI = Path.home() / "eu-kiki"
 RAW = EU_KIKI / "output" / "eval" / "raw"
 COMPARISON_DIR = EU_KIKI / "output" / "eval"
 
+MIN_SAMPLES_FOR_MEDIAN = 25
+
 
 def latest(pattern: str) -> Path | None:
     files = sorted(glob.glob(str(RAW / pattern)), reverse=True)
@@ -40,6 +46,11 @@ def latest(pattern: str) -> Path | None:
 
 def load_rows(path: Path) -> list[dict]:
     return json.loads(path.read_text())
+
+
+def _has_enough_samples(c: dict) -> bool:
+    return ((c.get("base_n_samples") or 0) >= MIN_SAMPLES_FOR_MEDIAN
+            and (c.get("tuned_n_samples") or 0) >= MIN_SAMPLES_FOR_MEDIAN)
 
 
 def main():
@@ -105,7 +116,8 @@ def main():
         "",
         f"- Base: `{base_path.name}` ({len(base_rows)} rows)",
         f"- Tuned: `{tuned_path.name}` ({len(tuned_rows)} rows)",
-        f"- Joined cells: {sum(1 for r in rows if r.get('lift_pct') is not None)}",
+        f"- Joined cells: {sum(1 for r in rows if r.get('lift_log') is not None)}",
+        f"- Headline metric: **lift_log** (scale-invariant); cells with n<{MIN_SAMPLES_FOR_MEDIAN} flagged ⚠️ and excluded from median.",
         "",
     ]
     by_model = {}
@@ -113,44 +125,74 @@ def main():
         by_model.setdefault(r["model_key"], []).append(r)
     for model in sorted(by_model):
         cells = by_model[model]
-        joined = [c for c in cells if c.get("lift_pct") is not None]
-        joined.sort(key=lambda c: -c["lift_pct"])  # highest lift first
-        lines.append(f"## {model} ({len(joined)}/{len(cells)} joined)")
+        joined = [c for c in cells if c.get("lift_log") is not None]
+        joined.sort(key=lambda c: -c["lift_log"])  # highest log-lift first
+        joined_eligible = [c for c in joined if _has_enough_samples(c)]
+        flagged_count = len(joined) - len(joined_eligible)
+        lines.append(f"## {model} ({len(joined)}/{len(cells)} joined, {flagged_count} flagged n<{MIN_SAMPLES_FOR_MEDIAN})")
         lines.append("")
-        lines.append("| domain | base_ppl | tuned_ppl | lift_pct | lift_log | base_n | tuned_n |")
-        lines.append("|---|---:|---:|---:|---:|---:|---:|")
+        lines.append("| flag | domain | base_ppl | tuned_ppl | lift_log | lift_pct | base_n | tuned_n |")
+        lines.append("|---|---|---:|---:|---:|---:|---:|---:|")
         for c in cells:
+            flag = "" if _has_enough_samples(c) else f"⚠️ n<{MIN_SAMPLES_FOR_MEDIAN}"
             lines.append(
-                f"| {c['domain']} | "
+                f"| {flag} | {c['domain']} | "
                 f"{c['base_ppl'] if c['base_ppl'] is not None else '–'} | "
                 f"{c['tuned_ppl'] if c['tuned_ppl'] is not None else '–'} | "
-                f"{c.get('lift_pct', '–')} | "
                 f"{c.get('lift_log', '–')} | "
+                f"{c.get('lift_pct', '–')} | "
                 f"{c.get('base_n_samples', '–')} | "
                 f"{c.get('tuned_n_samples', '–')} |"
             )
-        if joined:
-            lifts = [c["lift_pct"] for c in joined]
+        if joined_eligible:
+            log_lifts = [c["lift_log"] for c in joined_eligible]
+            pct_lifts = [c["lift_pct"] for c in joined_eligible]
+            med_log = statistics.median(log_lifts)
+            eff_pct = (math.exp(med_log) - 1) * 100
             lines.append("")
             lines.append(
-                f"**{model} stats**: median lift = {statistics.median(lifts):.2f}%, "
-                f"min = {min(lifts):.2f}%, max = {max(lifts):.2f}%, "
-                f"cells where adapter HURT (negative lift): {sum(1 for x in lifts if x < 0)}"
+                f"**{model} stats** (n≥{MIN_SAMPLES_FOR_MEDIAN}, {len(joined_eligible)} cells): "
+                f"median log-lift = {med_log:.4f} (e{eff_pct:.2f}% effective), "
+                f"min = {min(log_lifts):.4f}, max = {max(log_lifts):.4f}, "
+                f"median lift_pct (legacy) = {statistics.median(pct_lifts):.2f}%, "
+                f"cells where adapter HURT (negative log-lift): {sum(1 for x in log_lifts if x < 0)}, "
+                f"flagged (n<{MIN_SAMPLES_FOR_MEDIAN}): {flagged_count}"
+            )
+        elif joined:
+            lines.append("")
+            lines.append(
+                f"**{model} stats**: all {len(joined)} joined cells have n<{MIN_SAMPLES_FOR_MEDIAN}; median suppressed."
             )
         lines.append("")
     md_path.write_text("\n".join(lines))
     print(f"Wrote {md_path}")
 
     # Stdout summary
-    all_joined = [r for r in rows if r.get("lift_pct") is not None]
-    if all_joined:
-        all_lifts = [r["lift_pct"] for r in all_joined]
+    all_joined = [r for r in rows if r.get("lift_log") is not None]
+    all_eligible = [r for r in all_joined if _has_enough_samples(r)]
+    filtered_count = len(all_joined) - len(all_eligible)
+    if all_eligible:
+        log_lifts = [r["lift_log"] for r in all_eligible]
+        pct_lifts = [r["lift_pct"] for r in all_eligible]
+        med_log = statistics.median(log_lifts)
+        eff_pct = (math.exp(med_log) - 1) * 100
+        min_log = min(log_lifts)
+        max_log = max(log_lifts)
+        min_cell = [r for r in all_eligible if r["lift_log"] == min_log][0]
+        max_cell = [r for r in all_eligible if r["lift_log"] == max_log][0]
         print()
-        print(f"=== Aggregate ({len(all_joined)} joined cells) ===")
-        print(f"Median lift: {statistics.median(all_lifts):.2f}%")
-        print(f"Min: {min(all_lifts):.2f}% ({[r for r in all_joined if r['lift_pct']==min(all_lifts)][0]['model_key']}/{[r for r in all_joined if r['lift_pct']==min(all_lifts)][0]['domain']})")
-        print(f"Max: {max(all_lifts):.2f}% ({[r for r in all_joined if r['lift_pct']==max(all_lifts)][0]['model_key']}/{[r for r in all_joined if r['lift_pct']==max(all_lifts)][0]['domain']})")
-        print(f"Adapter HURT cells: {sum(1 for x in all_lifts if x < 0)}")
+        print(f"=== Aggregate ({len(all_eligible)} eligible cells, {filtered_count} flagged n<{MIN_SAMPLES_FOR_MEDIAN}) ===")
+        print("Headline metric: lift_log (scale-invariant)")
+        print(f"Median log-lift: {med_log:.4f} (e{eff_pct:.2f}% effective gain)")
+        print(f"Median lift_pct: {statistics.median(pct_lifts):.2f}% (legacy, for cross-reference)")
+        print(f"Cells filtered (n<{MIN_SAMPLES_FOR_MEDIAN}): {filtered_count}")
+        print(f"Min log-lift: {min_log:.4f} ({min_cell['model_key']}/{min_cell['domain']})")
+        print(f"Max log-lift: {max_log:.4f} ({max_cell['model_key']}/{max_cell['domain']})")
+        print(f"Adapter HURT cells (log-lift<0): {sum(1 for x in log_lifts if x < 0)}")
+    elif all_joined:
+        print()
+        print(f"=== Aggregate ({len(all_joined)} joined, ALL flagged n<{MIN_SAMPLES_FOR_MEDIAN}) ===")
+        print("Median suppressed: no eligible cells.")
 
 
 if __name__ == "__main__":
