@@ -16,7 +16,7 @@ from prometheus_client import CollectorRegistry, Counter, Histogram, generate_la
 
 from src.orchestrator.chain_orchestrator import ChainOrchestrator
 from src.orchestrator.chain_policy import ChainPolicy
-from src.orchestrator.validators import StubValidator
+from src.orchestrator.validators import StubValidator, make_validator
 from src.router.domain_map import ALL_DOMAINS, get_worker_for_domain
 from src.worker.schemas import ChatCompletionRequest
 
@@ -194,11 +194,18 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
     http_client = httpx.AsyncClient(timeout=600.0)
 
     # v0.3 chain orchestrator — built lazily on first opt-in request so
-    # the gateway boots even when configs are missing. Validator
-    # defaults to StubValidator; production wiring swaps in
-    # IactBenchValidator once the submodule is vendored.
+    # the gateway boots even when configs are missing. Validator kind
+    # is selected via AILIANCE_VALIDATOR (auto|iact_bench|stub):
+    # "auto" prefers the real iact-bench Docker runner and falls back
+    # to StubValidator if the submodule is missing or unimportable.
     app.state.orchestrator = None
-    app.state.orchestrator_validator = StubValidator()
+    _validator_kind = os.environ.get("AILIANCE_VALIDATOR", "auto")
+    app.state.orchestrator_validator = make_validator(_validator_kind)
+    log.info(
+        "gateway: validator backend = %s (kind=%s)",
+        type(app.state.orchestrator_validator).__name__,
+        _validator_kind,
+    )
 
     def _build_orchestrator() -> ChainOrchestrator | None:
         if app.state.orchestrator is not None:
