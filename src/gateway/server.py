@@ -103,6 +103,13 @@ MODEL_FORCE_MAP = {
     "ailiance-ministral": 8502,  # Ministral-3-14B-Instruct MLX 4-bit on macM1
     "ailiance-ministral-reasoning": 8502,  # Ministral-3-14B-Reasoning MLX 4-bit on macM1
     "ailiance-gemma2": 8502,  # Gemma-4-E2B-it MLX 4-bit on macM1 (lighter than E4B)
+    # Devstral-Small-2-24B-MLX-4bit on Studio (:9316 base, :9317-9321 LoRA variants).
+    "ailiance-devstral-base": 9316,
+    "ailiance-python": 9317,
+    "ailiance-cpp": 9318,
+    "ailiance-rust-emb": 9319,
+    "ailiance-html": 9320,
+    "ailiance-ml-training": 9321,
     # Tower Ollama :11434 via tunnel :8004 — 11 domain-specialized
     # mascarade fine-tunes (Qwen3 4B Q4_K_M base, compiled as Ollama
     # Modelfile from KXKM-AI .safetensors LoRAs since 2026-04-12).
@@ -159,6 +166,14 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     "ailiance-components-review": {"model": "mascarade-components-review:latest"},
     "ailiance-coder": {"model": "mascarade-coder-v2:latest"},
     "ailiance-embed": {"model": "bge-m3:latest"},
+    # Devstral-Small-2-24B MLX 4-bit on Studio. Server resolves model field
+    # as on-disk path or HF repo id; pass the path the server has loaded.
+    "ailiance-devstral-base": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
+    "ailiance-python": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
+    "ailiance-cpp": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
+    "ailiance-rust-emb": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
+    "ailiance-html": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
+    "ailiance-ml-training": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
 }
 
 
@@ -183,6 +198,51 @@ WORKER_FORWARD_OVERRIDES: dict[int, dict[str, str]] = {
     },
 }
 
+
+
+# Per-alias HA worker URL lists. When `req.model` matches a key here, the
+# gateway picks a healthy URL (random.choice over healthy entries) instead
+# of using the single WORKER_URLS[port] mapping. Backward compatible:
+# aliases without an entry route via MODEL_FORCE_MAP + WORKER_URLS as
+# before. Health: an entry is considered healthy when its parsed port is
+# in `_healthy_ports`. If none healthy, the first URL is used as fallback.
+ALIAS_WORKER_URLS: dict[str, list[str]] = {
+    "ailiance-gemma4": [
+        # macm1 mlx_lm.server :8502 via autossh tunnel (primary when up).
+        "http://localhost:8502",
+        # Studio mlx_lm.server :9334 - gemma-4-E4B-it + gemma4-eukiki LoRA
+        # (HA mirror, also serves when macm1 is offline).
+        "http://100.116.92.12:9334",
+    ],
+}
+
+
+def _url_port(url: str) -> int | None:
+    """Extract the TCP port from an http://host:port[/...] URL."""
+    try:
+        rest = url.split("://", 1)[1]
+        host_port = rest.split("/", 1)[0]
+        if ":" in host_port:
+            return int(host_port.rsplit(":", 1)[1])
+    except Exception:
+        return None
+    return None
+
+
+def _pick_ha_url(alias: str) -> str | None:
+    """Pick an HA worker URL for `alias`, preferring healthy entries.
+
+    Returns None if alias has no ALIAS_WORKER_URLS entry (callers then
+    fall back to the legacy WORKER_URLS[worker_port] lookup).
+    """
+    import random as _random
+    urls = ALIAS_WORKER_URLS.get(alias)
+    if not urls:
+        return None
+    healthy = [u for u in urls if (_url_port(u) or -1) in _healthy_ports]
+    if healthy:
+        return _random.choice(healthy)
+    return urls[0]
 
 
 # Liveness gating — populated by a background probe task started by the
@@ -677,7 +737,10 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 ]
             return response
 
-        worker_url = WORKER_URLS[worker_port]
+        # ALIAS_WORKER_URLS: if alias has HA list, pick healthy URL
+        # instead of using the single WORKER_URLS[worker_port] entry.
+        ha_url = _pick_ha_url(req.model)
+        worker_url = ha_url if ha_url is not None else WORKER_URLS[worker_port]
         headers = {"X-Lora-Domain": domain}
         # exclude_none so optional ChatMessage fields (tool_calls, name,
         # tool_call_id) don't reach llama.cpp workers as `null` and trip
