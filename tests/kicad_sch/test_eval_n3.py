@@ -252,3 +252,25 @@ def test_eval_all_handles_missing_ref(tmp_path, monkeypatch):
     result = eval_all(fake, None, Path("kicad-cli"), audit)
     assert result["sem_equiv"] == 0.0
     assert "composite" in result
+
+
+import shutil as _shutil_smoke
+
+
+@pytest.mark.skipif(
+    _shutil_smoke.which("kicad-cli") is None or not REF_SCH.exists(),
+    reason="kicad-cli or ref fixture missing",
+)
+def test_eval_all_real_cli_on_ref_fixture(tmp_path):
+    """Smoke: real kicad-cli on spi_bus_4devices -> composite > 0.5."""
+    from scripts.kicad_sch.eval_n3 import eval_all
+
+    class _Audit:
+        def __init__(self): self.events = []
+        def log_event(self, t, p): self.events.append((t, p))
+        def sha256_sign(self): return ""
+
+    audit = _Audit()
+    result = eval_all(REF_SCH, REF_SCH, Path("kicad-cli"), audit)
+    assert result["parse_ok"] == 1
+    assert result["composite"] >= 0.45  # parse 0.3 + render 0.15 floor
