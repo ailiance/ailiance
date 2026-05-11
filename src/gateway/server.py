@@ -3,10 +3,12 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import httpx
@@ -89,6 +91,56 @@ def _load_worker_urls() -> dict[int, str]:
 
 WORKER_URLS = _load_worker_urls()
 
+
+# Per-worker FIFO concurrency control — serialize requests to the same MLX
+# worker to bound KV cache memory budget per worker. Studio M3 Ultra workers
+# (Mistral-Medium 128B, Mixtral 8x22B, Qwen3-235B MoE, etc.) carry KV cache
+# costs of tens of GB at 32k context; concurrent requests to a single worker
+# can OOM the box. Toggle via GATEWAY_FIFO_ENABLED=false to disable.
+_worker_locks: dict[str, asyncio.Lock] = {}
+_worker_locks_meta_lock: asyncio.Lock | None = None
+
+
+def _fifo_enabled() -> bool:
+    return os.environ.get("GATEWAY_FIFO_ENABLED", "true").lower() not in (
+        "0", "false", "no", "off",
+    )
+
+
+async def _acquire_worker_lock(worker_url: str) -> asyncio.Lock:
+    """Return (creating if needed) the per-worker-URL asyncio.Lock.
+
+    The meta-lock guards concurrent first-time creation. Subsequent lookups
+    are dict reads (atomic in CPython) so the meta-lock is only contended on
+    cold paths.
+    """
+    global _worker_locks_meta_lock
+    if _worker_locks_meta_lock is None:
+        _worker_locks_meta_lock = asyncio.Lock()
+    async with _worker_locks_meta_lock:
+        lock = _worker_locks.get(worker_url)
+        if lock is None:
+            lock = asyncio.Lock()
+            _worker_locks[worker_url] = lock
+        return lock
+
+
+@asynccontextmanager
+async def _worker_fifo(worker_url: str):
+    """Async context manager that serializes requests per worker URL.
+
+    No-op when GATEWAY_FIFO_ENABLED is false. Held for the full duration
+    of the forwarded request, including streaming relay, so a streaming
+    client cannot starve a follow-up request on the same worker.
+    """
+    if not _fifo_enabled():
+        yield
+        return
+    lock = await _acquire_worker_lock(worker_url)
+    async with lock:
+        yield
+
+
 MODEL_FORCE_MAP = {
     "ailiance-mistral-medium": 9301,  # Mistral Medium 3.5 128B Q8 (studio:9301, renamed from ailiance-apertus 2026-05-11)
     "ailiance-mistral": 9301,  # alias for ailiance-mistral-medium (same backend)
@@ -146,6 +198,10 @@ MODEL_FORCE_MAP = {
     "ailiance-pixtral": 9325,  # Pixtral-12B 4-bit (vision-language)
     "ailiance-mistral-small": 9326,  # Mistral-Small-3.1-24B-Instruct 4-bit
     "ailiance-coder-pro": 9327,  # Qwen3-Coder-30B-A3B-Instruct 4-bit
+    # Mixtral-8x22B-Instruct-v0.1 MLX 4-bit on Studio (~80GB). Worker
+    # not yet running 2026-05-12: DL terminé, à relancer manuellement
+    # une fois Qwen3-235B settled.
+    "ailiance-mixtral": 9329,
 }
 
 # Per-port forward overrides for non-ailiance backends. The gateway rewrites
@@ -229,6 +285,10 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     },
     "ailiance-coder-pro": {
         "model": "/Users/clems/KIKI-Mac_tunner/models/Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
+    },
+    # Mixtral-8x22B 4-bit MLX on Studio :9329. Worker not yet running.
+    "ailiance-mixtral": {
+        "model": "/Users/clems/KIKI-Mac_tunner/models/Mixtral-8x22B-Instruct-MLX-4bit",
     },
 }
 
@@ -550,6 +610,8 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 {"id": "ailiance-pixtral", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-mistral-small", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-coder-pro", "object": "model", "owned_by": "ailiance"},
+                # Studio Mixtral-8x22B 4-bit MLX :9329 (worker offline 2026-05-12)
+                {"id": "ailiance-mixtral", "object": "model", "owned_by": "ailiance"},
             ],
         }
 
@@ -844,40 +906,55 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 if key:
                     headers["Authorization"] = f"Bearer {key}"
 
-        # Streaming path: pipe SSE chunks back to the client without buffering.
-        if body.get("stream"):
-            req_stream = http_client.build_request(
-                "POST",
+        # Per-worker FIFO: serialize requests to this worker URL to bound
+        # KV cache pressure. Lock is held for the entire forward including
+        # streaming relay (see _worker_fifo docstring).
+        fifo_cm = _worker_fifo(worker_url)
+        await fifo_cm.__aenter__()
+        try:
+            # Streaming path: pipe SSE chunks back to the client without buffering.
+            if body.get("stream"):
+                req_stream = http_client.build_request(
+                    "POST",
+                    f"{worker_url}/v1/chat/completions",
+                    json=body,
+                    headers=headers,
+                )
+                worker_resp = await http_client.send(req_stream, stream=True)
+                requests_total.labels(
+                    model=req.model,
+                    status=str(worker_resp.status_code),
+                    path="stream",
+                    auto="0",
+                ).inc()
+
+                # Capture for closure so the lock is released once the
+                # stream is fully consumed (or the client disconnects).
+                _release_cm = fifo_cm
+                fifo_cm = None  # prevent finally-block double-release
+
+                async def relay() -> "object":
+                    try:
+                        async for chunk in worker_resp.aiter_raw():
+                            yield chunk
+                    finally:
+                        await worker_resp.aclose()
+                        await _release_cm.__aexit__(None, None, None)
+
+                return StreamingResponse(
+                    relay(),
+                    status_code=worker_resp.status_code,
+                    media_type=worker_resp.headers.get("content-type", "text/event-stream"),
+                )
+
+            resp = await http_client.post(
                 f"{worker_url}/v1/chat/completions",
                 json=body,
                 headers=headers,
             )
-            worker_resp = await http_client.send(req_stream, stream=True)
-            requests_total.labels(
-                model=req.model,
-                status=str(worker_resp.status_code),
-                path="stream",
-                auto="0",
-            ).inc()
-
-            async def relay() -> "object":
-                try:
-                    async for chunk in worker_resp.aiter_raw():
-                        yield chunk
-                finally:
-                    await worker_resp.aclose()
-
-            return StreamingResponse(
-                relay(),
-                status_code=worker_resp.status_code,
-                media_type=worker_resp.headers.get("content-type", "text/event-stream"),
-            )
-
-        resp = await http_client.post(
-            f"{worker_url}/v1/chat/completions",
-            json=body,
-            headers=headers,
-        )
+        finally:
+            if fifo_cm is not None:
+                await fifo_cm.__aexit__(None, None, None)
 
         requests_total.labels(
             model=req.model,
