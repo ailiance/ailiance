@@ -1,27 +1,26 @@
 #!/usr/bin/env python3
-"""Join base PPL (no LoRA) with tuned PPL (with LoRA) → comparison matrix.
+"""Join base PPL (no LoRA) with tuned PPL (with LoRA) -> comparison matrix.
 
 Reads:
 - output/eval/raw/perplexity_base_*.json (from scripts/bench_base.py)
 - output/eval/raw/perplexity_v1-only_*.json (from scripts/eval_framework.py)
+
+Optionally overlays a 3rd axis from iact-bench functional validator runs via
+--validator-base / --validator-tuned. Each is a JSON list of cells:
+    {"model_key": "...", "domain": "...", "pass_rate": 0.85, "n_samples": 50}
+(extra fields like validator_name/passed/failed are ignored).
 
 Writes:
 - output/eval/comparison_<stamp>.json
 - output/eval/comparison_<stamp>.md
 
 Computes per (model_key, domain) cell:
-- base_ppl: model without adapter
-- tuned_ppl: model + LoRA
-- lift_pct: (base - tuned) / base * 100  (positive = training improved)
-- lift_log: ln(base) - ln(tuned)         (log-space lift, scale-invariant)
+- base_ppl, tuned_ppl, lift_pct, lift_log
+- (optional) base_validator_rate, tuned_validator_rate, validator_lift (pp)
 
-Headline metric is lift_log (scale-invariant across baseline strengths).
-Cells with n_samples < MIN_SAMPLES_FOR_MEDIAN are flagged and excluded from
-the median computation, but still appear in raw rows + markdown table.
-
-CLI:
-    .venv/bin/python scripts/bench_comparison.py
-    .venv/bin/python scripts/bench_comparison.py --base path/to/base.json --tuned path/to/tuned.json
+Headline metric is lift_log (scale-invariant). When validator data is present,
+also detects "silent catastrophic forgetting": lift_log > 0.1 AND
+validator_lift < -5pp (PPL improves but functional capability regresses).
 """
 import argparse
 import glob
@@ -48,6 +47,20 @@ def load_rows(path: Path) -> list[dict]:
     return json.loads(path.read_text())
 
 
+def load_validator(path: Path) -> dict[tuple[str, str], float]:
+    """Load validator JSON -> {(model_key, domain): pass_rate}."""
+    data = json.loads(path.read_text())
+    idx = {}
+    for r in data:
+        mk = r.get("model_key")
+        dom = r.get("domain")
+        pr = r.get("pass_rate")
+        if mk is None or dom is None or pr is None:
+            continue
+        idx[(mk, dom)] = float(pr)
+    return idx
+
+
 def _has_enough_samples(c: dict) -> bool:
     return ((c.get("base_n_samples") or 0) >= MIN_SAMPLES_FOR_MEDIAN
             and (c.get("tuned_n_samples") or 0) >= MIN_SAMPLES_FOR_MEDIAN)
@@ -61,6 +74,14 @@ def main():
                         help="path to perplexity_v1-only_*.json (default: latest)")
     parser.add_argument("--out-prefix", default=None,
                         help="output prefix (default: output/eval/comparison_<stamp>)")
+    parser.add_argument("--validator-base", default=None,
+                        help="optional iact-bench validator JSON for base run "
+                             "(adds 3rd axis: validator pass_rate)")
+    parser.add_argument("--validator-tuned", default=None,
+                        help="optional iact-bench validator JSON for tuned run")
+    parser.add_argument("--validator-min-cells", type=int, default=5,
+                        help="minimum cells with validator data to surface overlay "
+                             "(default: 5)")
     args = parser.parse_args()
 
     base_path = Path(args.base) if args.base else latest("perplexity_base_*.json")
@@ -74,6 +95,21 @@ def main():
 
     base_rows = load_rows(base_path)
     tuned_rows = load_rows(tuned_path)
+
+    val_base_idx: dict[tuple[str, str], float] = {}
+    val_tuned_idx: dict[tuple[str, str], float] = {}
+    if args.validator_base:
+        vb_path = Path(args.validator_base)
+        if not vb_path.exists():
+            sys.exit(f"--validator-base not found: {vb_path}")
+        val_base_idx = load_validator(vb_path)
+        print(f"Validator base:  {vb_path} ({len(val_base_idx)} cells)")
+    if args.validator_tuned:
+        vt_path = Path(args.validator_tuned)
+        if not vt_path.exists():
+            sys.exit(f"--validator-tuned not found: {vt_path}")
+        val_tuned_idx = load_validator(vt_path)
+        print(f"Validator tuned: {vt_path} ({len(val_tuned_idx)} cells)")
 
     # Index base by (model_key, domain)
     base_idx = {(r["model_key"], r["domain"]): r for r in base_rows if "perplexity" in r}
@@ -97,6 +133,19 @@ def main():
             tuned_p = t["perplexity"]
             row["lift_pct"] = round((base_p - tuned_p) / base_p * 100, 2)
             row["lift_log"] = round(math.log(base_p) - math.log(tuned_p), 4)
+
+        # Validator overlay (always include fields when at least one validator
+        # source is provided, so downstream consumers see a consistent schema)
+        if val_base_idx or val_tuned_idx:
+            vb = val_base_idx.get(key)
+            vt = val_tuned_idx.get(key)
+            row["base_validator_rate"] = round(vb, 4) if vb is not None else None
+            row["tuned_validator_rate"] = round(vt, 4) if vt is not None else None
+            if vb is not None and vt is not None:
+                # Pass rates are in [0,1]; lift is in percentage points (signed)
+                row["validator_lift"] = round((vt - vb) * 100, 2)
+            else:
+                row["validator_lift"] = None
         rows.append(row)
 
     # Output JSON
@@ -110,17 +159,27 @@ def main():
     json_path.write_text(json.dumps(rows, indent=2))
     print(f"Wrote {json_path}")
 
+    has_validator = any(r.get("validator_lift") is not None for r in rows)
+
     # Output markdown
+    joined_count = sum(1 for r in rows if r.get("lift_log") is not None)
     lines = [
-        "# Bench comparison — base vs tuned",
+        "# Bench comparison -- base vs tuned",
         "",
         f"- Base: `{base_path.name}` ({len(base_rows)} rows)",
         f"- Tuned: `{tuned_path.name}` ({len(tuned_rows)} rows)",
-        f"- Joined cells: {sum(1 for r in rows if r.get('lift_log') is not None)}",
-        f"- Headline metric: **lift_log** (scale-invariant); cells with n<{MIN_SAMPLES_FOR_MEDIAN} flagged ⚠️ and excluded from median.",
-        "",
+        f"- Joined cells: {joined_count}",
+        f"- Headline metric: **lift_log** (scale-invariant); cells with n<{MIN_SAMPLES_FOR_MEDIAN} flagged and excluded from median.",
     ]
-    by_model = {}
+    if has_validator:
+        v_count = sum(1 for r in rows if r.get("validator_lift") is not None)
+        lines.append(
+            f"- Validator overlay: {v_count} cells with paired base+tuned "
+            f"validator pass_rate (3rd axis)."
+        )
+    lines.append("")
+
+    by_model: dict[str, list[dict]] = {}
     for r in rows:
         by_model.setdefault(r["model_key"], []).append(r)
     for model in sorted(by_model):
@@ -129,21 +188,50 @@ def main():
         joined.sort(key=lambda c: -c["lift_log"])  # highest log-lift first
         joined_eligible = [c for c in joined if _has_enough_samples(c)]
         flagged_count = len(joined) - len(joined_eligible)
-        lines.append(f"## {model} ({len(joined)}/{len(cells)} joined, {flagged_count} flagged n<{MIN_SAMPLES_FOR_MEDIAN})")
+        lines.append(
+            f"## {model} ({len(joined)}/{len(cells)} joined, "
+            f"{flagged_count} flagged n<{MIN_SAMPLES_FOR_MEDIAN})"
+        )
         lines.append("")
-        lines.append("| flag | domain | base_ppl | tuned_ppl | lift_log | lift_pct | base_n | tuned_n |")
-        lines.append("|---|---|---:|---:|---:|---:|---:|---:|")
-        for c in cells:
-            flag = "" if _has_enough_samples(c) else f"⚠️ n<{MIN_SAMPLES_FOR_MEDIAN}"
+        model_has_val = any(
+            c.get("validator_lift") is not None
+            or c.get("base_validator_rate") is not None
+            or c.get("tuned_validator_rate") is not None
+            for c in cells
+        )
+        if model_has_val:
             lines.append(
-                f"| {flag} | {c['domain']} | "
-                f"{c['base_ppl'] if c['base_ppl'] is not None else '–'} | "
-                f"{c['tuned_ppl'] if c['tuned_ppl'] is not None else '–'} | "
-                f"{c.get('lift_log', '–')} | "
-                f"{c.get('lift_pct', '–')} | "
-                f"{c.get('base_n_samples', '–')} | "
-                f"{c.get('tuned_n_samples', '–')} |"
+                "| flag | domain | base_ppl | tuned_ppl | lift_log | lift_pct "
+                "| base_n | tuned_n | base_val | tuned_val | val_lift_pp |"
             )
+            lines.append("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+        else:
+            lines.append(
+                "| flag | domain | base_ppl | tuned_ppl | lift_log | lift_pct "
+                "| base_n | tuned_n |"
+            )
+            lines.append("|---|---|---:|---:|---:|---:|---:|---:|")
+        for c in cells:
+            flag = "" if _has_enough_samples(c) else f"n<{MIN_SAMPLES_FOR_MEDIAN}"
+            base_ppl = c["base_ppl"] if c["base_ppl"] is not None else "-"
+            tuned_ppl = c["tuned_ppl"] if c["tuned_ppl"] is not None else "-"
+            lift_log = c.get("lift_log", "-")
+            lift_pct = c.get("lift_pct", "-")
+            base_n = c.get("base_n_samples", "-")
+            tuned_n = c.get("tuned_n_samples", "-")
+            row_str = (
+                f"| {flag} | {c['domain']} | {base_ppl} | {tuned_ppl} | "
+                f"{lift_log} | {lift_pct} | {base_n} | {tuned_n} |"
+            )
+            if model_has_val:
+                bv = c.get("base_validator_rate")
+                tv = c.get("tuned_validator_rate")
+                vl = c.get("validator_lift")
+                bv_s = bv if bv is not None else "-"
+                tv_s = tv if tv is not None else "-"
+                vl_s = vl if vl is not None else "-"
+                row_str += f" {bv_s} | {tv_s} | {vl_s} |"
+            lines.append(row_str)
         if joined_eligible:
             log_lifts = [c["lift_log"] for c in joined_eligible]
             pct_lifts = [c["lift_pct"] for c in joined_eligible]
@@ -151,17 +239,20 @@ def main():
             eff_pct = (math.exp(med_log) - 1) * 100
             lines.append("")
             lines.append(
-                f"**{model} stats** (n≥{MIN_SAMPLES_FOR_MEDIAN}, {len(joined_eligible)} cells): "
+                f"**{model} stats** (n>={MIN_SAMPLES_FOR_MEDIAN}, "
+                f"{len(joined_eligible)} cells): "
                 f"median log-lift = {med_log:.4f} (e{eff_pct:.2f}% effective), "
                 f"min = {min(log_lifts):.4f}, max = {max(log_lifts):.4f}, "
                 f"median lift_pct (legacy) = {statistics.median(pct_lifts):.2f}%, "
-                f"cells where adapter HURT (negative log-lift): {sum(1 for x in log_lifts if x < 0)}, "
+                f"cells where adapter HURT (negative log-lift): "
+                f"{sum(1 for x in log_lifts if x < 0)}, "
                 f"flagged (n<{MIN_SAMPLES_FOR_MEDIAN}): {flagged_count}"
             )
         elif joined:
             lines.append("")
             lines.append(
-                f"**{model} stats**: all {len(joined)} joined cells have n<{MIN_SAMPLES_FOR_MEDIAN}; median suppressed."
+                f"**{model} stats**: all {len(joined)} joined cells have "
+                f"n<{MIN_SAMPLES_FOR_MEDIAN}; median suppressed."
             )
         lines.append("")
     md_path.write_text("\n".join(lines))
@@ -181,7 +272,10 @@ def main():
         min_cell = [r for r in all_eligible if r["lift_log"] == min_log][0]
         max_cell = [r for r in all_eligible if r["lift_log"] == max_log][0]
         print()
-        print(f"=== Aggregate ({len(all_eligible)} eligible cells, {filtered_count} flagged n<{MIN_SAMPLES_FOR_MEDIAN}) ===")
+        print(
+            f"=== Aggregate ({len(all_eligible)} eligible cells, "
+            f"{filtered_count} flagged n<{MIN_SAMPLES_FOR_MEDIAN}) ==="
+        )
         print("Headline metric: lift_log (scale-invariant)")
         print(f"Median log-lift: {med_log:.4f} (e{eff_pct:.2f}% effective gain)")
         print(f"Median lift_pct: {statistics.median(pct_lifts):.2f}% (legacy, for cross-reference)")
@@ -191,8 +285,42 @@ def main():
         print(f"Adapter HURT cells (log-lift<0): {sum(1 for x in log_lifts if x < 0)}")
     elif all_joined:
         print()
-        print(f"=== Aggregate ({len(all_joined)} joined, ALL flagged n<{MIN_SAMPLES_FOR_MEDIAN}) ===")
+        print(
+            f"=== Aggregate ({len(all_joined)} joined, "
+            f"ALL flagged n<{MIN_SAMPLES_FOR_MEDIAN}) ==="
+        )
         print("Median suppressed: no eligible cells.")
+
+    # Validator overlay summary
+    val_cells = [r for r in rows if r.get("validator_lift") is not None]
+    if val_cells:
+        val_lifts = [r["validator_lift"] for r in val_cells]
+        med_vl = statistics.median(val_lifts)
+        # Silent catastrophic forgetting: PPL log-lift > 0.1 AND validator < -5pp
+        silent_forget = [
+            r for r in val_cells
+            if r.get("lift_log") is not None
+            and r["lift_log"] > 0.1
+            and r["validator_lift"] < -5.0
+        ]
+        print()
+        print(f"Validator overlay: {len(val_cells)} cells with validator data")
+        print(f"  Median validator lift: {med_vl:.2f} pp")
+        print(
+            f"  Cells where PPL improves but validator REGRESSES: "
+            f"{len(silent_forget)} (silent catastrophic forgetting)"
+        )
+        for r in silent_forget:
+            print(
+                f"    - {r['model_key']}/{r['domain']}: "
+                f"lift_log={r['lift_log']:+.4f}, "
+                f"validator_lift={r['validator_lift']:+.2f}pp"
+            )
+        if len(val_cells) < args.validator_min_cells:
+            print(
+                f"  Note: below --validator-min-cells={args.validator_min_cells} "
+                f"threshold; treat overlay as indicative only."
+            )
 
 
 if __name__ == "__main__":
