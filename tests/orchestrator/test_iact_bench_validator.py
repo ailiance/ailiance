@@ -65,6 +65,29 @@ def test_make_validator_explicit_kinds() -> None:
         make_validator("does-not-exist")
 
 
+def test_infrastructure_error_raises_unavailable_not_validation_failure() -> None:
+    """Docker missing / image-pull-fail / timeout must NOT look like
+    'validator caught a bug'. The runner sets ``error`` on the result
+    in that case; we surface ValidatorUnavailable so the orchestrator
+    degrades to DIRECT instead of burning LLM calls on retries."""
+    val = IactBenchValidator()
+
+    docker_missing = SimpleNamespace(
+        score=0.0,
+        exit_code=127,
+        stdout_head="",
+        stderr_head="docker binary not in PATH",
+        duration_ms=0,
+        image_digest="sha256:abc",
+        pass_rule="exit_zero",
+        error="docker_missing",
+    )
+
+    with patch.object(val._bridge, "run_validator", return_value=docker_missing):
+        with pytest.raises(ValidatorUnavailable, match="infrastructure"):
+            asyncio.run(val.run("x", domain="cpp", tool="compile-cpp"))
+
+
 def test_validation_result_field_mapping() -> None:
     val = IactBenchValidator()
 

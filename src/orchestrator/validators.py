@@ -97,6 +97,9 @@ def _load_iact_bench(submodule_path: Path) -> Any:
             f"(expected directory {tools_dir})"
         )
     tools_str = str(tools_dir)
+    # Prepend on purpose: the vendored, pinned copy must shadow any
+    # `iact_bench` package installed system-wide, so the submodule SHA
+    # recorded in audit/manifest.json matches the code that ran.
     if tools_str not in sys.path:
         sys.path.insert(0, tools_str)
     try:
@@ -164,6 +167,17 @@ class IactBenchValidator:
         result = await asyncio.to_thread(
             self._bridge.run_validator, cfg, output
         )
+        # Infrastructure failures (docker missing, image-pull-fail,
+        # timeout) must not look like "validator caught a bug" — that
+        # would burn LLM calls on retry-with-stderr loops over an
+        # operational outage. Surface as ValidatorUnavailable so the
+        # orchestrator degrades the request to DIRECT.
+        if getattr(result, "error", None):
+            raise ValidatorUnavailable(
+                f"iact-bench infrastructure failure "
+                f"(tool={tool}, error={result.error}): "
+                f"{result.stderr_head[:256]}"
+            )
         return ValidatorResult(
             exit_code=result.exit_code,
             stdout=result.stdout_head,
