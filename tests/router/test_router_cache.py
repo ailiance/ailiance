@@ -29,6 +29,11 @@ class _FakeRouter(DomainRouter):
         self._mlp = None
         self._domains = domains or [f"d{i}" for i in range(40)]
         self.compute_calls = 0
+        # L2 semantic cache state — initialised by the real router but
+        # skipped here. prewarm() reads _l2_embs.shape, so default to
+        # None so the "L2 disabled" branch fires.
+        self._l2_embs = None
+        self._l2_hashes: list[str] = []
         self._cached_route_by_hash = lru_cache(maxsize=_CACHE_MAXSIZE)(
             self._route_by_hash
         )

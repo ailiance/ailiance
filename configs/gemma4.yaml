@@ -17,3 +17,10 @@ domains:
   - embedded
   - iot
   - platformio
+  # GEMMA_DOMAINS — Gemma 3 4B IT is the canonical home for short
+  # generalist work and the fallback target for unmapped domains.
+  - general
+  - quick
+  - summarize
+  - classification
+  - tldr
