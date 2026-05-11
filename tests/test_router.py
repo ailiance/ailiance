@@ -14,7 +14,12 @@ def test_domain_map_lookup():
 def test_domain_map_completeness():
     from src.router.domain_map import DOMAIN_TO_WORKER, ALL_DOMAINS
 
-    assert len(ALL_DOMAINS) == 40
+    # 40 classifier-predicted domains (apertus + devstral + eurollm)
+    # + 5 GEMMA fallback/utility domains (general, quick, summarize,
+    # classification, tldr). The MLP head still emits 40 logits — the
+    # 5 extras are routing-only post-fallback targets. Bumps here MUST
+    # be reviewed against RouterConfig.num_domains (still 40).
+    assert len(ALL_DOMAINS) == 45
     for domain in ALL_DOMAINS:
         assert domain in DOMAIN_TO_WORKER, f"Missing mapping for {domain}"
 

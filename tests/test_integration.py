@@ -15,7 +15,15 @@ def test_worker_configs_cover_all_domains():
     from src.router.domain_map import ALL_DOMAINS
 
     config_domains = set()
-    for cfg_file in ["configs/apertus.yaml", "configs/devstral.yaml", "configs/eurollm.yaml"]:
+    for cfg_file in [
+        "configs/apertus.yaml",
+        "configs/devstral.yaml",
+        "configs/eurollm.yaml",
+        # Gemma is the canonical home for GEMMA_DOMAINS (general,
+        # quick, summarize, classification, tldr) and the fallback
+        # target for unmapped classifier outputs.
+        "configs/gemma4.yaml",
+    ]:
         p = Path(cfg_file)
         if p.exists():
             data = yaml.safe_load(p.read_text())
