@@ -61,9 +61,13 @@ GEMMA_DOMAINS = frozenset({
 # narrow technical tasks. Apertus stays the fallback when Tower is down
 # (server.py retry path) or when confidence is below threshold.
 MASCARADE_DOMAINS = frozenset({
-    "kicad", "spice", "stm32", "emc", "embedded",
+    "kicad", "stm32", "emc", "embedded",
     "platformio", "freecad", "dsp", "iot", "power",
 })
+# Note 2026-05-11: `spice` removed from mascarade override after bench
+# Phase 6 (ailiance/ailiance-bench commit 46801af) showed mascarade-spice
+# regresses -25 pts on spice-sim vs base Gemma-E4B. Apertus Mistral-Medium
+# 128B (generalist fallback) outperforms mascarade-spice on this task.
 
 # eu-kiki P1 champion domains: Gemma-4 E4B + ailiance curriculum LoRA
 # on macm1 :8502. Bench Phase 6 (commit 46801af) shows eu-kiki wins
