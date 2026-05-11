@@ -126,6 +126,17 @@ MODEL_FORCE_MAP = {
     "ailiance-components-review": 8004,
     "ailiance-coder": 8004,  # mascarade-coder-v2 (Qwen2 1.5B Q4)
     "ailiance-embed": 8004,  # bge-m3 F16 — multilingual embedding
+    # Studio multi-LoRA Apertus 70B custom server :9322 — one base model
+    # in VRAM with adapters hot-swapped per request via load_adapters.
+    "ailiance-apertus-real": 9322,
+    "ailiance-apertus-electronics-hw": 9322,
+    "ailiance-apertus-math-reasoning": 9322,
+    "ailiance-apertus-math-gsm8k": 9322,
+    "ailiance-apertus-math": 9322,
+    "ailiance-apertus-security-fenrir": 9322,
+    "ailiance-apertus-spice-sim": 9322,
+    "ailiance-apertus-emc-dsp-power": 9322,
+    "ailiance-apertus-embedded": 9322,
 }
 
 # Per-port forward overrides for non-ailiance backends. The gateway rewrites
@@ -174,6 +185,19 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     "ailiance-rust-emb": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
     "ailiance-html": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
     "ailiance-ml-training": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
+    # Studio multi-LoRA Apertus 70B custom server :9322. One base model in
+    # VRAM, adapters swap per request via mlx_lm.tuner.utils.load_adapters
+    # under an asyncio.Lock. Each alias rewrites the `model` body field to
+    # the adapter_name the custom server expects.
+    "ailiance-apertus-real": {"model": "apertus"},
+    "ailiance-apertus-electronics-hw": {"model": "apertus-electronics-hw"},
+    "ailiance-apertus-math-reasoning": {"model": "apertus-math-reasoning"},
+    "ailiance-apertus-math-gsm8k": {"model": "apertus-math-gsm8k"},
+    "ailiance-apertus-math": {"model": "apertus-math"},
+    "ailiance-apertus-security-fenrir": {"model": "apertus-security-fenrir-curriculum"},
+    "ailiance-apertus-spice-sim": {"model": "apertus-spice-sim"},
+    "ailiance-apertus-emc-dsp-power": {"model": "apertus-emc-dsp-power-curriculum"},
+    "ailiance-apertus-embedded": {"model": "apertus-embedded"},
 }
 
 
