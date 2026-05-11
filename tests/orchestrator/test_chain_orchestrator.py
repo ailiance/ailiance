@@ -427,3 +427,212 @@ async def test_audit_manifest_records_submodule_sha(
     assert manifest["submodule_sha"] == "deadbeef" * 5
     assert manifest["status"] == "ok"
     assert isinstance(manifest["started_at"], float)
+# ---------------- MIXTURE v0.3.1 tests ------------------------------------
+
+
+def _make_mixture_llm(
+    per_model_outputs: dict[str, str],
+    *,
+    fail_models: tuple[str, ...] = (),
+) -> tuple[Callable[..., Awaitable[str]], list[tuple[str, str]]]:
+    """LLM stub that returns ``per_model_outputs[model]`` for each call.
+
+    Records (model, last_user_msg) per call for assertion. Raises
+    RuntimeError if model is listed in ``fail_models`` to exercise the
+    worker-failure path.
+    """
+    log_: list[tuple[str, str]] = []
+
+    async def call(messages: list[dict[str, Any]], model: str) -> str:
+        last_user = next(
+            (m["content"] for m in reversed(messages) if m["role"] == "user"),
+            "",
+        )
+        log_.append((model, last_user))
+        if model in fail_models:
+            raise RuntimeError(f"simulated failure for {model}")
+        if model not in per_model_outputs:
+            raise KeyError(f"no scripted output for {model}")
+        return per_model_outputs[model]
+
+    return call, log_
+
+
+@pytest.mark.asyncio
+async def test_mixture_calls_all_workers_in_parallel(tmp_path: Path) -> None:
+    """MIXTURE fans out to every worker listed in the policy entry."""
+    llm, log_ = _make_mixture_llm({
+        "ailiance-mistral": "A. Bonjour, je suis Mistral.",
+        "ailiance-gemma4": "B. Bonjour, je suis Gemma.",
+        "ailiance-eurollm": "C. Bonjour, je suis EuroLLM.",
+    })
+    orch = ChainOrchestrator(
+        policies_path=POLICIES_PATH,
+        reflector_path=REFLECTOR_PATH,
+        validator=StubValidator(),
+        llm_call=llm,
+        audit_dir=tmp_path,
+    )
+    # Inject a mixture policy entry for a synthetic domain.
+    orch._policies["test-mixture"] = {
+        "policy": "mixture",
+        "workers": ["ailiance-mistral", "ailiance-gemma4", "ailiance-eurollm"],
+        "judge": None,  # no judge → first successful wins
+    }
+    result = await orch.execute("Bonjour", domain="test-mixture", model="ailiance")
+
+    assert result.policy == ChainPolicy.MIXTURE
+    assert result.status == "ok"
+    assert result.metadata["judge_used"] is False
+    # All 3 workers got the same prompt.
+    user_prompts = [u for (_, u) in log_]
+    assert user_prompts == ["Bonjour"] * 3
+    models_called = sorted(m for (m, _) in log_)
+    assert models_called == sorted(
+        ["ailiance-mistral", "ailiance-gemma4", "ailiance-eurollm"]
+    )
+    # First successful = the first listed worker.
+    assert result.final_output.startswith("A.")
+
+
+@pytest.mark.asyncio
+async def test_mixture_judge_picks_index(tmp_path: Path) -> None:
+    """Judge selects a non-default index → that worker's output wins."""
+    llm, log_ = _make_mixture_llm({
+        "ailiance-mistral": "M1 output",
+        "ailiance-gemma4": "M2 output",
+        # Judge call comes last; respond with {"choice": 1}.
+        "judge-model": '{"choice": 1}',
+    })
+    orch = ChainOrchestrator(
+        policies_path=POLICIES_PATH,
+        reflector_path=REFLECTOR_PATH,
+        validator=StubValidator(),
+        llm_call=llm,
+        audit_dir=tmp_path,
+    )
+    orch._policies["test-mix-judge"] = {
+        "policy": "mixture",
+        "workers": ["ailiance-mistral", "ailiance-gemma4"],
+        "judge": "judge-model",
+    }
+    result = await orch.execute("X", domain="test-mix-judge", model="ailiance")
+
+    assert result.policy == ChainPolicy.MIXTURE
+    assert result.status == "ok"
+    assert result.metadata["judge_used"] is True
+    assert result.metadata["chosen_index"] == 1
+    assert result.metadata["chosen_worker"] == "ailiance-gemma4"
+    assert result.final_output == "M2 output"
+    # Judge step recorded.
+    judge_steps = [s for s in result.steps if s.kind == "reflector"]
+    assert len(judge_steps) == 1
+    assert judge_steps[0].payload["role"] == "judge"
+
+
+@pytest.mark.asyncio
+async def test_mixture_judge_invalid_falls_back_to_index_0(tmp_path: Path) -> None:
+    """Garbage judge output → safe fallback to index 0 (first worker)."""
+    llm, _ = _make_mixture_llm({
+        "ailiance-mistral": "first",
+        "ailiance-gemma4": "second",
+        "judge-model": "I cannot decide, sorry.",
+    })
+    orch = ChainOrchestrator(
+        policies_path=POLICIES_PATH,
+        reflector_path=REFLECTOR_PATH,
+        validator=StubValidator(),
+        llm_call=llm,
+        audit_dir=tmp_path,
+    )
+    orch._policies["test-mix-bad-judge"] = {
+        "policy": "mixture",
+        "workers": ["ailiance-mistral", "ailiance-gemma4"],
+        "judge": "judge-model",
+    }
+    result = await orch.execute("X", domain="test-mix-bad-judge", model="ailiance")
+
+    assert result.final_output == "first"
+    assert result.metadata["chosen_index"] == 0
+    assert result.metadata["judge_ok"] is True  # judge call succeeded, parse failed
+
+
+@pytest.mark.asyncio
+async def test_mixture_one_worker_fails_others_continue(tmp_path: Path) -> None:
+    """A failing worker doesn't sink the mixture — judge sees only successes."""
+    llm, _ = _make_mixture_llm({
+        "ailiance-mistral": "alpha",
+        "ailiance-gemma4": "beta",  # this will be killed by fail_models
+        "judge-model": '{"choice": 0}',
+    }, fail_models=("ailiance-gemma4",))
+    orch = ChainOrchestrator(
+        policies_path=POLICIES_PATH,
+        reflector_path=REFLECTOR_PATH,
+        validator=StubValidator(),
+        llm_call=llm,
+        audit_dir=tmp_path,
+    )
+    orch._policies["test-mix-failover"] = {
+        "policy": "mixture",
+        "workers": ["ailiance-mistral", "ailiance-gemma4"],
+        "judge": "judge-model",
+    }
+    result = await orch.execute("X", domain="test-mix-failover", model="ailiance")
+
+    # Only one successful worker → no judge needed (short-circuit).
+    assert result.status == "ok"
+    assert result.final_output == "alpha"
+    assert result.metadata["judge_used"] is False
+    assert result.metadata["workers"] == ["ailiance-mistral"]
+
+
+@pytest.mark.asyncio
+async def test_mixture_no_workers_falls_back_to_direct(tmp_path: Path) -> None:
+    """Misconfigured mixture (no workers) degrades to DIRECT gracefully."""
+    llm, _ = _make_mixture_llm({"ailiance": "direct path output"})
+    orch = ChainOrchestrator(
+        policies_path=POLICIES_PATH,
+        reflector_path=REFLECTOR_PATH,
+        validator=StubValidator(),
+        llm_call=llm,
+        audit_dir=tmp_path,
+    )
+    orch._policies["test-mix-empty"] = {
+        "policy": "mixture",
+        "workers": [],
+        "judge": "j",
+    }
+    result = await orch.execute("X", domain="test-mix-empty", model="ailiance")
+
+    assert result.policy == ChainPolicy.DIRECT
+    assert result.final_output == "direct path output"
+
+
+@pytest.mark.asyncio
+async def test_mixture_audit_records_all_workers_and_judge(tmp_path: Path) -> None:
+    """Audit NDJSON contains one step per worker + one judge step."""
+    llm, _ = _make_mixture_llm({
+        "ailiance-mistral": "a",
+        "ailiance-gemma4": "b",
+        "ailiance-qwen": "c",
+        "j": '{"choice": 2}',
+    })
+    orch = ChainOrchestrator(
+        policies_path=POLICIES_PATH,
+        reflector_path=REFLECTOR_PATH,
+        validator=StubValidator(),
+        llm_call=llm,
+        audit_dir=tmp_path,
+    )
+    orch._policies["test-mix-audit"] = {
+        "policy": "mixture",
+        "workers": ["ailiance-mistral", "ailiance-gemma4", "ailiance-qwen"],
+        "judge": "j",
+    }
+    result = await orch.execute("X", domain="test-mix-audit", model="ailiance")
+
+    assert result.metadata["chosen_worker"] == "ailiance-qwen"
+    llm_steps = [s for s in result.steps if s.kind == "llm"]
+    judge_steps = [s for s in result.steps if s.kind == "reflector"]
+    assert len(llm_steps) == 3
+    assert len(judge_steps) == 1
