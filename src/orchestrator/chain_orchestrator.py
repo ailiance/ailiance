@@ -397,9 +397,9 @@ class ChainOrchestrator:
             step_idx += 1
 
             # 2. Validator.
+            v_started = time.time()
+            v_t0 = time.perf_counter()
             try:
-                v_started = time.time()
-                v_t0 = time.perf_counter()
                 vr = await self.validator.run(
                     last_output, domain=domain, tool=tool
                 )
@@ -412,6 +412,44 @@ class ChainOrchestrator:
                 )
                 validator_ok = False
                 break
+            except Exception as exc:
+                # Critic (MAJOR): only ValidatorUnavailable was caught
+                # before — ConnectionError / TimeoutError / JSON decode
+                # errors propagated as raw 500 with no audit step. Now
+                # we record a failed validator step and return
+                # status="error" so the caller sees a structured
+                # response and the NDJSON trace is complete.
+                log.warning(
+                    "validator raised %s, aborting chain %s",
+                    type(exc).__name__,
+                    chain_id,
+                )
+                steps.append(
+                    ChainStep(
+                        step_idx=step_idx,
+                        attempt=attempt,
+                        kind="validator",
+                        started_at=v_started,
+                        duration_s=time.perf_counter() - v_t0,
+                        payload={
+                            "tool": tool,
+                            "error": type(exc).__name__,
+                            "message": str(exc)[:512],
+                        },
+                        success=False,
+                    )
+                )
+                step_idx += 1
+                result = ChainResult(
+                    chain_id=chain_id,
+                    final_output=last_output,
+                    status="error",
+                    steps=steps,
+                    policy=ChainPolicy.DELIBERATE,
+                    domain=domain,
+                )
+                self._write_audit(result)
+                return result
 
             steps.append(
                 self._validator_step(

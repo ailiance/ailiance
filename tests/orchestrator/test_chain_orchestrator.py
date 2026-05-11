@@ -339,6 +339,52 @@ async def test_reflector_template_with_unknown_placeholder_does_not_crash(
     assert "stray=" in second_call[-1]["content"]
 
 
+class _CrashingValidator:
+    """Validator that raises a generic RuntimeError on every call."""
+
+    async def run(
+        self, output: str, *, domain: str, tool: str
+    ) -> ValidatorResult:
+        raise RuntimeError("docker daemon dead")
+
+
+@pytest.mark.asyncio
+async def test_deliberate_validator_crash_records_error_step(
+    tmp_path: Path,
+) -> None:
+    """Generic validator exception is recorded, not propagated.
+
+    Critic (MAJOR): only ValidatorUnavailable was caught — anything
+    else (ConnectionError, TimeoutError, json.JSONDecodeError) became
+    a raw 500 with no audit trace.
+    """
+    llm, _ = _make_llm(["draft"])
+    orch = ChainOrchestrator(
+        policies_path=POLICIES_PATH,
+        reflector_path=REFLECTOR_PATH,
+        validator=_CrashingValidator(),
+        llm_call=llm,
+        audit_dir=tmp_path,
+    )
+    result = await orch.execute(
+        "x",
+        domain="kicad-pcb",
+        model="ailiance",
+    )
+    assert result.status == "error"
+    assert result.steps[-1].kind == "validator"
+    assert result.steps[-1].success is False
+    assert result.steps[-1].payload["error"] == "RuntimeError"
+    assert "docker daemon dead" in result.steps[-1].payload["message"]
+    # NDJSON must be written even on error.
+    audit_file = tmp_path / "chains" / result.chain_id / "cells.ndjson"
+    assert audit_file.exists()
+    lines = audit_file.read_text().strip().splitlines()
+    assert len(lines) == len(result.steps)
+    for line in lines:
+        json.loads(line)
+
+
 def test_validator_protocol_runtime_check() -> None:
     """StubValidator and our scripted helper satisfy the Protocol."""
     assert isinstance(StubValidator(), Validator)

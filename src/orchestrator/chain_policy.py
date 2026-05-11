@@ -70,7 +70,7 @@ class ChainResult:
 
     chain_id: str
     final_output: str
-    status: Literal["ok", "exhausted", "direct"]
+    status: Literal["ok", "exhausted", "direct", "error"]
     steps: list[ChainStep]
     policy: ChainPolicy
     domain: str
