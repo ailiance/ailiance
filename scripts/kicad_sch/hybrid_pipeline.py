@@ -126,3 +126,76 @@ def run_cell(
             n_compile_ok / n_attempts if n_attempts else 0.0
         ),
     }
+
+
+def run_all(
+    *,
+    prompts: list[str],
+    base_models: list[str],
+    compilers: list[str],
+    seeds: list[int],
+    n_samples: int,
+    out_dir: Path,
+    audit_logger: AuditLogger,
+    summary_path: Path | None = None,
+    max_tokens: int = 2048,
+    temperature: float = 0.2,
+) -> dict:
+    """Iterate over the full grid of (base_model, compiler, prompt) cells.
+
+    Loads each base model exactly once and reuses it across all compilers
+    x prompts to amortise the MLX load cost.
+    """
+    cells: list[dict] = []
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    for base_model_key in base_models:
+        if base_model_key not in MODELS:
+            raise ValueError(f"unknown base model {base_model_key!r}")
+        model, tok = load_model_and_tokenizer(MODELS[base_model_key]["path"])
+        audit_logger.log(
+            "model_loaded",
+            base_model_key=base_model_key,
+            model_path=MODELS[base_model_key]["path"],
+        )
+        try:
+            for compiler in compilers:
+                for prompt in prompts:
+                    cell = run_cell(
+                        base_model_key=base_model_key,
+                        compiler=compiler,
+                        prompt=prompt,
+                        seeds=seeds,
+                        n_samples=n_samples,
+                        out_dir=out_dir,
+                        audit_logger=audit_logger,
+                        model_tok=(model, tok),
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                    )
+                    cells.append(cell)
+        finally:
+            unload_model()
+            audit_logger.log("model_unloaded", base_model_key=base_model_key)
+
+    n_attempts_total = sum(c["n_attempts"] for c in cells)
+    compile_ok_total = sum(
+        c["compile_ok_rate"] * c["n_attempts"] for c in cells
+    )
+    parse_ok_total = sum(
+        c["dsl_parse_ok_rate"] * c["n_attempts"] for c in cells
+    )
+    summary = {
+        "n_attempts_total": n_attempts_total,
+        "compile_ok_rate_overall": (
+            compile_ok_total / n_attempts_total if n_attempts_total else 0.0
+        ),
+        "dsl_parse_ok_rate_overall": (
+            parse_ok_total / n_attempts_total if n_attempts_total else 0.0
+        ),
+        "cells": cells,
+    }
+    if summary_path is not None:
+        Path(summary_path).write_text(json.dumps(summary, indent=2))
+    return summary

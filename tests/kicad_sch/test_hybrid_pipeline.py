@@ -107,3 +107,67 @@ def test_run_cell_aggregates_rates_across_seeds(tmp_path, monkeypatch):
     assert out["n_attempts"] == 4
     assert out["dsl_parse_ok_rate"] == 1.0
     assert out["compile_ok_rate"] == 0.5
+
+
+def test_run_all_iterates_full_grid(tmp_path, monkeypatch):
+    monkeypatch.setattr(hybrid_pipeline, "load_model_and_tokenizer", _stub_load)
+    monkeypatch.setattr(hybrid_pipeline, "generate_sample", _stub_generate)
+    monkeypatch.setattr(hybrid_pipeline, "unload_model", lambda: None)
+
+    from scripts.kicad_sch.compilers.result import CompileResult
+
+    class _OK:
+        def run(self, dsl, out_dir, **_):
+            return CompileResult(
+                dsl_parse_ok=True, compile_ok=True,
+                output_path=None, stderr="", wall_time_ms=1,
+            )
+
+    for c in hybrid_pipeline.COMPILERS:
+        monkeypatch.setitem(hybrid_pipeline.RUNNERS, c, _OK())
+
+    logger = AuditLogger(tmp_path / "a.ndjson")
+    summary = hybrid_pipeline.run_all(
+        prompts=["voltage divider"],
+        base_models=list(hybrid_pipeline.BASE_MODELS),
+        compilers=list(hybrid_pipeline.COMPILERS),
+        seeds=[42],
+        n_samples=1,
+        out_dir=tmp_path / "art",
+        audit_logger=logger,
+    )
+    # 5 models * 4 compilers * 1 prompt = 20 cells
+    assert len(summary["cells"]) == 20
+    assert summary["n_attempts_total"] == 20
+    assert summary["compile_ok_rate_overall"] == 1.0
+
+
+def test_run_all_writes_summary_json(tmp_path, monkeypatch):
+    monkeypatch.setattr(hybrid_pipeline, "load_model_and_tokenizer", _stub_load)
+    monkeypatch.setattr(hybrid_pipeline, "generate_sample", _stub_generate)
+    monkeypatch.setattr(hybrid_pipeline, "unload_model", lambda: None)
+
+    from scripts.kicad_sch.compilers.result import CompileResult
+
+    class _OK:
+        def run(self, dsl, out_dir, **_):
+            return CompileResult(dsl_parse_ok=True, compile_ok=True)
+
+    for c in hybrid_pipeline.COMPILERS:
+        monkeypatch.setitem(hybrid_pipeline.RUNNERS, c, _OK())
+
+    summary_path = tmp_path / "summary.json"
+    logger = AuditLogger(tmp_path / "a.ndjson")
+    hybrid_pipeline.run_all(
+        prompts=["led blinker"],
+        base_models=["qwen36"],
+        compilers=["skidl"],
+        seeds=[42],
+        n_samples=1,
+        out_dir=tmp_path / "art",
+        audit_logger=logger,
+        summary_path=summary_path,
+    )
+    payload = json.loads(summary_path.read_text())
+    assert payload["cells"][0]["base_model_key"] == "qwen36"
+    assert payload["cells"][0]["compiler"] == "skidl"
