@@ -255,10 +255,13 @@ map. Default behaviour is unchanged; clients that don't pass
 "extra_body": { "chain_policy": "deliberate", "include_audit": true }
 ```
 
-See [`docs/router-v0.3-deliberate.md`](docs/router-v0.3-deliberate.md)
-for the full API contract, audit-trail layout, and how to add a new
-domain or wire the iact-bench validators submodule. Mixture (v0.3.1)
-and Sequential (v0.4) are scaffolded but degrade to direct in v0.3.0.
+Real iact-bench validators are now active by default — the
+submodule is vendored at `vendored/iact-bench` (v0.2.0). Clients
+can opt out via `AILIANCE_VALIDATOR=stub` for local dev without
+docker. See [`docs/router-v0.3-deliberate.md`](docs/router-v0.3-deliberate.md)
+for the full API contract, audit-trail layout, validator-pin
+update workflow, and performance budget. Mixture (v0.3.1) and
+Sequential (v0.4) are scaffolded but degrade to direct in v0.3.0.
 
 ## Provenance & EU AI Act compliance
 

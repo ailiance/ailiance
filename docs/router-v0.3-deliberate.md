@@ -115,23 +115,47 @@ Authoring rule: each template should hint at the *class of fix* (DRC
 violation vs. parse error vs. linker), not just dump the stderr.
 Falls back to `_default` when a domain has no entry.
 
-## Validators not yet wired
+## Validators (production)
 
-The `IactBenchValidator` shim exists (`src/orchestrator/validators.py`)
-but the iact-bench submodule is not vendored in this repo. Steps to
-wire production validators:
+iact-bench v0.2.0 is vendored at `vendored/iact-bench`, pinned to
+SHA `0027a593106215e7143f2cf99402a1908d540921`. The gateway selects
+its validator at startup via `AILIANCE_VALIDATOR`:
 
-1. Add submodule:
-   `git submodule add ../iact-bench vendored/iact-bench`
-2. Pin to a known-good iact-bench commit and check in `.gitmodules`.
-3. Set `AILIANCE_IACT_BENCH_PATH=vendored/iact-bench/...` if the
-   default path doesn't fit your layout.
-4. In `make_gateway_app`, swap `app.state.orchestrator_validator =
-   StubValidator()` for `IactBenchValidator()`.
+- `auto` (default) — try `IactBenchValidator()`; on any import or
+  registry-load failure, fall back to `StubValidator()` and log a
+  warning. The orchestrator still degrades to `direct` for any tool
+  not present in the registry, so a missing validator never 500s.
+- `iact_bench` — force the real adapter; raises at startup if the
+  submodule is not initialised.
+- `stub` — local dev / CI without docker.
 
-Until that's done, the orchestrator silently degrades any
-`deliberate` request to `direct` and logs a warning, so a missing
-submodule never 500s a caller.
+### Updating the validator pin
+
+```bash
+cd vendored/iact-bench
+git fetch
+git checkout <new-sha>
+cd ../..
+git add vendored/iact-bench
+git commit -m "chore: bump iact-bench to <short-sha>"
+```
+
+### Local dev without docker
+
+```bash
+export AILIANCE_VALIDATOR=stub
+uv run uvicorn src.gateway.server:app
+```
+
+### Performance budget
+
+`chain_policy=deliberate` requests now spawn 1-N validator
+containers (~1-5 s each, sandboxed `--network=none --read-only`).
+Keep `max_retries` low for hot paths and treat `deliberate` as
+opt-in (it already is — only requests that set
+`extra_body.chain_policy` enter the chain orchestrator). Domains
+where no validator exists in iact-bench v0.2.0 (e.g. `python`) are
+mapped to `direct` in `configs/chain_policies.yaml`.
 
 ## What this does **not** do (v0.3.0 scope)
 
