@@ -47,18 +47,29 @@ def load_rows(path: Path) -> list[dict]:
     return json.loads(path.read_text())
 
 
-def load_validator(path: Path) -> dict[tuple[str, str], float]:
-    """Load validator JSON -> {(model_key, domain): pass_rate}."""
+def load_validator(path: Path):
+    """Load validator JSON.
+
+    Returns (pass_rate_idx, axes_idx) where:
+      pass_rate_idx: {(model_key, domain): pass_rate}
+      axes_idx:     {(model_key, domain): {axis_name: float, ...}}
+    """
     data = json.loads(path.read_text())
-    idx = {}
+    pr_idx: dict[tuple[str, str], float] = {}
+    ax_idx: dict[tuple[str, str], dict[str, float]] = {}
     for r in data:
         mk = r.get("model_key")
         dom = r.get("domain")
-        pr = r.get("pass_rate")
-        if mk is None or dom is None or pr is None:
+        if mk is None or dom is None:
             continue
-        idx[(mk, dom)] = float(pr)
-    return idx
+        if r.get("pass_rate") is not None:
+            pr_idx[(mk, dom)] = float(r["pass_rate"])
+        axes = {k[len("axis_"):]: float(v)
+                for k, v in r.items()
+                if k.startswith("axis_") and v is not None}
+        if axes:
+            ax_idx[(mk, dom)] = axes
+    return pr_idx, ax_idx
 
 
 def _has_enough_samples(c: dict) -> bool:
@@ -82,7 +93,18 @@ def main():
     parser.add_argument("--validator-min-cells", type=int, default=5,
                         help="minimum cells with validator data to surface overlay "
                              "(default: 5)")
+    parser.add_argument(
+        "--metric-axes", default=None,
+        help="Comma-sep axis names to surface as extra MD columns "
+             "(reads axis_<name> fields from --validator-tuned JSON). "
+             "Example: parse_ok,erc_clean,sch_render,drc_clean,sem_equiv",
+    )
     args = parser.parse_args()
+
+    metric_axes: list[str] = []
+    if args.metric_axes:
+        metric_axes = [a.strip() for a in args.metric_axes.split(",")
+                       if a.strip()]
 
     base_path = Path(args.base) if args.base else latest("perplexity_base_*.json")
     tuned_path = Path(args.tuned) if args.tuned else latest("perplexity_v1-only_*.json")
@@ -98,17 +120,19 @@ def main():
 
     val_base_idx: dict[tuple[str, str], float] = {}
     val_tuned_idx: dict[tuple[str, str], float] = {}
+    ax_base_idx: dict[tuple[str, str], dict[str, float]] = {}
+    ax_tuned_idx: dict[tuple[str, str], dict[str, float]] = {}
     if args.validator_base:
         vb_path = Path(args.validator_base)
         if not vb_path.exists():
             sys.exit(f"--validator-base not found: {vb_path}")
-        val_base_idx = load_validator(vb_path)
+        val_base_idx, ax_base_idx = load_validator(vb_path)
         print(f"Validator base:  {vb_path} ({len(val_base_idx)} cells)")
     if args.validator_tuned:
         vt_path = Path(args.validator_tuned)
         if not vt_path.exists():
             sys.exit(f"--validator-tuned not found: {vt_path}")
-        val_tuned_idx = load_validator(vt_path)
+        val_tuned_idx, ax_tuned_idx = load_validator(vt_path)
         print(f"Validator tuned: {vt_path} ({len(val_tuned_idx)} cells)")
 
     # Index base by (model_key, domain)
@@ -146,6 +170,13 @@ def main():
                 row["validator_lift"] = round((vt - vb) * 100, 2)
             else:
                 row["validator_lift"] = None
+        if metric_axes:
+            base_axes = ax_base_idx.get(key, {})
+            tuned_axes = ax_tuned_idx.get(key, {})
+            for axis in metric_axes:
+                # Prefer tuned (post-training) for headline; fallback to base.
+                v = tuned_axes.get(axis, base_axes.get(axis))
+                row[f"axis_{axis}"] = round(v, 4) if v is not None else None
         rows.append(row)
 
     # Output JSON
@@ -211,6 +242,12 @@ def main():
                 "| base_n | tuned_n |"
             )
             lines.append("|---|---|---:|---:|---:|---:|---:|---:|")
+        if metric_axes:
+            axis_header = " " + " | ".join(metric_axes) + " |"
+            axis_sep = "---:|" * len(metric_axes)
+            # Append to last header line + separator line.
+            lines[-2] = lines[-2].rstrip("|") + " | " + axis_header
+            lines[-1] = lines[-1].rstrip("|") + "|" + axis_sep
         for c in cells:
             flag = "" if _has_enough_samples(c) else f"n<{MIN_SAMPLES_FOR_MEDIAN}"
             base_ppl = c["base_ppl"] if c["base_ppl"] is not None else "-"
@@ -231,6 +268,10 @@ def main():
                 tv_s = tv if tv is not None else "-"
                 vl_s = vl if vl is not None else "-"
                 row_str += f" {bv_s} | {tv_s} | {vl_s} |"
+            if metric_axes:
+                for axis in metric_axes:
+                    v = c.get(f"axis_{axis}")
+                    row_str += f" {v if v is not None else '-'} |"
             lines.append(row_str)
         if joined_eligible:
             log_lifts = [c["lift_log"] for c in joined_eligible]
