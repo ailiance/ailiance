@@ -66,6 +66,10 @@ class ChatCompletionRequest(BaseModel, extra="ignore"):
     tool_choice: str | dict[str, Any] | None = None
     parallel_tool_calls: bool | None = None
     stream_options: dict[str, Any] | None = None
+    # Router v0.3 opt-in. When set, the gateway dispatches through
+    # the chain orchestrator. Recognised keys: chain_policy (str),
+    # max_retries (int), include_audit (bool). Unknown keys ignored.
+    extra_body: dict[str, Any] | None = None
 
 
 class Choice(BaseModel):

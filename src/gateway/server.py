@@ -14,6 +14,9 @@ from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from prometheus_client import CollectorRegistry, Counter, Histogram, generate_latest
 
+from src.orchestrator.chain_orchestrator import ChainOrchestrator
+from src.orchestrator.chain_policy import ChainPolicy
+from src.orchestrator.validators import StubValidator
 from src.router.domain_map import ALL_DOMAINS, get_worker_for_domain
 from src.worker.schemas import ChatCompletionRequest
 
@@ -190,6 +193,73 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
     start_time = time.time()
     http_client = httpx.AsyncClient(timeout=600.0)
 
+    # v0.3 chain orchestrator — built lazily on first opt-in request so
+    # the gateway boots even when configs are missing. Validator
+    # defaults to StubValidator; production wiring swaps in
+    # IactBenchValidator once the submodule is vendored.
+    app.state.orchestrator = None
+    app.state.orchestrator_validator = StubValidator()
+
+    def _build_orchestrator() -> ChainOrchestrator | None:
+        if app.state.orchestrator is not None:
+            return app.state.orchestrator
+        policies = Path("configs/chain_policies.yaml")
+        reflector = Path("configs/reflector_prompts.yaml")
+        if not policies.exists() or not reflector.exists():
+            log.warning(
+                "chain orchestrator configs missing (policies=%s "
+                "reflector=%s); chain_policy opt-in disabled",
+                policies.exists(),
+                reflector.exists(),
+            )
+            return None
+        audit_dir = Path(os.environ.get("AILIANCE_AUDIT_DIR", "audit"))
+
+        async def llm_call(messages, model: str) -> str:
+            payload = {
+                "model": model,
+                "messages": messages,
+                "max_tokens": 2048,
+                "temperature": 0.7,
+                "stream": False,
+            }
+            # Reuse the same forward-rewrite logic so orchestrator-issued
+            # calls hit the same upstream model id as direct calls.
+            forced = MODEL_FORCE_MAP.get(model, HEALTH_FALLBACK_PORT)
+            url = WORKER_URLS[_gate_port(forced)]
+            override = ALIAS_MODEL_REWRITES.get(model) or (
+                WORKER_FORWARD_OVERRIDES.get(forced)
+            )
+            hdrs = {}
+            if override:
+                if "model" in override:
+                    payload["model"] = override["model"]
+                auth_env = override.get("auth_env")
+                if auth_env:
+                    key = os.environ.get(auth_env, "")
+                    if key:
+                        hdrs["Authorization"] = f"Bearer {key}"
+            r = await http_client.post(
+                f"{url}/v1/chat/completions",
+                json=payload,
+                headers=hdrs,
+            )
+            data = r.json()
+            return (
+                data.get("choices", [{}])[0]
+                .get("message", {})
+                .get("content", "")
+            )
+
+        app.state.orchestrator = ChainOrchestrator(
+            policies_path=policies,
+            reflector_path=reflector,
+            validator=app.state.orchestrator_validator,
+            llm_call=llm_call,
+            audit_dir=audit_dir,
+        )
+        return app.state.orchestrator
+
     @app.on_event("startup")
     async def _start_health_probe() -> None:
         import asyncio as _asyncio
@@ -328,12 +398,127 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             domain = "general"
             worker_port = _gate_port(9304)
 
+        # Router v0.3 opt-in: dispatch through the chain orchestrator
+        # when extra_body.chain_policy selects a non-direct policy. Keeps
+        # the legacy 1-shot proxy path intact for clients that don't pass
+        # extra_body, so v0.3.0 ships as a pure additive change.
+        extra = req.extra_body or {}
+        chain_policy_raw = extra.get("chain_policy")
+        if chain_policy_raw and chain_policy_raw != ChainPolicy.DIRECT.value:
+            if req.stream:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "type": "invalid_request",
+                        "message": (
+                            "stream=true is not supported with "
+                            "chain_policy != direct in v0.3.0"
+                        ),
+                    },
+                )
+            try:
+                policy = ChainPolicy(chain_policy_raw)
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "type": "invalid_request",
+                        "message": (
+                            f"unknown chain_policy {chain_policy_raw!r}; "
+                            f"valid: {[p.value for p in ChainPolicy]}"
+                        ),
+                    },
+                ) from exc
+
+            orch = _build_orchestrator()
+            if orch is None:
+                raise HTTPException(
+                    status_code=503,
+                    detail={
+                        "type": "orchestrator_unavailable",
+                        "message": "chain configs missing on server",
+                    },
+                )
+
+            user_msg = next(
+                (m.content for m in reversed(req.messages) if m.role == "user"),
+                "",
+            ) or ""
+            include_audit = bool(extra.get("include_audit", False))
+            # extra_body.max_retries is documented in the API contract;
+            # forward it through so callers can override the per-domain
+            # policy default for DELIBERATE chains. None = honour YAML.
+            raw_retries = extra.get("max_retries")
+            try:
+                max_retries_override: int | None = (
+                    int(raw_retries) if raw_retries is not None else None
+                )
+            except (TypeError, ValueError):
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "type": "invalid_request",
+                        "message": (
+                            "extra_body.max_retries must be an integer"
+                        ),
+                    },
+                ) from None
+            chain_result = await orch.execute(
+                user_msg,
+                domain=domain or "_default",
+                model=req.model,
+                override_policy=policy,
+                max_retries=max_retries_override,
+            )
+            requests_total.labels(model=req.model, status="200").inc()
+            response: dict = {
+                "id": f"chatcmpl-{chain_result.chain_id[:12]}",
+                "object": "chat.completion",
+                "created": int(time.time()),
+                "model": req.model,
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {
+                            "role": "assistant",
+                            "content": chain_result.final_output,
+                        },
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0,
+                    "total_tokens": 0,
+                },
+                "ailiance_chain": {
+                    "chain_id": chain_result.chain_id,
+                    "policy": chain_result.policy.value,
+                    "status": chain_result.status,
+                    "domain": chain_result.domain,
+                },
+            }
+            if include_audit:
+                response["audit_trace"] = [
+                    {
+                        "kind": s.kind,
+                        "attempt": s.attempt,
+                        "success": s.success,
+                        "exit_code": s.payload.get("exit_code"),
+                        "duration_s": s.duration_s,
+                    }
+                    for s in chain_result.steps
+                ]
+            return response
+
         worker_url = WORKER_URLS[worker_port]
         headers = {"X-Lora-Domain": domain}
         # exclude_none so optional ChatMessage fields (tool_calls, name,
         # tool_call_id) don't reach llama.cpp workers as `null` and trip
         # their JSON schema validation.
         body = req.model_dump(exclude_none=True)
+        # extra_body is gateway-only metadata — strip before forwarding.
+        body.pop("extra_body", None)
 
         # Forward rewrites: per-alias takes precedence over per-port. Lets a
         # single backend port host multiple ailiance-* aliases each rewritten

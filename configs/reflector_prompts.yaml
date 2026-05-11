@@ -1,0 +1,60 @@
+# ailiance router v0.3 — reflector prompt templates per domain.
+#
+# When a Deliberation chain attempt fails validation, the orchestrator
+# reads the entry keyed by domain (or ``_default`` if absent) and
+# substitutes:
+#   {stderr}           — head of the validator stderr (truncated 4 KB).
+#   {previous_output}  — the LLM's last attempt.
+#
+# Each template hints at the *class* of fix expected (DRC vs. parse
+# vs. linker), not just dumps the stderr.
+
+prompts:
+  kicad-pcb: |
+    You produced a `.kicad_pcb` file that fails DRC. The validator
+    reported these violations:
+
+    {stderr}
+
+    Your previous attempt was:
+    ```
+    {previous_output}
+    ```
+
+    Fix the DRC violations and emit the corrected `.kicad_pcb`. Keep
+    nets and component placements where possible.
+
+  ngspice-converge: |
+    Your SPICE netlist failed to converge or referenced undefined
+    nodes:
+
+    {stderr}
+
+    Previous netlist:
+    ```
+    {previous_output}
+    ```
+
+    Common fixes: add `.options abstol=1n reltol=1m`, ensure every
+    voltage source is referenced to a defined node, check that every
+    node has at least one DC path to ground.
+
+  compile-shell: |
+    Your shell script fails `bash -n` or `shellcheck -S error`:
+
+    {stderr}
+
+    Fix the syntax/quoting issues. Re-emit the full script.
+
+  _default: |
+    Your previous attempt failed validation. The validator reported:
+
+    {stderr}
+
+    Your previous output was:
+    ```
+    {previous_output}
+    ```
+
+    Identify the root cause from the stderr, fix it, and re-emit the
+    corrected output.

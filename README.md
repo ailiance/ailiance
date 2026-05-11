@@ -244,6 +244,22 @@ flowchart LR
 
 ⚠️ **Quarantined adapters** (verified 2026-05-05): EuroLLM `chat-fr` and `traduction-tech` produce `"user user user…"` loops from a chat-template leak. The worker silently falls back to the base EuroLLM for those domains — see `MLXWorkerRuntime.QUARANTINED_DOMAINS`. Re-train pending.
 
+### Router v0.3 — Deliberation chain (preview)
+
+Opt-in per-request via OpenAI `extra_body`. The gateway can wrap a
+chat completion in a validator+retry loop driven by a domain-policy
+map. Default behaviour is unchanged; clients that don't pass
+`extra_body` keep the legacy 1-shot proxy path.
+
+```jsonc
+"extra_body": { "chain_policy": "deliberate", "include_audit": true }
+```
+
+See [`docs/router-v0.3-deliberate.md`](docs/router-v0.3-deliberate.md)
+for the full API contract, audit-trail layout, and how to add a new
+domain or wire the iact-bench validators submodule. Mixture (v0.3.1)
+and Sequential (v0.4) are scaffolded but degrade to direct in v0.3.0.
+
 ## Provenance & EU AI Act compliance
 
 Every served weight has a **provenance JSON** under [`docs/provenance/`](docs/provenance/), capturing per Annex IV §1(c):

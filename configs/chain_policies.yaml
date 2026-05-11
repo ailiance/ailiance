@@ -1,0 +1,59 @@
+# ailiance router v0.3 — domain → chain policy map.
+#
+# Each entry binds a classifier domain to one of:
+#   - direct:     1-shot, no validator (current behaviour).
+#   - validate:   run validator once, surface result.
+#   - deliberate: run validator; on failure, retry with reflector
+#                 prompt + stderr feedback, up to ``max_retries`` times.
+#   - mixture:    fan-out + judge aggregator. v0.3.1 — falls back to
+#                 direct in v0.3.0.
+#   - sequential: planner + solver chain. v0.4 — falls back to direct.
+#
+# Tools reference validator names exposed by the iact-bench registry
+# (see configs/domain_validators.yaml in the iact-bench submodule).
+#
+# A wildcard ``_default`` covers any domain the classifier emits that
+# is not yet enumerated below.
+
+policies:
+  # Verified by sandbox tool → Deliberate.
+  kicad-pcb:        { policy: deliberate, tool: kicad-drc,         max_retries: 2 }
+  kicad-dsl:        { policy: deliberate, tool: atopile-build,     max_retries: 2 }
+  cpp:              { policy: deliberate, tool: compile-cpp,       max_retries: 2 }
+  embedded:         { policy: deliberate, tool: compile-arm-gcc,   max_retries: 2 }
+  python:           { policy: deliberate, tool: pass-rate-execute, max_retries: 1 }
+  spice-sim:        { policy: deliberate, tool: ngspice-converge,  max_retries: 2 }
+  freecad:          { policy: deliberate, tool: freecad-script,    max_retries: 1 }
+  shell:            { policy: deliberate, tool: compile-shell,     max_retries: 1 }
+  typescript:       { policy: deliberate, tool: compile-typescript, max_retries: 1 }
+
+  # Validate-only — surface lint/parse result, no retry.
+  sql:              { policy: validate, tool: parse-sql }
+  yaml-json:        { policy: validate, tool: compile-yaml-json }
+  html-css:         { policy: validate, tool: parse-html-css }
+
+  # No deterministic sandbox tool → Mixture (v0.3.1; falls back to direct now).
+  chat-fr:          { policy: mixture, workers: [ailiance-mistral, ailiance-gemma4],
+                      judge: ailiance-mistral }
+  security-fenrir:  { policy: mixture, workers: [ailiance-mistral, ailiance-qwen],
+                      judge: ailiance-mistral }
+
+  # Direct — domain has no validator and no obvious cross-judge gain.
+  docker-devops:    { policy: direct }
+  emc-dsp-power:    { policy: direct }
+  iot:              { policy: direct }
+  llm-ops:          { policy: direct }
+  llm-orch:         { policy: direct }
+  ml-training:      { policy: direct }
+  music-audio:      { policy: direct }
+
+  # Math: exact-match grading, no chain needed.
+  math-gsm8k:       { policy: direct }
+  math-reasoning:   { policy: direct }
+
+  # Translation: BLEU metric, no chain.
+  multilingual-eu:  { policy: direct }
+  traduction-tech:  { policy: direct }
+
+  # Wildcard for unmapped classifier outputs.
+  _default:         { policy: direct }
