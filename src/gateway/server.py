@@ -134,7 +134,7 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     "ailiance-ministral": {"model": "mlx-community/Ministral-3-14B-Instruct-2512-4bit"},
     "ailiance-ministral-reasoning": {"model": "mlx-community/Ministral-3-14B-Reasoning-2512-4bit"},
     # kxkm-ai llama-server :8003 (via tunnel) - alias is granite-30b, bearer key.
-    "ailiance-granite": {"model": "granite-30b", "auth_env": "KXKM_QWEN_KEY"},
+    "ailiance-granite": {"model": "granite-30b", "auth_env": "AILIANCE_QWEN_KEY"},
     # studio mlx_lm.server :9301 - rewrite to on-disk path the server has loaded
     # (mlx_lm.server resolves an unknown model field as an HF repo id, causing 404 + 60s timeout).
     "ailiance-mistral-medium": {"model": "/Users/clems/KIKI-Mac_tunner/models/Mistral-Medium-3.5-128B-MLX-Q8"},
@@ -160,7 +160,7 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
 WORKER_FORWARD_OVERRIDES: dict[int, dict[str, str]] = {
     8002: {
         "model": "qwen-32b-awq",  # the alias llama-server expects
-        "auth_env": "KXKM_QWEN_KEY",
+        "auth_env": "AILIANCE_QWEN_KEY",
     },
     # mlx_lm.server resolves an unknown `model` field as a HF repo and tries to
     # download it; rewrite to the on-disk path the server already has loaded.
