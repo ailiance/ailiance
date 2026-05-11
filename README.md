@@ -16,6 +16,17 @@
 
 ---
 
+## Where to find related artifacts
+
+- **Live demo & cockpit**: https://www.ailiance.fr
+- **Status dashboard**: https://home.saillant.cc
+- **HuggingFace IP source-of-truth**: https://huggingface.co/electron-rare
+- **HuggingFace product distribution**: https://huggingface.co/Ailiance-fr
+- **Audit-grade bench validators**: https://github.com/electron-rare/iact-bench
+- **Benchmark results**: https://github.com/electron-rare/electron-bench
+
+Ailiance is the EU-sovereign LLM serving stack of [LElectron Rare](https://www.electron-rare.fr), a French SME. Multi-model, audit-grade, EU AI Act Art. 13/15/52/53 transparency.
+
 ## What it is
 
 A **multi-model LLM serving pipeline** running on a home cluster — three EU/CH foundation models, two complementary base-model workers, all behind a single OpenAI-compatible endpoint. The router decides which model answers, the gateway forwards, the worker streams. No cloud, no telemetry, full audit trail.

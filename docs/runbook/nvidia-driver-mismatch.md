@@ -115,5 +115,5 @@ This VRAM saturation is **intentional** — the ailiance gateway's PR #49 routes
 ## Cross-references
 
 - ailiance gateway state: `reference_eu_kiki_gateway_2026_05_10.md` (memory)
-- PR #49 mascarade routing: `L-electron-Rare/ailiance#49`
+- PR #49 mascarade routing: `ailiance/ailiance#49`
 - kxkm-ai inventory: `project_kxkm23_models_inventory_2026_04_26.md`
