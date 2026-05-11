@@ -105,11 +105,11 @@ MODEL_FORCE_MAP = {
     "ailiance-gemma2": 8502,  # Gemma-4-E2B-it MLX 4-bit on macM1 (lighter than E4B)
     # Devstral-Small-2-24B-MLX-4bit on Studio (:9316 base, :9317-9321 LoRA variants).
     "ailiance-devstral-base": 9316,
-    "ailiance-python": 9317,
-    "ailiance-cpp": 9318,
-    "ailiance-rust-emb": 9319,
-    "ailiance-html": 9320,
-    "ailiance-ml-training": 9321,
+    "ailiance-python": 9330,
+    "ailiance-cpp": 9330,
+    "ailiance-rust-emb": 9330,
+    "ailiance-html": 9330,
+    "ailiance-ml-training": 9330,
     # Tower Ollama :11434 via tunnel :8004 — 11 domain-specialized
     # mascarade fine-tunes (Qwen3 4B Q4_K_M base, compiled as Ollama
     # Modelfile from KXKM-AI .safetensors LoRAs since 2026-04-12).
@@ -137,6 +137,9 @@ MODEL_FORCE_MAP = {
     "ailiance-apertus-spice-sim": 9322,
     "ailiance-apertus-emc-dsp-power": 9322,
     "ailiance-apertus-embedded": 9322,
+    # Studio flagship 2026-05-12 — Qwen3-235B-A22B-Instruct MoE 4-bit.
+    "ailiance-flagship": 9328,
+    "ailiance-qwen-235b": 9328,
     # Studio S3 additions 2026-05-12 — 5 MLX 4-bit workers on dedicated ports.
     "ailiance-reasoning-r1": 9323,  # DeepSeek-R1-Distill-Qwen-32B 4-bit
     "ailiance-llama": 9324,  # Llama-3.3-70B-Instruct 4-bit
@@ -186,11 +189,11 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     # Devstral-Small-2-24B MLX 4-bit on Studio. Server resolves model field
     # as on-disk path or HF repo id; pass the path the server has loaded.
     "ailiance-devstral-base": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
-    "ailiance-python": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
-    "ailiance-cpp": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
-    "ailiance-rust-emb": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
-    "ailiance-html": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
-    "ailiance-ml-training": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
+    "ailiance-python": {"model": "devstral-python"},
+    "ailiance-cpp": {"model": "devstral-cpp"},
+    "ailiance-rust-emb": {"model": "devstral-rust-embedded"},
+    "ailiance-html": {"model": "devstral-html-css"},
+    "ailiance-ml-training": {"model": "devstral-ml-training"},
     # Studio multi-LoRA Apertus 70B custom server :9322. One base model in
     # VRAM, adapters swap per request via mlx_lm.tuner.utils.load_adapters
     # under an asyncio.Lock. Each alias rewrites the `model` body field to
@@ -204,6 +207,13 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     "ailiance-apertus-spice-sim": {"model": "apertus-spice-sim"},
     "ailiance-apertus-emc-dsp-power": {"model": "apertus-emc-dsp-power-curriculum"},
     "ailiance-apertus-embedded": {"model": "apertus-embedded"},
+    # Studio flagship 2026-05-12 — Qwen3-235B-A22B-Instruct MoE 4-bit (~120GB VRAM).
+    "ailiance-flagship": {
+        "model": "/Users/clems/KIKI-Mac_tunner/models/Qwen3-235B-A22B-Instruct-MLX-4bit",
+    },
+    "ailiance-qwen-235b": {
+        "model": "/Users/clems/KIKI-Mac_tunner/models/Qwen3-235B-A22B-Instruct-MLX-4bit",
+    },
     # Studio S3 additions 2026-05-12 — mlx_lm.server expects on-disk path.
     "ailiance-reasoning-r1": {
         "model": "/Users/clems/KIKI-Mac_tunner/models/DeepSeek-R1-Distill-Qwen-32B-MLX-4bit",
@@ -531,6 +541,9 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 {"id": "ailiance-apertus-spice-sim", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-apertus-emc-dsp-power", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-apertus-embedded", "object": "model", "owned_by": "ailiance"},
+                # Studio flagship 2026-05-12 — Qwen3-235B-A22B MoE 4-bit
+                {"id": "ailiance-flagship", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-qwen-235b", "object": "model", "owned_by": "ailiance"},
                 # Studio S3 additions 2026-05-12 — DeepSeek + Llama + Pixtral + Mistral-Small + Qwen3-Coder
                 {"id": "ailiance-reasoning-r1", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-llama", "object": "model", "owned_by": "ailiance"},
