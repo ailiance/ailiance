@@ -7,8 +7,8 @@ def test_domain_map_lookup():
 
     assert get_worker_for_domain("python") == 9302
     assert get_worker_for_domain("electronics-hw") == 9301
-    # chat-fr fallbacks to Gemma (:9304) while EuroLLM :9303 is down
-    assert get_worker_for_domain("chat-fr") == 9304
+    # chat-fr routes to EuroLLM (:9303) — Studio worker is up since 2026-05-11 08:50
+    assert get_worker_for_domain("chat-fr") == 9303
     assert get_worker_for_domain("unknown-domain") is None
 
 
@@ -110,26 +110,28 @@ def test_confidence_gating_falls_back_to_apertus():
 
 
 
-def test_eurollm_fallback_to_gemma_while_down():
-    """EuroLLM :9303 (Studio) is DOWN as of 2026-05-11.
-    Until Studio plist is bootstrapped via GUI, chat-fr / traduction-tech /
-    redaction-multilingue / localisation-doc must hit Gemma (:9304) to
-    avoid 502 timeouts on common French greetings.
+def test_eurollm_domains_route_to_eurollm_when_live():
+    """EuroLLM :9303 (Studio) was restored 2026-05-11 08:50 CEST after
+    the morning bench freed it. The 4 EUROLLM_DOMAINS (chat-fr,
+    traduction-tech, redaction-multilingue, localisation-doc) should now
+    route to EuroLLM 22B again instead of falling back to Gemma 4B.
 
-    Flip EUROLLM_LIVE=True in domain_map.py to revert."""
+    Flip EUROLLM_LIVE=False in domain_map.py if :9303 dies again — the
+    sister assertion below will fail loudly and remind you to invert
+    this test back to the GEMMA_PORT expectation."""
     from src.router.domain_map import (
         EUROLLM_DOMAINS,
         EUROLLM_LIVE,
-        GEMMA_PORT,
+        EUROLLM_PORT,
         get_worker_for_domain,
     )
 
-    assert EUROLLM_LIVE is False, (
-        "EUROLLM_LIVE=True means Studio :9303 is back up — "
-        "this test must then be inverted to expect EUROLLM_PORT."
+    assert EUROLLM_LIVE is True, (
+        "EUROLLM_LIVE=False means Studio :9303 is down again — "
+        "this test must then be inverted to expect GEMMA_PORT."
     )
     for d in EUROLLM_DOMAINS:
-        assert get_worker_for_domain(d) == GEMMA_PORT, (
-            f"{d!r} must fallback to Gemma while EuroLLM down, "
+        assert get_worker_for_domain(d) == EUROLLM_PORT, (
+            f"{d!r} must route to EuroLLM when live, "
             f"got {get_worker_for_domain(d)}"
         )
