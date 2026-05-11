@@ -105,11 +105,11 @@ MODEL_FORCE_MAP = {
     "ailiance-gemma2": 8502,  # Gemma-4-E2B-it MLX 4-bit on macM1 (lighter than E4B)
     # Devstral-Small-2-24B-MLX-4bit on Studio (:9316 base, :9317-9321 LoRA variants).
     "ailiance-devstral-base": 9316,
-    "ailiance-python": 9317,
-    "ailiance-cpp": 9318,
-    "ailiance-rust-emb": 9319,
-    "ailiance-html": 9320,
-    "ailiance-ml-training": 9321,
+    "ailiance-python": 9330,
+    "ailiance-cpp": 9330,
+    "ailiance-rust-emb": 9330,
+    "ailiance-html": 9330,
+    "ailiance-ml-training": 9330,
     # Tower Ollama :11434 via tunnel :8004 — 11 domain-specialized
     # mascarade fine-tunes (Qwen3 4B Q4_K_M base, compiled as Ollama
     # Modelfile from KXKM-AI .safetensors LoRAs since 2026-04-12).
@@ -183,11 +183,11 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     # Devstral-Small-2-24B MLX 4-bit on Studio. Server resolves model field
     # as on-disk path or HF repo id; pass the path the server has loaded.
     "ailiance-devstral-base": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
-    "ailiance-python": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
-    "ailiance-cpp": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
-    "ailiance-rust-emb": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
-    "ailiance-html": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
-    "ailiance-ml-training": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
+    "ailiance-python": {"model": "devstral-python"},
+    "ailiance-cpp": {"model": "devstral-cpp"},
+    "ailiance-rust-emb": {"model": "devstral-rust-embedded"},
+    "ailiance-html": {"model": "devstral-html-css"},
+    "ailiance-ml-training": {"model": "devstral-ml-training"},
     # Studio multi-LoRA Apertus 70B custom server :9322. One base model in
     # VRAM, adapters swap per request via mlx_lm.tuner.utils.load_adapters
     # under an asyncio.Lock. Each alias rewrites the `model` body field to
