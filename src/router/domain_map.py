@@ -1,20 +1,30 @@
 # src/router/domain_map.py
 """Static mapping of domains to worker ports.
 
-Apertus    (:9301) — hardware, EU normative, math, music
-Devstral   (:9302) — code generation
-EuroLLM    (:9303) — multilingual EU
-Gemma      (:9304) — quick / fallback / generalist short
-Qwen3-Next (:8002) — reasoning (80B sparse MoE, served via tunnel to kxkm-ai)
-Mascarade  (:8004) — domain LoRA specialists via Tower Ollama tunnel
-eu-kiki    (:8502) — Gemma-4 E4B + ailiance curriculum LoRA on macm1
+Apertus       (:9301) — hardware, EU normative, math, music
+Qwen3-Coder   (:9327) — code generation (Studio MLX, MoE 4-bit; replaces
+                        Devstral :9302 decommissioned 2026-05-10)
+EuroLLM       (:9303) — multilingual EU
+Gemma         (:9304) — quick / fallback / generalist short
+DeepSeek-R1   (:9323) — reasoning (Studio MLX 32B 4-bit local; replaces
+                        Qwen3-Next :8002 kxkm-ai tunnel, unreliable)
+Mascarade     (:8004) — domain LoRA specialists via Tower Ollama tunnel
+eu-kiki       (:8502) — Gemma-4 E4B + ailiance curriculum LoRA on macm1
+
+Studio MLX worker ports declared but not yet wired into DOMAIN_TO_WORKER
+(reachable via direct model alias only — see ALIAS_MODEL_REWRITES in
+server.py): FLAGSHIP_PORT (9328), MIXTRAL_PORT (9329), LLAMA_PORT (9324),
+MISTRAL_SMALL_PORT (9326), PIXTRAL_PORT (9325).
 """
 
 APERTUS_PORT = 9301
-DEVSTRAL_PORT = 9302
+# Devstral :9302 decommissioned 2026-05-10 — kept as named constant for
+# audit/grep, but no domain maps here. DEVSTRAL_DOMAINS now route to
+# QWEN_CODER_PORT (Studio Qwen3-Coder-30B MoE 4-bit).
+DEVSTRAL_PORT = 9302  # DEAD — do not route to this port
 EUROLLM_PORT = 9303
 GEMMA_PORT = 9304
-QWEN_PORT = 8002
+QWEN_PORT = 8002  # Qwen3-Next 80B (kxkm-ai tunnel) — unreliable, see below
 MASCARADE_PORT = 8004
 # macm1 mlx_lm.server (alias `ailiance-gemma4`): Gemma-4 E4B + eu-kiki
 # ailiance curriculum LoRA. Bench ailiance/ailiance-bench Phase 6
@@ -22,11 +32,19 @@ MASCARADE_PORT = 8004
 # kicad-dsl +55 pts, kicad-pcb +42 pts vs prior fallbacks.
 AILIANCE_MACM1_PORT = 8502
 
-# `reasoning` moved off Apertus so the 80B sparse MoE handles complex
-# multi-step reasoning — strictly more capable on benchmarks like GSM8K /
-# AIME / MMLU-Pro reasoning subsets at the cost of ~3x lower throughput
-# (CPU-side MoE expert offload). Math stays on Apertus (faster, sufficient
-# for routine maths).
+# Studio MLX workers (post-2026-05-12). Live on MacStudio M3 Ultra,
+# served by mlx_lm.server. All 4-bit quantized.
+QWEN_CODER_PORT = 9327       # Qwen3-Coder-30B-A3B MoE 4-bit
+DEEPSEEK_R1_PORT = 9323      # DeepSeek-R1-Distill-Qwen-32B 4-bit
+FLAGSHIP_PORT = 9328         # Qwen3-235B-A22B MoE 4-bit (max capability)
+MIXTRAL_PORT = 9329          # Mixtral-8x22B-Instruct 4-bit
+LLAMA_PORT = 9324            # Llama-3.3-70B-Instruct 4-bit
+PIXTRAL_PORT = 9325          # Pixtral-12B 4-bit (multimodal, not yet wired)
+MISTRAL_SMALL_PORT = 9326    # Mistral-Small-3.1-24B 4-bit
+
+# Math stays on Apertus (faster, sufficient for routine maths).
+# `reasoning` moved off Apertus to a dedicated reasoning worker — see
+# QWEN_DOMAINS / QWEN_LIVE below.
 APERTUS_DOMAINS = frozenset({
     "electronics-hw", "emc", "dsp", "spice", "kicad", "stm32",
     "platformio", "iot", "embedded", "math",
@@ -35,6 +53,11 @@ APERTUS_DOMAINS = frozenset({
     "calcul-normatif", "normes-iec",
 })
 
+# `reasoning` — was Qwen3-Next 80B (:8002, kxkm-ai tunnel). Tunnel observed
+# unreliable (60s timeout 2026-05-12). Reroute to DeepSeek-R1-Distill-Qwen-32B
+# on Studio :9323 (local MLX, no tunnel hop). Flip QWEN_LIVE=True to restore
+# the 80B sparse MoE if the tunnel stabilises.
+QWEN_LIVE = False
 QWEN_DOMAINS = frozenset({"reasoning"})
 
 DEVSTRAL_DOMAINS = frozenset({
@@ -128,8 +151,12 @@ assert AILIANCE_MACM1_DOMAINS.isdisjoint(APERTUS_DOMAINS), (
 DOMAIN_TO_WORKER: dict[str, int] = {}
 for d in APERTUS_DOMAINS:
     DOMAIN_TO_WORKER[d] = APERTUS_PORT
+# Code domains: route to Studio Qwen3-Coder-30B MoE 4-bit (:9327).
+# Devstral :9302 decommissioned 2026-05-10. For LoRA-specific code
+# routing (python/cpp/rust-emb/html-css/ml-training), use direct model
+# alias resolved by ALIAS_MODEL_REWRITES → devstral multi-LoRA :9330.
 for d in DEVSTRAL_DOMAINS:
-    DOMAIN_TO_WORKER[d] = DEVSTRAL_PORT
+    DOMAIN_TO_WORKER[d] = QWEN_CODER_PORT
 # EuroLLM (:9303) on Studio: status flag toggled via EUROLLM_LIVE.
 # When False, the 4 EUROLLM_DOMAINS fall back to Gemma (:9304, Tower
 # llama.cpp), which is the closest fit for short chat-fr / translation
@@ -143,8 +170,11 @@ for d in EUROLLM_DOMAINS:
     DOMAIN_TO_WORKER[d] = _eurollm_target
 for d in GEMMA_DOMAINS:
     DOMAIN_TO_WORKER[d] = GEMMA_PORT
+# Reasoning: prefer Qwen3-Next 80B (:8002, kxkm-ai tunnel) when QWEN_LIVE,
+# else DeepSeek-R1-Distill-Qwen-32B on Studio :9323 (local, stable).
+_reasoning_target = QWEN_PORT if QWEN_LIVE else DEEPSEEK_R1_PORT
 for d in QWEN_DOMAINS:
-    DOMAIN_TO_WORKER[d] = QWEN_PORT
+    DOMAIN_TO_WORKER[d] = _reasoning_target
 # Override APERTUS for the 10 mascarade-specialized domains.
 for d in MASCARADE_DOMAINS:
     DOMAIN_TO_WORKER[d] = MASCARADE_PORT
