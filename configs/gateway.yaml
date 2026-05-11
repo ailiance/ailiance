@@ -9,12 +9,24 @@ router:
   max_active: 4
 
 workers:
-  apertus:
+  mistral-medium:
     url: http://localhost:9301
     port: 9301
-  devstral:
-    url: http://localhost:9302
-    port: 9302
   eurollm:
     url: http://localhost:9303
     port: 9303
+  gemma:
+    url: http://localhost:9304
+    port: 9304
+  qwen-next-80b:
+    url: http://localhost:8002
+    port: 8002
+  granite-30b:
+    url: http://localhost:8003
+    port: 8003
+  macm1-mlx:
+    url: http://localhost:8502
+    port: 8502
+  tower-ollama:
+    url: http://localhost:8004
+    port: 8004
