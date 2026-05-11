@@ -58,7 +58,7 @@ def _compile_skidl(tpl: dict, vals: dict, out: Path) -> int:
     """Stub: emit a minimal parseable v10 skeleton.
 
     Real skidl call is a follow-up patch once the v10-capable skidl
-    wheel is wired into the ``~/eu-kiki/.venv-d2/`` environment.
+    wheel is wired into the ``~/ailiance/.venv-d2/`` environment.
     """
     out.write_text(
         "(kicad_sch (version 20240101) (generator skidl)\n"
@@ -136,17 +136,17 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--out-dir",
         type=Path,
-        default=Path.home() / "eu-kiki-data/kicad-sch-synth",
+        default=Path.home() / "ailiance-data/kicad-sch-synth",
     )
     p.add_argument(
         "--audit-dir",
         type=Path,
-        default=Path.home() / "eu-kiki/output/audit/kicad-sch-2026-05-11",
+        default=Path.home() / "ailiance/output/audit/kicad-sch-2026-05-11",
     )
     p.add_argument(
         "--manifest",
         type=Path,
-        default=Path.home() / "eu-kiki/output/audit/kicad-sch-2026-05-11/d2_manifest.csv",
+        default=Path.home() / "ailiance/output/audit/kicad-sch-2026-05-11/d2_manifest.csv",
     )
     a = p.parse_args(argv)
     a.out_dir.mkdir(parents=True, exist_ok=True)

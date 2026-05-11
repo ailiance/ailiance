@@ -1,6 +1,6 @@
 """D1: scrape .kicad_sch from GitHub, license-filter, normalize, dedupe.
 
-Output: hash-named files in ``~/eu-kiki-data/kicad-sch-scraped/`` plus
+Output: hash-named files in ``~/ailiance-data/kicad-sch-scraped/`` plus
 an Annex-IV manifest (D1 split) and an NDJSON audit log.
 """
 
@@ -222,17 +222,17 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--out-dir",
         type=Path,
-        default=Path.home() / "eu-kiki-data/kicad-sch-scraped",
+        default=Path.home() / "ailiance-data/kicad-sch-scraped",
     )
     p.add_argument(
         "--audit-dir",
         type=Path,
-        default=Path.home() / "eu-kiki/output/audit/kicad-sch-2026-05-11",
+        default=Path.home() / "ailiance/output/audit/kicad-sch-2026-05-11",
     )
     p.add_argument(
         "--manifest",
         type=Path,
-        default=Path.home() / "eu-kiki/output/audit/kicad-sch-2026-05-11/d1_manifest.csv",
+        default=Path.home() / "ailiance/output/audit/kicad-sch-2026-05-11/d1_manifest.csv",
     )
     a = p.parse_args(argv)
     allow = set(a.license_allowlist.split(","))

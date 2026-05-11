@@ -31,9 +31,9 @@ import sys
 import time
 from pathlib import Path
 
-EU_KIKI = Path.home() / "eu-kiki"
-RAW = EU_KIKI / "output" / "eval" / "raw"
-COMPARISON_DIR = EU_KIKI / "output" / "eval"
+AILIANCE = Path.home() / "ailiance"
+RAW = AILIANCE / "output" / "eval" / "raw"
+COMPARISON_DIR = AILIANCE / "output" / "eval"
 
 MIN_SAMPLES_FOR_MEDIAN = 25
 

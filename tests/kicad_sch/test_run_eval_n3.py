@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-RUNNER = Path.home() / "eu-kiki/scripts/run_eval_n3.py"
+RUNNER = Path.home() / "ailiance/scripts/run_eval_n3.py"
 
 
 @pytest.mark.skipif(not RUNNER.exists(), reason="runner not yet created")

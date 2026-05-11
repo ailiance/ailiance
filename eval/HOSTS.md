@@ -34,7 +34,7 @@ Heuristic: if `(model + adapter + KV cache) > 28 GB`, run on studio.
 ### When eval/ code changes
 
 1. Edit on GrosMac (`~/Documents/Projets/ailiance/eval/`)
-2. Commit + push to `L-electron-Rare/ailiance`
+2. Commit + push to `ailiance/ailiance`
 3. Pull on each runner:
 
    ```bash
@@ -48,8 +48,8 @@ Models & adapters live OUTSIDE the repo. Copy with rsync :
 
 ```bash
 # Studio is the canonical source for models + adapters.
-ssh macM1 "rsync -avzP studio:~/KIKI-Mac_tunner/models/<MODEL>/ \\
-                       ~/Projets/KIKI-Mac_tunner/models/<MODEL>/"
+ssh macM1 "rsync -avzP studio:~/ailiance-mac-tuner/models/<MODEL>/ \\
+                       ~/Projets/ailiance-mac-tuner/models/<MODEL>/"
 ssh macM1 "rsync -avzP studio:~/ailiance/output/adapters/<MODEL>/<DOMAIN>/ \\
                        ~/Projets/ailiance/output/adapters/<MODEL>/<DOMAIN>/"
 ```

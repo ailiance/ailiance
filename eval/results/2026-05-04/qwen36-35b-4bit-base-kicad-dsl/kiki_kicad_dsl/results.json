@@ -52,7 +52,7 @@
       "n": 1
     }
   },
-  "model_id": "/Users/electron/Projets/KIKI-Mac_tunner/models/Qwen3.6-35B-A3B-4bit",
+  "model_id": "/Users/electron/Projets/ailiance-mac-tuner/models/Qwen3.6-35B-A3B-4bit",
   "base_url": "http://127.0.0.1:8841/v1",
   "task_path": "tasks/kiki_native/kicad_dsl.json",
   "answers_path": "results/2026-05-04/qwen36-35b-4bit-base-kicad-dsl/kiki_kicad_dsl/answers.jsonl",

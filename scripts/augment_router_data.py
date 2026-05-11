@@ -22,7 +22,7 @@ import json
 import random
 from pathlib import Path
 
-CLASSIFIED_DIR = Path.home() / "KIKI-Mac_tunner/data/micro-kiki/classified"
+CLASSIFIED_DIR = Path.home() / "ailiance-mac-tuner/data/micro-kiki/classified"
 SEED = 1337
 
 # ---------------------------------------------------------------------------

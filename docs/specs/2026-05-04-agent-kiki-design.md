@@ -1,4 +1,4 @@
-# `agent-kiki` — Design
+# `ailiance-agent` — Design
 
 **Date :** 2026-05-04
 **Statut :** Design validé, prêt pour plan d'implémentation
@@ -10,7 +10,7 @@
 
 ## 0. Sommaire
 
-`agent-kiki` (alias `aki`) est une **CLI agentique** qui transforme une tâche en langage naturel en code écrit/édité sur disque, en pilotant l'infrastructure `ailiance` (gateway FastAPI + 3 workers MLX + adapters LoRA domaine-spécifiques).
+`ailiance-agent` (alias `aki`) est une **CLI agentique** qui transforme une tâche en langage naturel en code écrit/édité sur disque, en pilotant l'infrastructure `ailiance` (gateway FastAPI + 3 workers MLX + adapters LoRA domaine-spécifiques).
 
 L'agent est **full-autonomous** (boucle ReAct sans humain à chaque tour, sauf approbations sécurité), **adaptatif** (s'ajuste au mode SCRATCH dossier vide ou EDIT codebase existant), et **multi-modèle interne** : Apertus 70B planifie, Devstral 24B 4-bit code, EuroLLM 22B compresse le contexte long. Il logue chaque tour en JSONL pour permettre, à terme, le fine-tune d'un adapter `agent-react` sur les traces réelles (V1).
 
@@ -22,10 +22,10 @@ Périmètre V0 : outil interne, MacStudio M3 Ultra, single-shot, 7 tools, 3 zone
 
 | Champ | Valeur |
 |---|---|
-| Nom | `agent-kiki` (binaire principal) |
+| Nom | `ailiance-agent` (binaire principal) |
 | Alias | `aki` (lien symbolique vers le même binaire) |
-| Repo GitHub | `L-electron-Rare/agent-kiki` (**privé**, séparé d'ailiance) |
-| Path local | `/Users/electron/Documents/Projets/agent-kiki/` |
+| Repo GitHub | `ailiance/ailiance-agent` (**privé**, séparé d'ailiance) |
+| Path local | `/Users/electron/Documents/Projets/ailiance-agent/` |
 | Couplage à ailiance | **Aucune dépendance Python** — communication via HTTP OpenAI-compatible (gateway `:9200`). Repo, CI, secrets et pyproject.toml indépendants. |
 | Statut produit | Outil interne (lab + Clément), pas de release publique au MVP |
 | Cible matérielle MVP | MacStudio M3 Ultra (workers MLX) ; client local sur GrosMac/macM1 via SSH/Tailscale |
@@ -46,7 +46,7 @@ Périmètre V0 : outil interne, MacStudio M3 Ultra, single-shot, 7 tools, 3 zone
 
 ```
 ┌────────────────────────────────────┐
-│  agent-kiki CLI (local)            │
+│  ailiance-agent CLI (local)            │
 │  ────────────────────────────      │
 │  • orchestrator (boucle ReAct)     │
 │  • tool executor (local)           │
@@ -251,7 +251,7 @@ Mécanique : la première chaîne du `cmd` est matchée contre la whitelist AUTO
 **Surface principale :**
 
 ```bash
-agent-kiki [OPTIONS] TASK
+ailiance-agent [OPTIONS] TASK
 aki [OPTIONS] TASK              # alias court
 ```
 
@@ -285,7 +285,7 @@ Reprise:
   --replay RUN_ID              Re-exécute la trace, en mode pas-à-pas (debug)
 
 Sortie & logging:
-  --trace-dir PATH             Où écrire les traces (défaut: .agent-kiki/runs/)
+  --trace-dir PATH             Où écrire les traces (défaut: .ailiance-agent/runs/)
   --quiet                      Pas d'output sauf erreurs
   -v, --verbose                Affiche thoughts complets
   --json                       Output NDJSON machine-readable
@@ -304,7 +304,7 @@ Aide:
 **Sortie terminale (mode défaut) :**
 
 ```
-🪁 agent-kiki — run a3f2bc91-2026-05-04-185402
+🪁 ailiance-agent — run a3f2bc91-2026-05-04-185402
 📂 mode: SCRATCH (cwd vide)
 🎯 hint domain: rust (inféré: "Rust" dans la tâche)
 
@@ -331,13 +331,13 @@ Aide:
 ## Run Report
 ✓ Run terminé en 9 tours (28s wallclock, 14k tokens)
 4 fichiers créés, 1 fichier édité, 0 erreur résiduelle
-Trace: .agent-kiki/runs/a3f2bc91-2026-05-04-185402/
+Trace: .ailiance-agent/runs/a3f2bc91-2026-05-04-185402/
 ```
 
 `--verbose` ajoute le `<thought>` complet d'Apertus avant chaque action (encadré gris).
 `--json` produit sur stdout un stream NDJSON, 1 objet par tour + 1 objet stats final.
 
-**Configuration persistante :** `~/.config/agent-kiki/config.toml` pour les défauts perso.
+**Configuration persistante :** `~/.config/ailiance-agent/config.toml` pour les défauts perso.
 Précédence : CLI flags > env vars (`AGENT_KIKI_GATEWAY`, etc.) > config file > defaults.
 
 **Pourquoi pas de REPL au MVP :** full-autonomous + collecte de traces V1 = chaque run doit être atomique et reproductible. Multi-tour passe par `aki --resume <run-id> "ajoute un test"` qui démarre un nouveau run avec contexte du précédent (plus structuré, plus loggable). REPL en V1+ si le besoin se confirme.
@@ -349,7 +349,7 @@ Précédence : CLI flags > env vars (`AGENT_KIKI_GATEWAY`, etc.) > config file >
 **Layout par run :**
 
 ```
-.agent-kiki/runs/<run-id>/
+.ailiance-agent/runs/<run-id>/
 ├── meta.json              # Métadonnées run
 ├── plan.md                # Plan initial Markdown (rendu humain)
 ├── trace.jsonl            # 1 ligne par tour ReAct, append-only
@@ -508,15 +508,15 @@ Précédence : CLI flags > env vars (`AGENT_KIKI_GATEWAY`, etc.) > config file >
 
 ## 10. Layout fichiers
 
-**Repo autonome** `L-electron-Rare/agent-kiki` cloné en `/Users/electron/Documents/Projets/agent-kiki/` :
+**Repo autonome** `ailiance/ailiance-agent` cloné en `/Users/electron/Documents/Projets/ailiance-agent/` :
 
 ```
-agent-kiki/                            # repo autonome, GitHub privé
+ailiance-agent/                            # repo autonome, GitHub privé
 ├── README.md
 ├── CLAUDE.md                          # guide local Claude Code
 ├── LICENSE                            # Apache-2.0 par défaut (à ajuster pour interne)
 ├── .gitignore
-├── pyproject.toml                     # autonome, hatchling, scripts agent-kiki+aki
+├── pyproject.toml                     # autonome, hatchling, scripts ailiance-agent+aki
 ├── uv.lock
 ├── src/
 │   └── agent_kiki/
@@ -564,11 +564,11 @@ agent-kiki/                            # repo autonome, GitHub privé
     ├── prompts.md                     # snapshots system prompts
     ├── trace-schema.md
     └── specs/
-        ├── 2026-05-04-agent-kiki-design.md  # copie canonique côté agent
-        └── 2026-05-04-agent-kiki-plan.md    # plan d'implémentation
+        ├── 2026-05-04-ailiance-agent-design.md  # copie canonique côté agent
+        └── 2026-05-04-ailiance-agent-plan.md    # plan d'implémentation
 ```
 
-**Note de coexistence avec ailiance :** ce design vit aussi dans `ailiance/docs/specs/` parce qu'il a été pensé là (cohérent avec la convention "le spec vit où la conversation a eu lieu"). Le repo agent-kiki en a une **copie canonique** dans son propre `docs/specs/` qui devient la source de vérité. Tout amendement futur se fait côté agent-kiki ; le miroir dans ailiance devient un archive du design initial.
+**Note de coexistence avec ailiance :** ce design vit aussi dans `ailiance/docs/specs/` parce qu'il a été pensé là (cohérent avec la convention "le spec vit où la conversation a eu lieu"). Le repo ailiance-agent en a une **copie canonique** dans son propre `docs/specs/` qui devient la source de vérité. Tout amendement futur se fait côté ailiance-agent ; le miroir dans ailiance devient un archive du design initial.
 
 ---
 

@@ -5,8 +5,8 @@
 **Date:** 2026-05-06
 **License:** Apache-2.0
 **Risk classification (EU AI Act):** Limited risk — Article 52
-**Operator:** L'Electron Rare (`electron-rare` / `L-electron-Rare`)
-**Repo:** https://github.com/L-electron-Rare/ailiance
+**Operator:** Ailiance (`electron-rare` / `ailiance`)
+**Repo:** https://github.com/ailiance/ailiance
 
 ---
 
@@ -190,7 +190,7 @@ base is near-ceiling.
 ## 8. Reproducibility
 
 ```bash
-git clone https://github.com/L-electron-Rare/ailiance
+git clone https://github.com/ailiance/ailiance
 cd ailiance
 uv venv && uv pip install -e ".[dev,router,data]"
 
@@ -225,7 +225,7 @@ Topology + bug history + workarounds: [`eval/WORKFLOW.md`](eval/WORKFLOW.md).
 
 ## 10. Contact
 
-- **System operator:** L'Electron Rare (`electron-rare@…`)
+- **System operator:** Ailiance (`electron-rare@…`)
 - **Apertus PII/copyright:** `llm-privacy-requests@swiss-ai.org`
 - **Issues / audit requests:** GitHub Issues on this repo
 

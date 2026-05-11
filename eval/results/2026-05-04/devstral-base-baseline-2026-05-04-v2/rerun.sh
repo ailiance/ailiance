@@ -8,7 +8,7 @@
 set -euo pipefail
 
 LABEL="devstral-base-baseline-2026-05-04-v2"
-MODEL="/Users/electron/Projets/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"
+MODEL="/Users/electron/Projets/ailiance-mac-tuner/models/Devstral-Small-2-24B-MLX-4bit"
 ADAPTER=""
 PORT=8801
 

@@ -14,7 +14,7 @@
     "license_url": "https://huggingface.co/mistralai/Devstral-Small-2-24B-Instruct-2512/blob/main/LICENSE"
   },
   "weights_file": {
-    "filename": "(MLX 4-bit conversion in /Users/electron/Projets/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit)",
+    "filename": "(MLX 4-bit conversion in /Users/electron/Projets/ailiance-mac-tuner/models/Devstral-Small-2-24B-MLX-4bit)",
     "size_bytes": null,
     "sha256_expected": null,
     "comment": "Original safetensors checksums on HF; MLX 4-bit local conversion via mlx_lm.convert -q 4 --q-group-size 64."
@@ -28,7 +28,7 @@
   },
   "quantization": {
     "method": "MLX 4-bit (group-size 64)",
-    "produced_by": "L'Électron Rare (mlx_lm.convert from upstream BF16)"
+    "produced_by": "Ailiance (mlx_lm.convert from upstream BF16)"
   },
   "modifications_post_download": [
     "MLX 4-bit quantisation (mlx_lm.convert -q 4)",

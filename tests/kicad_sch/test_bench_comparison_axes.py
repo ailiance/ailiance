@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-BENCH = Path.home() / "eu-kiki/scripts/bench_comparison.py"
+BENCH = Path.home() / "ailiance/scripts/bench_comparison.py"
 
 
 def _write_ppl(path: Path, model: str, domain: str, ppl: float, n=30):

@@ -7,20 +7,20 @@
 #   3. iogpu.wired_limit_mb=458752 (already set on Studio).
 #
 # Output:
-#   ~/eu-kiki/output/eval/raw/{perplexity,efficiency,generation,speed}_*.json
-#   ~/eu-kiki/output/eval/eval_report_v1_vs_v2.md
+#   ~/ailiance/output/eval/raw/{perplexity,efficiency,generation,speed}_*.json
+#   ~/ailiance/output/eval/eval_report_v1_vs_v2.md
 #
 # Wall-clock estimate: 3-4 h sustained MLX on M3 Ultra 512 GB.
 
 set -euo pipefail
 
-EU_KIKI="$HOME/eu-kiki"
-RAW="$EU_KIKI/output/eval/raw"
+AILIANCE="$HOME/ailiance"
+RAW="$AILIANCE/output/eval/raw"
 
 # 1. Pre-flight: confirm Phase 1 ran
 if ! ls "$RAW"/perplexity_v1-only_*.json >/dev/null 2>&1; then
     echo "ABORT: Phase 1 raw results not found in $RAW"
-    echo "Run first: bash $EU_KIKI/scripts/run_eval.sh --quick --v1-only"
+    echo "Run first: bash $AILIANCE/scripts/run_eval.sh --quick --v1-only"
     exit 1
 fi
 LATEST_QUICK=$(ls -t "$RAW"/perplexity_v1-only_*.json | head -1)
@@ -46,11 +46,11 @@ else
 fi
 
 # 3. Launch full eval (v1+v2 compare mode)
-LOG="$EU_KIKI/output/eval/full-$(date +%Y%m%d-%H%M).log"
+LOG="$AILIANCE/output/eval/full-$(date +%Y%m%d-%H%M).log"
 echo "Launching full eval. Log: $LOG"
 echo "Wall-clock estimate: 3-4 h."
 START=$(date +%s)
-bash "$EU_KIKI/scripts/run_eval.sh" --compare 2>&1 | tee "$LOG"
+bash "$AILIANCE/scripts/run_eval.sh" --compare 2>&1 | tee "$LOG"
 END=$(date +%s)
 ELAPSED=$(( (END - START) / 60 ))
 echo "Full eval done in ${ELAPSED} minutes."
@@ -70,4 +70,4 @@ fi
 echo "=== Artefacts ==="
 ls -lah "$RAW" | head -20
 echo
-echo "Report: $EU_KIKI/output/eval/eval_report_v1_vs_v2.md"
+echo "Report: $AILIANCE/output/eval/eval_report_v1_vs_v2.md"

@@ -325,7 +325,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--out-dir",
         type=Path,
-        default=Path.home() / "eu-kiki-data/kicad-sch-scraped",
+        default=Path.home() / "ailiance-data/kicad-sch-scraped",
     )
     p.add_argument(
         "--clone-root",
@@ -335,13 +335,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--audit-dir",
         type=Path,
-        default=Path.home() / "eu-kiki/output/audit/kicad-sch-2026-05-11",
+        default=Path.home() / "ailiance/output/audit/kicad-sch-2026-05-11",
     )
     p.add_argument(
         "--manifest",
         type=Path,
         default=Path.home()
-        / "eu-kiki/output/audit/kicad-sch-2026-05-11/d1_manifest.csv",
+        / "ailiance/output/audit/kicad-sch-2026-05-11/d1_manifest.csv",
     )
     a = p.parse_args(argv)
 

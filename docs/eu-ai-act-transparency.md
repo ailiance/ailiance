@@ -299,16 +299,16 @@ Low-signal detections (PERSON, LOCATION, DATE_TIME) are common false positives i
 
 ## 4-LEGACY. Training Data (Original — Deprecated)
 
-> **Deprecated.** The information below describes the initial bootstrap dataset from KIKI-Mac_tunner.
+> **Deprecated.** The information below describes the initial bootstrap dataset from ailiance-mac-tuner.
 > It has been superseded by section 4 above. Retained for audit continuity only.
 
-### 4-LEGACY.1 Source: KIKI-Mac_tunner classified dataset
+### 4-LEGACY.1 Source: ailiance-mac-tuner classified dataset
 
-### 4-LEGACY.1 Source: KIKI-Mac_tunner classified dataset
+### 4-LEGACY.1 Source: ailiance-mac-tuner classified dataset
 
 | Field | Value |
 |-------|-------|
-| **Location** | `~/KIKI-Mac_tunner/data/micro-kiki/classified/` |
+| **Location** | `~/ailiance-mac-tuner/data/micro-kiki/classified/` |
 | **Total examples** | 57,632 |
 | **Format** | JSONL, `{"messages": [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]}` |
 | **Domains** | 32 classified domains |
@@ -460,7 +460,7 @@ Headline metrics (all measured on this hardware, all reproducible):
 
 ## 9. Contact
 
-- **System operator:** L'Electron Rare (electron-rare)
+- **System operator:** Ailiance (electron-rare)
 - **Privacy requests:** See individual model providers
 - **Apertus PII/copyright:** llm-privacy-requests@swiss-ai.org / llm-copyright-requests@swiss-ai.org
 

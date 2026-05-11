@@ -1261,7 +1261,7 @@ git commit -m "feat: gateway server with multi-model routing"
 
 ```yaml
 # configs/apertus.yaml
-model_path: /Users/clems/KIKI-Mac_tunner/models/Apertus-70B-Instruct-2509
+model_path: /Users/clems/ailiance-mac-tuner/models/Apertus-70B-Instruct-2509
 adapters_dir: output/adapters/apertus
 port: 9201
 precision: bf16
@@ -1290,7 +1290,7 @@ domains:
 
 ```yaml
 # configs/devstral.yaml
-model_path: /Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-Instruct-2512
+model_path: /Users/clems/ailiance-mac-tuner/models/Devstral-Small-2-24B-Instruct-2512
 adapters_dir: output/adapters/devstral
 port: 9202
 precision: bf16
@@ -1315,7 +1315,7 @@ domains:
 
 ```yaml
 # configs/eurollm.yaml
-model_path: /Users/clems/KIKI-Mac_tunner/models/EuroLLM-22B-Instruct-2512
+model_path: /Users/clems/ailiance-mac-tuner/models/EuroLLM-22B-Instruct-2512
 adapters_dir: output/adapters/eurollm
 port: 9203
 precision: bf16
@@ -1400,7 +1400,7 @@ import json
 import random
 from pathlib import Path
 
-CLASSIFIED_DIR = Path.home() / "KIKI-Mac_tunner/data/micro-kiki/classified"
+CLASSIFIED_DIR = Path.home() / "ailiance-mac-tuner/data/micro-kiki/classified"
 OUTPUT_DIR = Path("data/router")
 SEED = 42
 TRAIN_RATIO = 0.8

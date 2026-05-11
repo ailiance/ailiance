@@ -6,7 +6,7 @@
 
 **Architecture:** Pure data-and-training pass on the existing router stack at `~/Documents/Projets/ailiance/`. No gateway code changes — only the head checkpoint at `output/router/` is replaced and `configs/gateway.yaml` is updated if the encoder changes. The collaborative niche-domain script accepts `--domain X --interactive` to let the human curator iterate without touching code.
 
-**Tech Stack:** Python 3.12 (uv venv at `~/KIKI-Mac_tunner/.venv`), `sentence-transformers`, `safetensors`, `torch`, `huggingface_hub`. Training runs on Mac Studio M3 Ultra. Deployment target: gateway tmux session on `electron-server`.
+**Tech Stack:** Python 3.12 (uv venv at `~/ailiance-mac-tuner/.venv`), `sentence-transformers`, `safetensors`, `torch`, `huggingface_hub`. Training runs on Mac Studio M3 Ultra. Deployment target: gateway tmux session on `electron-server`.
 
 **Out of scope (separate plans):**
 - Phase 3 — MLX MCP router on macm1 (new repo `mlx-mcp-router`)
@@ -95,7 +95,7 @@ cd ~/Documents/Projets/ailiance
 git add scripts/router_benchmark.py
 git commit -m "bench: --full flag reads valid split"
 git push
-ssh studio "cd ~/ailiance && git pull --ff-only && ~/KIKI-Mac_tunner/.venv/bin/python scripts/router_benchmark.py 2>&1 | tail -15"
+ssh studio "cd ~/ailiance && git pull --ff-only && ~/ailiance-mac-tuner/.venv/bin/python scripts/router_benchmark.py 2>&1 | tail -15"
 ```
 Expected: same 10-prompt smoke output as before.
 
@@ -103,7 +103,7 @@ Expected: same 10-prompt smoke output as before.
 
 Run:
 ```bash
-ssh studio "cd ~/ailiance && ~/KIKI-Mac_tunner/.venv/bin/python scripts/router_benchmark.py --full 2>&1 | tee /tmp/bench-full.log | tail -40"
+ssh studio "cd ~/ailiance && ~/ailiance-mac-tuner/.venv/bin/python scripts/router_benchmark.py --full 2>&1 | tee /tmp/bench-full.log | tail -40"
 ```
 Expected: load time + per-prompt latency for MiniLM and Jina v3 (classification + separation tasks). Cosine separation Δ for each. ~1-2 min total.
 
@@ -140,7 +140,7 @@ Only do this step if the bench shows Jina has a higher Δ separation. Otherwise 
 
 Run:
 ```bash
-ssh studio "cd ~/ailiance && ~/KIKI-Mac_tunner/.venv/bin/python scripts/train_router.py --embedding-model jinaai/jina-embeddings-v3 --hidden-dim 512 --epochs 30 --output-dir output/router-v6 2>&1 | tail -10"
+ssh studio "cd ~/ailiance && ~/ailiance-mac-tuner/.venv/bin/python scripts/train_router.py --embedding-model jinaai/jina-embeddings-v3 --hidden-dim 512 --epochs 30 --output-dir output/router-v6 2>&1 | tail -10"
 ```
 Expected: 30 epochs, final `top1=` and `top3=`. Takes ~10-15 min on Mac Studio.
 
@@ -304,7 +304,7 @@ Run:
 git add scripts/calibrate_threshold.py
 git commit -m "scripts: calibrate router threshold"
 git push
-ssh studio "cd ~/ailiance && git pull --ff-only && ~/KIKI-Mac_tunner/.venv/bin/python scripts/calibrate_threshold.py 2>&1 | tail -20"
+ssh studio "cd ~/ailiance && git pull --ff-only && ~/ailiance-mac-tuner/.venv/bin/python scripts/calibrate_threshold.py 2>&1 | tail -20"
 ```
 Expected: 8-row table from threshold 0.10 to 0.80 with coverage and top-1 columns.
 
@@ -468,7 +468,7 @@ Run:
 git add scripts/build_confusion_matrix.py
 git commit -m "scripts: confusion matrix"
 git push
-ssh studio "cd ~/ailiance && git pull --ff-only && ~/KIKI-Mac_tunner/.venv/bin/python scripts/build_confusion_matrix.py 2>&1 | tail -25"
+ssh studio "cd ~/ailiance && git pull --ff-only && ~/ailiance-mac-tuner/.venv/bin/python scripts/build_confusion_matrix.py 2>&1 | tail -25"
 ```
 Expected: top-10 confusion pairs printed + 2 files in `output/`.
 
@@ -702,7 +702,7 @@ Edit `scripts/rebuild_router_dataset.py`. After the existing FreeCAD-special-han
                     all_rows.append({
                         "prompt": p,
                         "domain": domain,
-                        "source": "L'Électron Rare internal (niche curation)",
+                        "source": "Ailiance internal (niche curation)",
                         "license": "apache-2.0",
                     })
                     kept += 1
@@ -714,7 +714,7 @@ Edit `scripts/rebuild_router_dataset.py`. After the existing FreeCAD-special-han
                     "split": None,
                     "license_spdx": "apache-2.0",
                     "rows_used": kept,
-                    "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py.",
+                    "note": "Curated by Ailiance. See scripts/augment_niche_domains.py.",
                 })
             print(f"  niche {domain:14s} +{kept}")
     except Exception as e:
@@ -763,9 +763,9 @@ git add scripts/augment_niche_domains.py
 git commit -m "data(router): +50 curated prompts for <domain>"
 git push
 ssh studio "cd ~/ailiance && git pull --ff-only && rm -rf data/router data/router-clean && \
-  ~/KIKI-Mac_tunner/.venv/bin/python scripts/rebuild_router_dataset.py 2>&1 | tail -3 && \
-  ~/KIKI-Mac_tunner/.venv/bin/python scripts/build_router_data.py 2>&1 | tail -3 && \
-  ~/KIKI-Mac_tunner/.venv/bin/python scripts/train_router.py \
+  ~/ailiance-mac-tuner/.venv/bin/python scripts/rebuild_router_dataset.py 2>&1 | tail -3 && \
+  ~/ailiance-mac-tuner/.venv/bin/python scripts/build_router_data.py 2>&1 | tail -3 && \
+  ~/ailiance-mac-tuner/.venv/bin/python scripts/train_router.py \
     --embedding-model sentence-transformers/all-MiniLM-L6-v2 \
     --hidden-dim 256 --epochs 30 \
     --output-dir output/router-vN 2>&1 | tail -5"
@@ -792,9 +792,9 @@ Loop steps 1-3 for the top 5 niche domains (kicad-pcb, stm32, dsp, iot, web-back
 Run:
 ```bash
 ssh studio "cd ~/ailiance && rm -rf data/router data/router-clean && \
-  ~/KIKI-Mac_tunner/.venv/bin/python scripts/rebuild_router_dataset.py 2>&1 | tail -3 && \
-  ~/KIKI-Mac_tunner/.venv/bin/python scripts/build_router_data.py 2>&1 | tail -3 && \
-  ~/KIKI-Mac_tunner/.venv/bin/python scripts/train_router.py \
+  ~/ailiance-mac-tuner/.venv/bin/python scripts/rebuild_router_dataset.py 2>&1 | tail -3 && \
+  ~/ailiance-mac-tuner/.venv/bin/python scripts/build_router_data.py 2>&1 | tail -3 && \
+  ~/ailiance-mac-tuner/.venv/bin/python scripts/train_router.py \
     --embedding-model sentence-transformers/all-MiniLM-L6-v2 \
     --hidden-dim 256 --epochs 30 \
     --output-dir output/router-v7 2>&1 | tail -5"

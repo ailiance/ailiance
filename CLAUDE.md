@@ -189,7 +189,7 @@ Worker URLs are supplied to the gateway via `AILIANCE_WORKERS_JSON` env var (set
 
 ### 🟡 Cleanup
 
-- Publier sur HF les adapters EU validés (Apache-2.0, full provenance EU AI Act) — aucun adapter AILIANCE sur `clemsail/` ni `electron-rare/` à ce jour (audit 2026-05-04). Le script existe en sister project (`KIKI-Mac_tunner/scripts/release_hf.py`). 3-4 h.
+- Publier sur HF les adapters EU validés (Apache-2.0, full provenance EU AI Act) — aucun adapter AILIANCE sur `clemsail/` ni `electron-rare/` à ce jour (audit 2026-05-04). Le script existe en sister project (`ailiance-mac-tuner/scripts/release_hf.py`). 3-4 h.
 - Standardiser le format de sortie eval (`output/eval/<YYYY-MM-DD>-<scope>.{json,md}`).
 - Documenter le différentiel "20 domains HF-traced (48K examples)" du commit `f2c9cee` vs ~81K lignes mesurées sur 24 domaines (probablement sous-ensemble curé/dédupliqué).
 
@@ -202,15 +202,15 @@ Worker URLs are supplied to the gateway via `AILIANCE_WORKERS_JSON` env var (set
 ## Notes
 
 - **48K vs 81K examples** : commit `f2c9cee` annonce "20 domains HF-traced (48K examples)" — la mesure brute donne ~81K lignes train sur 24 domaines. Les 48K désignent vraisemblablement le sous-ensemble curé/dédupliqué. À confirmer.
-- **Repo GitHub** : `L-electron-Rare/ailiance` (privé) — poussé le 2026-05-04. Mirror local sur studio + electron-server + macM1.
+- **Repo GitHub** : `ailiance/ailiance` (privé) — poussé le 2026-05-04. Mirror local sur studio + electron-server + macM1.
 - **Router weights `output/router-vN/` git-ignored** — déploiement par rsync (`rsync -avz output/router-v6/ electron-server:/home/electron/ailiance/output/router-v6/`) puis `sudo systemctl restart ailiance-gateway`.
 - **kxkm-ai** : RTX 4090 24 GB, joignable via electron-server bastion (`ssh kxkm@10.2.0.237`). Actuellement sert llama-server Qwen3-Next-80B + ComfyUI + SearXNG + OpenWebUI (stack chat avec web-search tool). Pas utilisé par ailiance à ce jour.
 
 ## Sister project
 
-`~/Documents/Projets/KIKI-Mac_tunner/` — non-EU foundation distillation. Les scripts `train_ailiance_*.py` et configs `ailiance-*.yaml` y sont mirrorés.
+`~/Documents/Projets/ailiance-mac-tuner/` — non-EU foundation distillation. Les scripts `train_ailiance_*.py` et configs `ailiance-*.yaml` y sont mirrorés.
 
-## EU-KIKI eval — sequential-strict runbook (added 2026-05-10)
+## AILIANCE eval — sequential-strict runbook (added 2026-05-10)
 
 Use `--mode sequential-strict` whenever the bench has to load multiple
 base models in one run. The launcher `scripts/launch_eval_safe.sh` writes
@@ -220,15 +220,15 @@ SIGKILL (`signal: 9`) without parsing logs.
 ```bash
 # Stop EuroLLM worker first so :9303 is free.
 kill -TERM $(lsof -tiTCP:9303 -sTCP:LISTEN)
-bash ~/eu-kiki/scripts/launch_eval_safe.sh --sequential-strict
+bash ~/ailiance/scripts/launch_eval_safe.sh --sequential-strict
 # Restart EuroLLM after.
-cd ~/eu-kiki && nohup .venv/bin/python -m uvicorn src.worker.server:make_eurollm_app --factory --host 0.0.0.0 --port 9303 > logs/eurollm.log 2>&1 &
+cd ~/ailiance && nohup .venv/bin/python -m uvicorn src.worker.server:make_eurollm_app --factory --host 0.0.0.0 --port 9303 > logs/eurollm.log 2>&1 &
 ```
 
 **v1-only fallback** (use until v2/qwen36 SwitchLinear LoRA support lands):
 
 ```bash
-bash ~/eu-kiki/scripts/launch_eval_safe.sh --v1-only
+bash ~/ailiance/scripts/launch_eval_safe.sh --v1-only
 ```
 
 `--mode sequential-strict` aborts at v2/qwen36/python with

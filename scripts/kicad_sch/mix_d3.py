@@ -78,29 +78,29 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--d1",
         type=Path,
-        default=Path.home() / "eu-kiki-data/kicad-sch-scraped",
+        default=Path.home() / "ailiance-data/kicad-sch-scraped",
     )
     p.add_argument(
         "--d2",
         type=Path,
-        default=Path.home() / "eu-kiki-data/kicad-sch-synth",
+        default=Path.home() / "ailiance-data/kicad-sch-synth",
     )
     p.add_argument(
         "--d3",
         type=Path,
-        default=Path.home() / "eu-kiki-data/kicad-sch-mixed",
+        default=Path.home() / "ailiance-data/kicad-sch-mixed",
     )
     p.add_argument("--n-total", type=int, default=10000)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument(
         "--audit-dir",
         type=Path,
-        default=Path.home() / "eu-kiki/output/audit/kicad-sch-2026-05-11",
+        default=Path.home() / "ailiance/output/audit/kicad-sch-2026-05-11",
     )
     p.add_argument(
         "--manifest",
         type=Path,
-        default=Path.home() / "eu-kiki/output/audit/kicad-sch-2026-05-11/d3_manifest.csv",
+        default=Path.home() / "ailiance/output/audit/kicad-sch-2026-05-11/d3_manifest.csv",
     )
     a = p.parse_args(argv)
     run_stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")

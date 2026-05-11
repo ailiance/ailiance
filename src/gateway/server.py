@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 
 _DEFAULT_WORKER_URLS = {
     9301: "http://localhost:9301",
-    8502: "http://localhost:8502",  # eu-kiki / ailiance worker on macm1 (Gemma 4 E4B + LoRA)
+    8502: "http://localhost:8502",  # ailiance / ailiance worker on macm1 (Gemma 4 E4B + LoRA)
     9303: "http://localhost:9303",
     9304: "http://localhost:9304",
     # Qwen3-Next 80B-A3B MoE on kxkm-ai (llama-server, alias 'qwen-32b-awq')

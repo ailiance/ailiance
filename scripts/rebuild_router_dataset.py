@@ -355,7 +355,7 @@ def main() -> None:
                     all_rows.append({
                         "prompt": p,
                         "domain": domain,
-                        "source": "L'Électron Rare internal (niche curation)",
+                        "source": "Ailiance internal (niche curation)",
                         "license": "apache-2.0",
                     })
                     kept += 1
@@ -367,7 +367,7 @@ def main() -> None:
                     "split": None,
                     "license_spdx": "apache-2.0",
                     "rows_used": kept,
-                    "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py.",
+                    "note": "Curated by Ailiance. See scripts/augment_niche_domains.py.",
                 })
             print(f"  niche {domain:14s} +{kept}")
     except Exception as e:
@@ -410,7 +410,7 @@ def main() -> None:
                 all_rows.append({
                     "prompt": p,
                     "domain": domain,
-                    "source": "L'Électron Rare internal (curated)",
+                    "source": "Ailiance internal (curated)",
                     "license": "apache-2.0",
                 })
         provenance["sources"].append({
@@ -419,7 +419,7 @@ def main() -> None:
             "split": None,
             "license_spdx": "apache-2.0",
             "rows_used": sum(1 for r in all_rows if r["domain"] == domain),
-            "note": "Curated by L'Électron Rare in May 2026. See scripts/augment_router_data.py.",
+            "note": "Curated by Ailiance in May 2026. See scripts/augment_router_data.py.",
         })
 
     for prompt, domain in MIXED_FR_EN:
@@ -427,7 +427,7 @@ def main() -> None:
             all_rows.append({
                 "prompt": prompt,
                 "domain": domain,
-                "source": "L'Électron Rare internal (FR/EN code-switched)",
+                "source": "Ailiance internal (FR/EN code-switched)",
                 "license": "apache-2.0",
             })
 
@@ -440,7 +440,7 @@ def main() -> None:
                 all_rows.append({
                     "prompt": prompt,
                     "domain": "chat-fr",
-                    "source": "L'Électron Rare internal (curated greetings)",
+                    "source": "Ailiance internal (curated greetings)",
                     "license": "apache-2.0",
                 })
     except Exception as e:

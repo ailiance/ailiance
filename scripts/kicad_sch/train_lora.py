@@ -25,7 +25,7 @@ def load_config(path: Path) -> dict:
 
 def _audit_path(adapter: Path) -> Path:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    base = Path.home() / "eu-kiki/output/audit/kicad-sch-2026-05-11"
+    base = Path.home() / "ailiance/output/audit/kicad-sch-2026-05-11"
     return base / f"train-{adapter.name}-{stamp}.ndjson"
 
 

@@ -5,7 +5,7 @@ Sources:
   - KiCad official libraries (CC-BY-SA-4.0)
   - KiCad demos from kicad-source-mirror (GPL-3.0+ for KiCad source, but demo
     schematics/PCBs are data files; we treat them as CC-BY-SA-4.0 per KiCad policy)
-  - L-electron-Rare/makelife-hard (user-owned, no restriction)
+  - ailiance/makelife-hard (user-owned, no restriction)
   - FreeCAD-macros (per-file license check; only permissive accepted)
 
 Usage:
@@ -490,7 +490,7 @@ def build_kicad_dsl() -> tuple[list[dict], list[dict]]:
         for sch_file in sorted(mh_dir.rglob("*.kicad_sch")):
             recs = parse_kicad_schematic(
                 sch_file,
-                source="L-electron-Rare/makelife-hard",
+                source="ailiance/makelife-hard",
                 license_="user-owned",
             )
             records.extend(recs)
@@ -499,14 +499,14 @@ def build_kicad_dsl() -> tuple[list[dict], list[dict]]:
         for lib_file in sorted(mh_dir.rglob("*.lib")):
             recs = parse_kicad_symbols(lib_file)
             for r in recs:
-                r["_provenance"]["source"] = "L-electron-Rare/makelife-hard"
+                r["_provenance"]["source"] = "ailiance/makelife-hard"
                 r["_provenance"]["license"] = "user-owned"
             records.extend(recs)
             mh_count += len(recs)
         if mh_count:
             print(f"  From makelife-hard: {mh_count}")
             sources.append({
-                "id": "L-electron-Rare/makelife-hard",
+                "id": "ailiance/makelife-hard",
                 "license": "user-owned",
                 "n_records": mh_count,
             })
@@ -562,7 +562,7 @@ def build_kicad_pcb() -> tuple[list[dict], list[dict]]:
         for pcb_file in sorted(mh_dir.rglob("*.kicad_pcb")):
             recs = parse_kicad_pcb(
                 pcb_file,
-                source="L-electron-Rare/makelife-hard",
+                source="ailiance/makelife-hard",
                 license_="user-owned",
             )
             records.extend(recs)
@@ -570,14 +570,14 @@ def build_kicad_pcb() -> tuple[list[dict], list[dict]]:
         for mod_file in sorted(mh_dir.rglob("*.kicad_mod")):
             recs = parse_kicad_footprint(mod_file)
             for r in recs:
-                r["_provenance"]["source"] = "L-electron-Rare/makelife-hard"
+                r["_provenance"]["source"] = "ailiance/makelife-hard"
                 r["_provenance"]["license"] = "user-owned"
             records.extend(recs)
             mh_count += len(recs)
         if mh_count:
             print(f"  From makelife-hard: {mh_count}")
             sources.append({
-                "id": "L-electron-Rare/makelife-hard",
+                "id": "ailiance/makelife-hard",
                 "license": "user-owned",
                 "n_records": mh_count,
             })
@@ -703,7 +703,7 @@ def main() -> None:
         sparse_paths=["demos"],
     )
     clone_if_missing(
-        "https://github.com/L-electron-Rare/makelife-hard.git",
+        "https://github.com/ailiance/makelife-hard.git",
         "/tmp/makelife-hard",
     )
     clone_if_missing(

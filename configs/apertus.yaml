@@ -1,4 +1,4 @@
-model_path: /Users/clems/KIKI-Mac_tunner/models/Apertus-70B-Instruct-2509
+model_path: /Users/clems/ailiance-mac-tuner/models/Apertus-70B-Instruct-2509
 adapters_dir: output/adapters/apertus
 port: 9301
 precision: bf16

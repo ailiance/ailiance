@@ -1,9 +1,9 @@
-# EU AI Act Art. 53(1)(d) — eu-kiki v1 evaluation report
+# EU AI Act Art. 53(1)(d) — ailiance v1 evaluation report
 
 **Date**: 2026-05-10
 **Models**: Apertus 70B Instruct 2509 (CH), Devstral 2 Small 24B (FR/Mistral), EuroLLM 22B Instruct 2512 (EU consortium)
-**Adapters**: 30 LoRA adapters across 30 (model × domain) cells (eu-kiki v1)
-**Eval framework**: `scripts/eval_framework.py` @ `eu-kiki` commits `36d45aa..2a87b5f`
+**Adapters**: 30 LoRA adapters across 30 (model × domain) cells (ailiance v1)
+**Eval framework**: `scripts/eval_framework.py` @ `ailiance` commits `36d45aa..2a87b5f`
 **Hardware**: Mac Studio M3 Ultra 512 GB, MLX runtime, macOS 26.4
 
 ---
@@ -15,7 +15,7 @@ requires general-purpose AI providers to "draw up and keep up-to-date
 technical documentation of the model, including its training and
 testing process and the results of its evaluation."
 
-It covers the **eu-kiki v1** stack: three EU-sourced base models, each
+It covers the **ailiance v1** stack: three EU-sourced base models, each
 specialised on a set of domain-specific LoRA adapters, evaluated by
 held-out perplexity. It does **not** cover (i) downstream task quality
 beyond intrinsic perplexity, (ii) the v2 adapter cohort (qwen36 ×14 +
@@ -39,7 +39,7 @@ the prompt is tokenized, and the model is run in teacher-forcing mode.
 Cross-entropy loss is averaged over response tokens; perplexity is
 `exp(loss)`.
 
-Implementation: `eu-kiki/scripts/eval_framework.py` (entry point
+Implementation: `ailiance/scripts/eval_framework.py` (entry point
 `launch_eval_safe.sh --v1-only --quick`). Adapter loader uses
 `mlx_lm.tuner.utils.load_adapters` (or `mlx_lm_fork` for SwitchLinear
 v2 cases — see §5).
@@ -65,7 +65,7 @@ and gradient accumulation differ.
 | `grad_checkpoint`        | true        | true         | true        |
 | `save_every`             | 100         | 100          | 100         |
 
-Training scripts: `KIKI-Mac_tunner/scripts/train_eu_kiki_{apertus,devstral,eurollm}.py`.
+Training scripts: `ailiance-mac-tuner/scripts/train_eu_kiki_{apertus,devstral,eurollm}.py`.
 
 ### 2.3 Memory budget
 
@@ -223,7 +223,7 @@ adapter not yet trained at v1 cutoff).
   this.
 - **Coverage gaps**: Apertus 5/20 declared, EuroLLM 3/4 declared. The
   `electronics-hw` data line is sourced from
-  `KIKI-Mac_tunner/data/micro-kiki/` rather than `eu-kiki/data/hf-traced/` —
+  `ailiance-mac-tuner/data/micro-kiki/` rather than `ailiance/data/hf-traced/` —
   provenance flagged, to be migrated.
 - **Manifest gaps**: `MANIFEST_enriched.json` only enumerates 5
   domains. The remaining 25 domains rely on `MANIFEST.json` +
@@ -241,7 +241,7 @@ adapter not yet trained at v1 cutoff).
 ssh studio
 sudo sysctl -w iogpu.wired_limit_mb=458752  # default for this host
 kill -TERM $(lsof -tiTCP:9303 -sTCP:LISTEN) 2>/dev/null  # free EuroLLM worker
-cd ~/eu-kiki
+cd ~/ailiance
 bash scripts/launch_eval_safe.sh --v1-only --quick
 # Output: output/eval/raw/perplexity_v1-only_<stamp>.json
 # Status: output/eval/last_run_status.json
@@ -254,4 +254,4 @@ bash scripts/launch_eval_safe.sh --v1-only --quick
 - PRs: #14 (OOM fix), #15 (cell completeness), #16 (path sweep), #17 (Devstral base).
 - Bench artifacts: `output/eval/raw/perplexity_v1-only_*.json`.
 - Manifests: `data/hf-traced/MANIFEST.json`, `MANIFEST_niche.json`, `MANIFEST_enriched.json`.
-- Training scripts: `KIKI-Mac_tunner/scripts/train_eu_kiki_{apertus,devstral,eurollm}.py`.
+- Training scripts: `ailiance-mac-tuner/scripts/train_eu_kiki_{apertus,devstral,eurollm}.py`.

@@ -29,7 +29,7 @@
   },
   "quantization": {
     "method": "Q4_K_M",
-    "produced_by": "L'Électron Rare (llama.cpp convert)"
+    "produced_by": "Ailiance (llama.cpp convert)"
   },
   "modifications_post_download": [
     "Quantisation to Q4_K_M GGUF"

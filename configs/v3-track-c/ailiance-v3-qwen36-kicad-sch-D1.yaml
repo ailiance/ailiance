@@ -1,7 +1,7 @@
-# eu-kiki-v3-qwen36-kicad-sch-D2.yaml
-# Track C - kicad-sch v10 LoRA, qwen36 on D2
-model: /Users/clems/KIKI-Mac_tunner/models/Qwen3.6-35B-A3B-8bit
-data: /Users/clems/eu-kiki-data/kicad-sch-synth-stripped
+# ailiance-v3-qwen36-kicad-sch-D1.yaml
+# Track C - kicad-sch v10 LoRA, qwen36 on D1
+model: /Users/clems/ailiance-mac-tuner/models/Qwen3.6-35B-A3B-8bit
+data: /Users/clems/ailiance-data/kicad-sch-scraped-stripped
 train: true
 fine_tune_type: lora
 optimizer: adamw
@@ -11,7 +11,7 @@ lora_parameters:
   scale: 2.0
   dropout: 0.05
 batch_size: 1
-iters: 3000
+iters: 1500
 val_batches: 5
 learning_rate: 1.0e-4
 steps_per_report: 100
@@ -20,5 +20,5 @@ save_every: 250
 grad_accumulation_steps: 8
 max_seq_length: 8192
 grad_checkpoint: true
-adapter_path: /Users/clems/eu-kiki/adapters/v3/kicad-sch-qwen36-D2
+adapter_path: /Users/clems/ailiance/adapters/v3/kicad-sch-qwen36-D1
 seed: 42

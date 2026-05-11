@@ -18,7 +18,7 @@ import json
 import random
 from pathlib import Path
 
-CLASSIFIED = Path.home() / "KIKI-Mac_tunner/data/micro-kiki/classified"
+CLASSIFIED = Path.home() / "ailiance-mac-tuner/data/micro-kiki/classified"
 SEED = 17
 
 # Short greetings + small talk in FR/EN/mixed. The LLM will produce a generic

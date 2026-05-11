@@ -11,7 +11,7 @@ Integration:
     appends one row per (domain, prompt) pair to the consolidated dataset,
     tagged with::
 
-        source  = "L'Électron Rare internal (niche curation)"
+        source  = "Ailiance internal (niche curation)"
         license = "apache-2.0"
 
     The dict key is the domain label as it appears in the router schema
