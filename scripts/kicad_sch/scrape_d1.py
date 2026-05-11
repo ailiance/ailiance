@@ -24,29 +24,21 @@ _UUID_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Default keyword shards: gh search code caps at 1000 hits per query, so
-# we fan out across hardware-relevant keywords to grow the corpus.
-DEFAULT_QUERIES = [
-    "extension:kicad_sch resistor",
-    "extension:kicad_sch capacitor",
-    "extension:kicad_sch led",
-    "extension:kicad_sch transistor",
-    "extension:kicad_sch power",
-    "extension:kicad_sch microcontroller",
-    "extension:kicad_sch sensor",
-    "extension:kicad_sch amplifier",
-    "extension:kicad_sch filter",
-    "extension:kicad_sch oscillator",
-    "extension:kicad_sch motor",
-    "extension:kicad_sch battery",
-    "extension:kicad_sch usb",
-    "extension:kicad_sch esp32",
-    "extension:kicad_sch stm32",
-    "extension:kicad_sch arduino",
-    "extension:kicad_sch raspberry",
-    "extension:kicad_sch audio",
-    "extension:kicad_sch power supply",
-    "extension:kicad_sch analog",
+# Default shards: ``gh search code`` caps at 1000 hits per query. GitHub's
+# legacy code-search index does NOT tokenize the s-expression body of
+# .kicad_sch files, so keyword sharding inside those files returns 0.
+# We instead shard by file-size bands (in kilobytes) via gh's ``--size``
+# flag, which lifts the 1000-hit ceiling per shard while staying inside
+# the legacy index. Each entry is a ``--size`` range string.
+DEFAULT_SIZE_SHARDS = [
+    "1..10",
+    "11..25",
+    "26..50",
+    "51..100",
+    "101..200",
+    "201..400",
+    "401..800",
+    ">800",
 ]
 
 # Hardware-community canonical license set: CERN-OHL dominates KiCad
@@ -116,13 +108,16 @@ def _kicad_update(path: Path) -> int:
     return r.returncode
 
 
-def _gh_search_one(query: str, max_files: int) -> list[dict]:
+def _gh_search_one(size_range: str, max_files: int) -> list[dict]:
     r = subprocess.run(
         [
             "gh",
             "search",
             "code",
-            query,
+            "--extension",
+            "kicad_sch",
+            "--size",
+            size_range,
             "--limit",
             str(max_files),
             "--json",
@@ -137,15 +132,19 @@ def _gh_search_one(query: str, max_files: int) -> list[dict]:
     return json.loads(r.stdout or "[]")
 
 
-def _gh_search(queries: list[str], max_files: int) -> list[dict]:
-    """Fan-out search across keyword shards and dedupe by url."""
+def _gh_search(size_shards: list[str], max_files: int) -> list[dict]:
+    """Fan-out search across size-band shards and dedupe by url.
+
+    ``gh search code`` caps at 1000 hits per shard. We loop the
+    shards and dedupe; total ceiling is len(shards) * 1000.
+    """
     per_query_cap = min(max_files, 1000)
     seen: set[str] = set()
     out: list[dict] = []
-    for q in queries:
+    for shard in size_shards:
         if len(out) >= max_files:
             break
-        hits = _gh_search_one(q, per_query_cap)
+        hits = _gh_search_one(shard, per_query_cap)
         for h in hits:
             key = h.get("url") or ""
             if not key or key in seen:
@@ -212,12 +211,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Comma-separated SPDX IDs to accept.",
     )
     p.add_argument(
-        "--queries",
-        default=",".join(DEFAULT_QUERIES),
+        "--size-shards",
+        default=",".join(DEFAULT_SIZE_SHARDS),
         help=(
-            "Comma-separated gh-search-code queries. Each query is "
-            "capped at 1000 hits by gh; shard across keywords to grow "
-            "the corpus."
+            "Comma-separated --size ranges (kilobytes) to shard "
+            "``gh search code --extension kicad_sch`` across. Each "
+            "shard is capped at 1000 hits by gh's API."
         ),
     )
     p.add_argument(
@@ -237,14 +236,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     a = p.parse_args(argv)
     allow = set(a.license_allowlist.split(","))
-    queries = [q.strip() for q in a.queries.split(",") if q.strip()]
+    size_shards = [s.strip() for s in a.size_shards.split(",") if s.strip()]
     a.out_dir.mkdir(parents=True, exist_ok=True)
     run_stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     audit_path = a.audit_dir / f"d1-{run_stamp}.ndjson"
     log = AuditLogger(audit_path)
     manifest = DatasetManifest(a.manifest, split="D1")
-    hits = _gh_search(queries, a.max_files)
-    log.log("d1_search_done", n=len(hits), n_queries=len(queries))
+    hits = _gh_search(size_shards, a.max_files)
+    log.log("d1_search_done", n=len(hits), n_shards=len(size_shards))
     n_ok = 0
     for h in hits:
         repo = h["repository"]["nameWithOwner"]
