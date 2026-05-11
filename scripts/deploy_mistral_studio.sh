@@ -20,8 +20,8 @@ REMOTE_USER="${REMOTE_USER:-clems}"
 PLIST_LABEL="cc.ailiance.mistral"
 PLIST_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/launchd/${PLIST_LABEL}.plist"
 PLIST_DST="/Users/${REMOTE_USER}/Library/LaunchAgents/${PLIST_LABEL}.plist"
-LOG_DIR="/Users/${REMOTE_USER}/KIKI-Mac_tunner/logs"
-MODEL_DIR="/Users/${REMOTE_USER}/KIKI-Mac_tunner/models/Mistral-Medium-3.5-128B-MLX-Q8"
+LOG_DIR="/Users/${REMOTE_USER}/ailiance-mac-tuner/logs"
+MODEL_DIR="/Users/${REMOTE_USER}/ailiance-mac-tuner/models/Mistral-Medium-3.5-128B-MLX-Q8"
 VENV_DIR="/Users/${REMOTE_USER}/.venv-mistral"
 PORT=9301
 
@@ -52,7 +52,7 @@ fi
 
 if ! ssh "${REMOTE_HOST}" "lsof -nP -iTCP:${PORT} -sTCP:LISTEN >/dev/null 2>&1"; then
     echo "[deploy] starting worker via nohup (launchd bootstrap requires GUI session)..."
-    ssh "${REMOTE_HOST}" "cd /Users/${REMOTE_USER}/KIKI-Mac_tunner && nohup ${VENV_DIR}/bin/python -m mlx_lm.server --model '${MODEL_DIR}' --host 0.0.0.0 --port ${PORT} --log-level INFO > logs/mistral.out.log 2> logs/mistral.err.log < /dev/null & echo started_pid=\$!"
+    ssh "${REMOTE_HOST}" "cd /Users/${REMOTE_USER}/ailiance-mac-tuner && nohup ${VENV_DIR}/bin/python -m mlx_lm.server --model '${MODEL_DIR}' --host 0.0.0.0 --port ${PORT} --log-level INFO > logs/mistral.out.log 2> logs/mistral.err.log < /dev/null & echo started_pid=\$!"
 fi
 
 echo "[deploy] waiting for :${PORT} to listen (up to 6 min, MLX 128B Q8 cold-start)..."

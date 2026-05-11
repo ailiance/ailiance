@@ -1,4 +1,4 @@
-model_path: /Users/clems/KIKI-Mac_tunner/models/EuroLLM-22B-Instruct-2512
+model_path: /Users/clems/ailiance-mac-tuner/models/EuroLLM-22B-Instruct-2512
 adapters_dir: output/adapters/eurollm
 port: 9303
 precision: bf16

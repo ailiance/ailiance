@@ -13,7 +13,7 @@ import random
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-LEGACY_DIR = Path.home() / "KIKI-Mac_tunner/data/micro-kiki/classified"
+LEGACY_DIR = Path.home() / "ailiance-mac-tuner/data/micro-kiki/classified"
 CLEAN_DIR = REPO_ROOT / "data/router-clean"
 CLASSIFIED_DIR = LEGACY_DIR if os.environ.get("ROUTER_LEGACY") == "1" else CLEAN_DIR
 OUTPUT_DIR = REPO_ROOT / "data/router"

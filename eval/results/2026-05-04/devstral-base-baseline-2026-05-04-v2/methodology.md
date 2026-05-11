@@ -8,7 +8,7 @@
 | Field | Value |
 |-------|-------|
 | Label | `devstral-base-baseline-2026-05-04-v2` |
-| Model | `/Users/electron/Projets/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit` |
+| Model | `/Users/electron/Projets/ailiance-mac-tuner/models/Devstral-Small-2-24B-MLX-4bit` |
 | Model SHA-256 (first chunk) | `662d914f8f30ca78f687c96fb7599d4ac25409fa02cd02c3540a1d280bd17f86` |
 | Adapter | `(none)` |
 | Adapter SHA-256 | `(none)` |
@@ -62,7 +62,7 @@ humanevalplus
 3. Verify the model + adapter SHAs match (otherwise results won't reproduce):
 
    ```bash
-   sha256sum /Users/electron/Projets/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit/*.safetensors | head -1
+   sha256sum /Users/electron/Projets/ailiance-mac-tuner/models/Devstral-Small-2-24B-MLX-4bit/*.safetensors | head -1
    sha256sum (none)/adapters.safetensors
    ```
 

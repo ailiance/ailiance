@@ -12,13 +12,13 @@ for arg in "$@"; do
   esac
 done
 
-cd "${HOME}/eu-kiki"
-mkdir -p "${HOME}/KIKI-Mac_tunner/logs"
+cd "${HOME}/ailiance"
+mkdir -p "${HOME}/ailiance-mac-tuner/logs"
 
 for model in qwen36 gemma4; do
   for split in D1 D2 D3; do
-    cfg="${HOME}/KIKI-Mac_tunner/configs/eu-kiki-v3-${model}-kicad-sch-${split}.yaml"
-    log="${HOME}/KIKI-Mac_tunner/logs/eu-kiki-v3-${model}-kicad-sch-${split}-$(date +%Y%m%d-%H%M).log"
+    cfg="${HOME}/ailiance-mac-tuner/configs/ailiance-v3-${model}-kicad-sch-${split}.yaml"
+    log="${HOME}/ailiance-mac-tuner/logs/ailiance-v3-${model}-kicad-sch-${split}-$(date +%Y%m%d-%H%M).log"
     echo "[$(date -Iseconds)] plan ${model} ${split} cfg=${cfg}"
     if [[ "${ACTUALLY_RUN}" -eq 1 ]]; then
       echo "[$(date -Iseconds)] start ${model} ${split}"

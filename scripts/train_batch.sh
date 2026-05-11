@@ -3,27 +3,27 @@
 # ailiance LoRA Batch Training — Solid Domains (>=1000 examples)
 #
 # Trains all pending model+domain combos sequentially within each model.
-# Uses HF-traced data at ~/eu-kiki/data/hf-traced/ for EU AI Act compliance.
+# Uses HF-traced data at ~/ailiance/data/hf-traced/ for EU AI Act compliance.
 #
 # Prerequisites:
 #   sudo sysctl -w iogpu.wired_limit_mb=458752
-#   cd ~/KIKI-Mac_tunner
+#   cd ~/ailiance-mac-tuner
 #
 # Usage:
-#   bash ~/eu-kiki/scripts/train_batch.sh           # run all
-#   bash ~/eu-kiki/scripts/train_batch.sh --dry-run  # show plan only
+#   bash ~/ailiance/scripts/train_batch.sh           # run all
+#   bash ~/ailiance/scripts/train_batch.sh --dry-run  # show plan only
 #
 # Generated: 2026-04-28
 # ==============================================================================
 
 set -euo pipefail
 
-KIKI_TUNNER="$HOME/KIKI-Mac_tunner"
-EU_KIKI="$HOME/eu-kiki"
-HF_DATA="$EU_KIKI/data/hf-traced"
-ADAPTERS="$EU_KIKI/output/adapters"
+KIKI_TUNNER="$HOME/ailiance-mac-tuner"
+AILIANCE="$HOME/ailiance"
+HF_DATA="$AILIANCE/data/hf-traced"
+ADAPTERS="$AILIANCE/output/adapters"
 OUTPUT_ROOT="$KIKI_TUNNER/output/ailiance-hf"
-LOG_DIR="$EU_KIKI/output/training-logs"
+LOG_DIR="$AILIANCE/output/training-logs"
 
 DRY_RUN=false
 if [[ "${1:-}" == "--dry-run" ]]; then
@@ -80,7 +80,7 @@ import yaml
 import shutil
 from pathlib import Path
 
-sys.path.insert(0, "/Users/clems/KIKI-Mac_tunner/lib")
+sys.path.insert(0, "/Users/clems/ailiance-mac-tuner/lib")
 
 model_path = sys.argv[1]
 data_dir = sys.argv[2]

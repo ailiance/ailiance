@@ -33,13 +33,13 @@ corpus) is now resolved: v6 trains on the AI-Act-traceable clean corpus
 ## 2. Sources
 
 The training data is built by `scripts/build_router_data.py` which
-walks `~/KIKI-Mac_tunner/data/micro-kiki/classified/*.jsonl`.
+walks `~/ailiance-mac-tuner/data/micro-kiki/classified/*.jsonl`.
 
 ### 2.1 Original corpus (pre-2026-05-05)
 
 | Source | Volume | Origin |
 |---|---|---|
-| `KIKI-Mac_tunner/data/micro-kiki/classified/*.jsonl` (32 files) | ~45 000 user-style prompts | L'Électron Rare internal corpus produced ~April 2026 by an automated classifier that assigned domain labels to a generic instruction-tuning dataset |
+| `ailiance-mac-tuner/data/micro-kiki/classified/*.jsonl` (32 files) | ~45 000 user-style prompts | Ailiance internal corpus produced ~April 2026 by an automated classifier that assigned domain labels to a generic instruction-tuning dataset |
 
 The internal classifier used to label these prompts was **not validated
 manually**. Subsequent inspection (May 2026) shows that many `.jsonl`
@@ -49,11 +49,11 @@ files contain prompts that do not match their declared domain — see §4.
 
 | File | New prompts | Author | Date | Subject |
 |---|---|---|---|---|
-| `calcul-normatif.jsonl` | 223 (file created) | L'Électron Rare | 2026-05-05 | IEC / EN / CE / RoHS / WEEE / NF norms |
-| `docker.jsonl` | +103 | L'Électron Rare | 2026-05-05 | Real Docker / Compose / Buildkit prompts |
-| `spice.jsonl` | +99 | L'Électron Rare | 2026-05-05 | NGSPICE / LTspice circuit simulation |
-| FR/EN code-switched | 103 across 27 domains | L'Électron Rare | 2026-05-05 | Bilingual prompts to reduce language over-fit |
-| `chat-fr.jsonl` | +193 | L'Électron Rare | 2026-05-05 | Short FR/EN greetings + small talk |
+| `calcul-normatif.jsonl` | 223 (file created) | Ailiance | 2026-05-05 | IEC / EN / CE / RoHS / WEEE / NF norms |
+| `docker.jsonl` | +103 | Ailiance | 2026-05-05 | Real Docker / Compose / Buildkit prompts |
+| `spice.jsonl` | +99 | Ailiance | 2026-05-05 | NGSPICE / LTspice circuit simulation |
+| FR/EN code-switched | 103 across 27 domains | Ailiance | 2026-05-05 | Bilingual prompts to reduce language over-fit |
+| `chat-fr.jsonl` | +193 | Ailiance | 2026-05-05 | Short FR/EN greetings + small talk |
 
 Scripts: `scripts/augment_router_data.py`, `scripts/augment_short_greetings.py`.
 
@@ -150,8 +150,8 @@ the §2.1 corpus is too small to begin with (`stm32`, `platformio`,
 ```bash
 # regenerate splits + retrain from scratch
 cd ailiance
-~/KIKI-Mac_tunner/.venv/bin/python scripts/build_router_data.py
-~/KIKI-Mac_tunner/.venv/bin/python scripts/train_router.py \
+~/ailiance-mac-tuner/.venv/bin/python scripts/build_router_data.py
+~/ailiance-mac-tuner/.venv/bin/python scripts/train_router.py \
   --embedding-model sentence-transformers/all-MiniLM-L6-v2 \
   --hidden-dim 256 --epochs 30 --output-dir output/router-vN
 ```

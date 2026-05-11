@@ -146,7 +146,7 @@ Run with: `PATH=$HOME/.local/bin:$PATH uv run --with pytest pytest tests/test_ro
 EUROLLM_LIVE = True
 ```
 
-Then `sudo systemctl restart eu-kiki-gateway.service`.
+Then `sudo systemctl restart ailiance-gateway.service`.
 
 ## Follow-ups
 

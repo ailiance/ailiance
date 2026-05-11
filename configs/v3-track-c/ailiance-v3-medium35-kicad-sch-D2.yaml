@@ -1,8 +1,8 @@
 # STATUS: M3/M4 stub, training deferred until M2 results validated
-# eu-kiki-v3-devstral-kicad-sch-D2.yaml
-# Track C - kicad-sch v10 LoRA, devstral on D2
-model: /Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2507-MLX-4bit
-data: /Users/clems/eu-kiki-data/kicad-sch-synth-stripped
+# ailiance-v3-medium35-kicad-sch-D2.yaml
+# Track C - kicad-sch v10 LoRA, medium35 on D2
+model: /Users/clems/ailiance-mac-tuner/models/Mistral-Medium-3.5-128B-MLX-Q8
+data: /Users/clems/ailiance-data/kicad-sch-synth-stripped
 train: true
 fine_tune_type: lora
 optimizer: adamw
@@ -21,5 +21,5 @@ save_every: 250
 grad_accumulation_steps: 8
 max_seq_length: 8192
 grad_checkpoint: true
-adapter_path: /Users/clems/eu-kiki/adapters/v3/kicad-sch-devstral-D2
+adapter_path: /Users/clems/ailiance/adapters/v3/kicad-sch-medium35-D2
 seed: 42

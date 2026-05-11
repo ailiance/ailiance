@@ -8,7 +8,7 @@
 set -euo pipefail
 
 LABEL="devstral-python-adapter-2026-05-04"
-MODEL="/Users/electron/Projets/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"
+MODEL="/Users/electron/Projets/ailiance-mac-tuner/models/Devstral-Small-2-24B-MLX-4bit"
 ADAPTER="/Users/electron/Projets/ailiance/output/adapters/devstral/python"
 PORT=8802
 

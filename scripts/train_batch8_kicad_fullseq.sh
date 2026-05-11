@@ -10,13 +10,13 @@
 
 set -euo pipefail
 
-KIKI_TUNNER="$HOME/KIKI-Mac_tunner"
-EU_KIKI="$HOME/eu-kiki"
-HF_DATA="$EU_KIKI/data/hf-traced"
-ADAPTERS="$EU_KIKI/output/adapters"
+KIKI_TUNNER="$HOME/ailiance-mac-tuner"
+AILIANCE="$HOME/ailiance"
+HF_DATA="$AILIANCE/data/hf-traced"
+ADAPTERS="$AILIANCE/output/adapters"
 OUTPUT_ROOT="$KIKI_TUNNER/output/ailiance-hf"
-LOG_DIR="$EU_KIKI/output/training-logs"
-BACKUP_DIR="$EU_KIKI/output/adapters-backup-pre-kicad-fullseq"
+LOG_DIR="$AILIANCE/output/training-logs"
+BACKUP_DIR="$AILIANCE/output/adapters-backup-pre-kicad-fullseq"
 DEVSTRAL_BF16="$KIKI_TUNNER/models/Devstral-Small-2-24B-BF16"
 
 DOMAIN="kicad-pcb"
@@ -100,7 +100,7 @@ mx.set_memory_limit(480 * 1024**3)
 mx.set_cache_limit(64 * 1024**3)
 import os, sys, time, yaml, shutil
 from pathlib import Path
-sys.path.insert(0, "/Users/clems/KIKI-Mac_tunner/lib")
+sys.path.insert(0, "/Users/clems/ailiance-mac-tuner/lib")
 model_path, data_dir, output_dir = sys.argv[1], sys.argv[2], sys.argv[3]
 adapter_dest, grad_accum, max_seq, iters = sys.argv[4], int(sys.argv[5]), int(sys.argv[6]), int(sys.argv[7])
 os.makedirs(output_dir, exist_ok=True)

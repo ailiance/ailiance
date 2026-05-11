@@ -13,7 +13,7 @@ Usage:
     python -m runners.mtbench_runner \\
         --base-url http://localhost:8810/v1 \\
         --model-id devstral-python \\
-        --model-path /Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit \\
+        --model-path /Users/clems/ailiance-mac-tuner/models/Devstral-Small-2-24B-MLX-4bit \\
         --judge-base-url http://localhost:8500/v1 \\
         --judge-model mlx-community/Mistral-Medium-3.5-128B-MLX-4bit \\
         --output-dir results/2026-05-04/devstral-python/mtbench \\

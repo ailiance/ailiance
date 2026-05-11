@@ -5,7 +5,7 @@
   "deployed_on_host": "electron-server (gateway-side, CPU)",
   "served_via": "in-process MLP head invoked by the ailiance gateway (FastAPI :9300)",
   "source": {
-    "provider": "L'Électron Rare (head trained in-house) + Microsoft / Hugging Face (encoder)",
+    "provider": "Ailiance (head trained in-house) + Microsoft / Hugging Face (encoder)",
     "encoder": {
       "huggingface_repo": "sentence-transformers/all-MiniLM-L6-v2",
       "huggingface_url": "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2",
@@ -36,9 +36,9 @@
     "active_parameters_per_token": 22700000
   },
   "training_data": {
-    "source": "L'Électron Rare proprietary corpus — ~46 500 user-style prompts classified across 34 technical domains",
+    "source": "Ailiance proprietary corpus — ~46 500 user-style prompts classified across 34 technical domains",
     "datasets_combined": [
-      "KIKI-Mac_tunner/data/micro-kiki/classified/*.jsonl (32 domains, ~46 000 lines)",
+      "ailiance-mac-tuner/data/micro-kiki/classified/*.jsonl (32 domains, ~46 000 lines)",
       "scripts/augment_router_data.py — manually curated 528 prompts targeting docker/spice/calcul-normatif gaps + FR/EN code-switching"
     ],
     "split": "80/20 train/valid, deterministic seed 42",

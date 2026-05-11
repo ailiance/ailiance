@@ -1,7 +1,7 @@
 # ailiance — Evaluation Suite
 
 Reproducible, publishable benchmark pipeline for the ailiance adapters
-(Apertus 70B, Devstral 24B, EuroLLM 22B) and KIKI-Mac_tunner models
+(Apertus 70B, Devstral 24B, EuroLLM 22B) and ailiance-mac-tuner models
 (Mistral Large, Qwen3.5-122B/35B, Sonnet-Devstral 123B, Brainstacks).
 
 ## Goals

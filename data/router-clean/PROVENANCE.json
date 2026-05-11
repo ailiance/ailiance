@@ -19,7 +19,7 @@
       "split": null,
       "license_spdx": "apache-2.0",
       "rows_used": 12,
-      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
     },
     {
       "domain": "kicad-dsl",
@@ -28,7 +28,7 @@
       "split": null,
       "license_spdx": "apache-2.0",
       "rows_used": 11,
-      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
     },
     {
       "domain": "stm32",
@@ -37,7 +37,7 @@
       "split": null,
       "license_spdx": "apache-2.0",
       "rows_used": 12,
-      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
     },
     {
       "domain": "embedded",
@@ -46,7 +46,7 @@
       "split": null,
       "license_spdx": "apache-2.0",
       "rows_used": 11,
-      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
     },
     {
       "domain": "dsp",
@@ -55,7 +55,7 @@
       "split": null,
       "license_spdx": "apache-2.0",
       "rows_used": 11,
-      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
     },
     {
       "domain": "iot",
@@ -64,7 +64,7 @@
       "split": null,
       "license_spdx": "apache-2.0",
       "rows_used": 11,
-      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
     },
     {
       "domain": "music-audio",
@@ -73,7 +73,7 @@
       "split": null,
       "license_spdx": "apache-2.0",
       "rows_used": 11,
-      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
     },
     {
       "domain": "platformio",
@@ -82,7 +82,7 @@
       "split": null,
       "license_spdx": "apache-2.0",
       "rows_used": 11,
-      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
     },
     {
       "domain": "ml-training",
@@ -91,7 +91,7 @@
       "split": null,
       "license_spdx": "apache-2.0",
       "rows_used": 12,
-      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
     },
     {
       "domain": "llm-orch",
@@ -100,7 +100,7 @@
       "split": null,
       "license_spdx": "apache-2.0",
       "rows_used": 12,
-      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
     },
     {
       "domain": "web-backend",
@@ -109,7 +109,7 @@
       "split": null,
       "license_spdx": "apache-2.0",
       "rows_used": 12,
-      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
     },
     {
       "domain": "web-frontend",
@@ -118,7 +118,7 @@
       "split": null,
       "license_spdx": "apache-2.0",
       "rows_used": 12,
-      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
     },
     {
       "domain": "yaml-json",
@@ -127,7 +127,7 @@
       "split": null,
       "license_spdx": "apache-2.0",
       "rows_used": 12,
-      "note": "Curated by L'Électron Rare. See scripts/augment_niche_domains.py."
+      "note": "Curated by Ailiance. See scripts/augment_niche_domains.py."
     },
     {
       "domain": "python",
@@ -263,7 +263,7 @@
       "split": null,
       "license_spdx": "apache-2.0",
       "rows_used": 223,
-      "note": "Curated by L'Électron Rare in May 2026. See scripts/augment_router_data.py."
+      "note": "Curated by Ailiance in May 2026. See scripts/augment_router_data.py."
     },
     {
       "domain": "docker",
@@ -271,7 +271,7 @@
       "split": null,
       "license_spdx": "apache-2.0",
       "rows_used": 103,
-      "note": "Curated by L'Électron Rare in May 2026. See scripts/augment_router_data.py."
+      "note": "Curated by Ailiance in May 2026. See scripts/augment_router_data.py."
     },
     {
       "domain": "spice",
@@ -279,7 +279,7 @@
       "split": null,
       "license_spdx": "apache-2.0",
       "rows_used": 699,
-      "note": "Curated by L'Électron Rare in May 2026. See scripts/augment_router_data.py."
+      "note": "Curated by Ailiance in May 2026. See scripts/augment_router_data.py."
     }
   ],
   "totals": {

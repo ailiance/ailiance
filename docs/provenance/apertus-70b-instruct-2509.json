@@ -14,7 +14,7 @@
     "license_url": "https://huggingface.co/swiss-ai/Apertus-70B-Instruct-2509/blob/main/LICENSE"
   },
   "weights_file": {
-    "filename": "(MLX 8-bit conversion in /Users/clems/KIKI-Mac_tunner/models/Apertus-70B-Instruct-2509)",
+    "filename": "(MLX 8-bit conversion in /Users/clems/ailiance-mac-tuner/models/Apertus-70B-Instruct-2509)",
     "size_bytes": null,
     "sha256_expected": null,
     "comment": "Original safetensors checksums on HF; MLX local conversion produced via mlx_lm.convert. Reconversion deterministic from upstream commit."
@@ -28,7 +28,7 @@
   },
   "quantization": {
     "method": "MLX 8-bit",
-    "produced_by": "L'Électron Rare (mlx_lm.convert from upstream BF16)"
+    "produced_by": "Ailiance (mlx_lm.convert from upstream BF16)"
   },
   "modifications_post_download": [
     "MLX 8-bit quantisation (mlx_lm.convert)",

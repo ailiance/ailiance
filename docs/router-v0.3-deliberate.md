@@ -188,7 +188,7 @@ v0.2.0 (e.g. `python`) are mapped to `direct` in
 ### Production rollout — first client
 
 The first production consumer of `extra_body.chain_policy=deliberate`
-is **electron-rare** (L'Electron Rare hardware/PCB consulting).
+is **electron-rare** (Ailiance hardware/PCB consulting).
 Their workload concentrates on hardware verification domains, all
 covered by iact-bench v0.2.0:
 

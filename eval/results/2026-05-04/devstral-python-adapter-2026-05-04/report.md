@@ -4,7 +4,7 @@ Generated: 2026-05-04T19:51:40+0200
 
 ## Identity
 
-- **Model**: `/Users/electron/Projets/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit`
+- **Model**: `/Users/electron/Projets/ailiance-mac-tuner/models/Devstral-Small-2-24B-MLX-4bit`
 - **Adapter**: `/Users/electron/Projets/ailiance/output/adapters/devstral/python`
 - **Adapter SHA**: `88a0038f4fb0d331d66807b188f6692c41f9c537c92f5c57286bb896d33f086a`
 - **Git commit**: `b1ef93e2a142dfc706117139fd3b95fc6afa1dac`

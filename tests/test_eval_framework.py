@@ -141,8 +141,8 @@ def test_strict_iteration_order_groups_each_model_contiguously():
 
 def test_no_ailiance_path_constants_in_scripts():
     """Sibling scripts must not write to ~/ailiance/. The disk root is
-    ~/eu-kiki/ — the GitHub repo is named 'ailiance' but the on-disk
-    path stayed eu-kiki to avoid breaking sibling tooling. This
+    ~/ailiance/ — the GitHub repo is named 'ailiance' but the on-disk
+    path stayed ailiance to avoid breaking sibling tooling. This
     regression test was added 2026-05-10 after multiple cycles of
     the same path bug being introduced and reverted.
     """

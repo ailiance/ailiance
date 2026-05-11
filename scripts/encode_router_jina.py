@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Encode router training data with Jina v3 and save embeddings.
 
-Run with KIKI-Mac_tunner venv (Python 3.12) for SentenceTransformer compat:
+Run with ailiance-mac-tuner venv (Python 3.12) for SentenceTransformer compat:
     ~/KIKI-Mac_tunner/.venv/bin/python scripts/encode_router_jina.py
 """
 import json

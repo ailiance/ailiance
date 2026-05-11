@@ -459,7 +459,7 @@ flowchart LR
 
 ## Sister project
 
-[`KIKI-Mac_tunner`](https://github.com/L-electron-Rare/KIKI-Mac_tunner) — non-EU foundation distillation track (Mistral Large, Qwen3.5-122B, Devstral 2 123B dense). The ailiance training scripts (`train_ailiance_*.py`) and configs are mirrored there.
+[`ailiance-mac-tuner`](https://github.com/ailiance/ailiance-mac-tuner) — non-EU foundation distillation track (Mistral Large, Qwen3.5-122B, Devstral 2 123B dense). The ailiance training scripts (`train_ailiance_*.py`) and configs are mirrored there.
 
 ## License
 

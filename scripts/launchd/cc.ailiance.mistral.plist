@@ -10,7 +10,7 @@
     <string>-m</string>
     <string>mlx_lm.server</string>
     <string>--model</string>
-    <string>/Users/clems/KIKI-Mac_tunner/models/Mistral-Medium-3.5-128B-MLX-Q8</string>
+    <string>/Users/clems/ailiance-mac-tuner/models/Mistral-Medium-3.5-128B-MLX-Q8</string>
     <string>--host</string>
     <string>0.0.0.0</string>
     <string>--port</string>
@@ -30,11 +30,11 @@
   <key>ThrottleInterval</key>
   <integer>30</integer>
   <key>StandardOutPath</key>
-  <string>/Users/clems/KIKI-Mac_tunner/logs/mistral.out.log</string>
+  <string>/Users/clems/ailiance-mac-tuner/logs/mistral.out.log</string>
   <key>StandardErrorPath</key>
-  <string>/Users/clems/KIKI-Mac_tunner/logs/mistral.err.log</string>
+  <string>/Users/clems/ailiance-mac-tuner/logs/mistral.err.log</string>
   <key>WorkingDirectory</key>
-  <string>/Users/clems/KIKI-Mac_tunner</string>
+  <string>/Users/clems/ailiance-mac-tuner</string>
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>

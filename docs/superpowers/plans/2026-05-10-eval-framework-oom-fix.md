@@ -6,16 +6,16 @@
 
 **Architecture:** Three layers of defense. (1) Lower `mx.set_memory_limit` below the macOS `iogpu.wired_limit_mb` so the soft cap can never exceed the hard kernel cap. (2) Add a `--mode sequential-strict` runtime flag that finishes every adapter for one base model before unloading and moving to the next, with a peak-memory probe between each transition that aborts with a clean error if the threshold is breached. (3) Wrap the subprocess in a wall-time + exit-code aware launcher so SIGKILL produces a structured report instead of a `Killed: 9` line.
 
-**Tech Stack:** Python 3.13 (`/Users/clems/KIKI-Mac_tunner/.venv/bin/python`), MLX (`mlx_lm_fork` vendored at `~/KIKI-Mac_tunner/lib/mlx_lm_fork`), bash (`run_eval.sh`), pytest 8.x for the unit tests.
+**Tech Stack:** Python 3.13 (`/Users/clems/ailiance-mac-tuner/.venv/bin/python`), MLX (`mlx_lm_fork` vendored at `~/ailiance-mac-tuner/lib/mlx_lm_fork`), bash (`run_eval.sh`), pytest 8.x for the unit tests.
 
 ---
 
 ## Repo + locations
 
-- All code lives in **`L-electron-Rare/eu-kiki`** (GitHub-redirected to `ailiance`), executed on **Studio (`100.116.92.12`)**.
-- Code path: `~/eu-kiki/scripts/eval_framework.py` (1329 lines), `~/eu-kiki/scripts/run_eval.sh` (~250 lines).
-- Tests path: `~/eu-kiki/tests/test_eval_framework.py` (new, the directory may not exist yet).
-- Plan path: `~/eu-kiki/docs/superpowers/plans/2026-05-10-eval-framework-oom-fix.md` (new).
+- All code lives in **`ailiance/ailiance`** (GitHub-redirected to `ailiance`), executed on **Studio (`100.116.92.12`)**.
+- Code path: `~/ailiance/scripts/eval_framework.py` (1329 lines), `~/ailiance/scripts/run_eval.sh` (~250 lines).
+- Tests path: `~/ailiance/tests/test_eval_framework.py` (new, the directory may not exist yet).
+- Plan path: `~/ailiance/docs/superpowers/plans/2026-05-10-eval-framework-oom-fix.md` (new).
 - All commits authored as `electron-rare <108685187+electron-rare@users.noreply.github.com>` (GitHub email-privacy enforced).
 
 ## Pre-flight context
@@ -23,10 +23,10 @@
 Current `run_eval.sh --compare` symptom (2026-05-10 17:35 CEST):
 
 ```
-Running: /Users/clems/KIKI-Mac_tunner/.venv/bin/python /Users/clems/eu-kiki/scripts/eval_framework.py --mode compare
+Running: /Users/clems/ailiance-mac-tuner/.venv/bin/python /Users/clems/ailiance/scripts/eval_framework.py --mode compare
 mx.metal.get_peak_memory is deprecated and will be removed in a future version. Use mx.get_peak_memory instead.
 mx.metal.clear_cache is deprecated and will be removed in a future version. Use mx.clear_cache instead.
-/Users/clems/eu-kiki/scripts/run_eval.sh: line 230: 61345 Killed: 9
+/Users/clems/ailiance/scripts/run_eval.sh: line 230: 61345 Killed: 9
 ```
 
 Crashes between the first `import mlx` and the first `Phase 1` banner — ~3 seconds of process life. No traceback. Strongly suggests kernel SIGKILL on a memory-budget violation, not a Python exception.
@@ -56,20 +56,20 @@ Each file has one responsibility. The launcher wrapper is separate from `run_eva
 ## Task 1: Reproducer test that pins the failure
 
 **Files:**
-- Create: `~/eu-kiki/tests/__init__.py`
-- Create: `~/eu-kiki/tests/test_eval_framework.py`
+- Create: `~/ailiance/tests/__init__.py`
+- Create: `~/ailiance/tests/test_eval_framework.py`
 
 We need a fast unit test that fails today and passes once the memory cap is lowered. Targeting `mx.set_memory_limit` directly — no need to actually load models.
 
 - [ ] **Step 1: Create the empty test package marker**
 
 ```bash
-ssh studio 'mkdir -p ~/eu-kiki/tests && touch ~/eu-kiki/tests/__init__.py'
+ssh studio 'mkdir -p ~/ailiance/tests && touch ~/ailiance/tests/__init__.py'
 ```
 
 - [ ] **Step 2: Write the failing test**
 
-Write the file `~/eu-kiki/tests/test_eval_framework.py`:
+Write the file `~/ailiance/tests/test_eval_framework.py`:
 
 ```python
 """Unit tests for eval_framework.py memory budget + mode dispatch."""
@@ -113,7 +113,7 @@ def test_memory_limit_below_wired_cap():
 - [ ] **Step 3: Run the test to verify it fails**
 
 ```bash
-ssh studio 'cd ~/eu-kiki && /Users/clems/KIKI-Mac_tunner/.venv/bin/python -m pytest tests/test_eval_framework.py::test_memory_limit_below_wired_cap -v'
+ssh studio 'cd ~/ailiance && /Users/clems/ailiance-mac-tuner/.venv/bin/python -m pytest tests/test_eval_framework.py::test_memory_limit_below_wired_cap -v'
 ```
 
 Expected: **FAIL** with `AssertionError: mx.set_memory_limit(480 GiB) must stay <= 440 GiB ...`.
@@ -121,7 +121,7 @@ Expected: **FAIL** with `AssertionError: mx.set_memory_limit(480 GiB) must stay 
 - [ ] **Step 4: Commit the failing test**
 
 ```bash
-ssh studio 'cd ~/eu-kiki && git add tests/__init__.py tests/test_eval_framework.py && GIT_EDITOR=true git -c user.name=electron-rare -c user.email=108685187+electron-rare@users.noreply.github.com commit -m "test: add memory-cap reproducer for eval_framework OOM"'
+ssh studio 'cd ~/ailiance && git add tests/__init__.py tests/test_eval_framework.py && GIT_EDITOR=true git -c user.name=electron-rare -c user.email=108685187+electron-rare@users.noreply.github.com commit -m "test: add memory-cap reproducer for eval_framework OOM"'
 ```
 
 ---
@@ -129,20 +129,20 @@ ssh studio 'cd ~/eu-kiki && git add tests/__init__.py tests/test_eval_framework.
 ## Task 2: Lower the soft memory cap below the wired hard cap
 
 **Files:**
-- Modify: `~/eu-kiki/scripts/eval_framework.py:455-460` (the `mx.set_memory_limit` call inside `load_model_and_tokenizer`)
+- Modify: `~/ailiance/scripts/eval_framework.py:455-460` (the `mx.set_memory_limit` call inside `load_model_and_tokenizer`)
 
 - [ ] **Step 1: Apply the patch**
 
 Run on Studio:
 
 ```bash
-ssh studio 'sed -i "" "s|mx.set_memory_limit(480 \* 1024\*\*3)|mx.set_memory_limit(440 * 1024**3)|" ~/eu-kiki/scripts/eval_framework.py'
+ssh studio 'sed -i "" "s|mx.set_memory_limit(480 \* 1024\*\*3)|mx.set_memory_limit(440 * 1024**3)|" ~/ailiance/scripts/eval_framework.py'
 ```
 
 - [ ] **Step 2: Verify the change**
 
 ```bash
-ssh studio 'grep -n "mx.set_memory_limit" ~/eu-kiki/scripts/eval_framework.py'
+ssh studio 'grep -n "mx.set_memory_limit" ~/ailiance/scripts/eval_framework.py'
 ```
 
 Expected: prints exactly one match `mx.set_memory_limit(440 * 1024**3)`.
@@ -150,7 +150,7 @@ Expected: prints exactly one match `mx.set_memory_limit(440 * 1024**3)`.
 - [ ] **Step 3: Run the failing test, expect PASS**
 
 ```bash
-ssh studio 'cd ~/eu-kiki && /Users/clems/KIKI-Mac_tunner/.venv/bin/python -m pytest tests/test_eval_framework.py::test_memory_limit_below_wired_cap -v'
+ssh studio 'cd ~/ailiance && /Users/clems/ailiance-mac-tuner/.venv/bin/python -m pytest tests/test_eval_framework.py::test_memory_limit_below_wired_cap -v'
 ```
 
 Expected: **PASS**.
@@ -158,7 +158,7 @@ Expected: **PASS**.
 - [ ] **Step 4: Commit**
 
 ```bash
-ssh studio 'cd ~/eu-kiki && git add scripts/eval_framework.py && GIT_EDITOR=true git -c user.name=electron-rare -c user.email=108685187+electron-rare@users.noreply.github.com commit -m "fix(eval): lower mx.set_memory_limit 480->440 GiB
+ssh studio 'cd ~/ailiance && git add scripts/eval_framework.py && GIT_EDITOR=true git -c user.name=electron-rare -c user.email=108685187+electron-rare@users.noreply.github.com commit -m "fix(eval): lower mx.set_memory_limit 480->440 GiB
 
 Studio iogpu.wired_limit_mb is 458752 (448 GiB). Setting the MLX soft
 cap above that hard cap was the SIGKILL trigger on full --mode compare
@@ -171,7 +171,7 @@ allocations and stays well below the wired pool ceiling."'
 ## Task 3: Add `_assert_within_budget()` peak-memory probe
 
 **Files:**
-- Modify: `~/eu-kiki/scripts/eval_framework.py:473-485` (extend `unload_model()` and add a sibling helper)
+- Modify: `~/ailiance/scripts/eval_framework.py:473-485` (extend `unload_model()` and add a sibling helper)
 
 - [ ] **Step 1: Write the failing test**
 
@@ -209,14 +209,14 @@ def test_assert_within_budget_passes_when_under(monkeypatch):
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-ssh studio 'cd ~/eu-kiki && /Users/clems/KIKI-Mac_tunner/.venv/bin/python -m pytest tests/test_eval_framework.py -v'
+ssh studio 'cd ~/ailiance && /Users/clems/ailiance-mac-tuner/.venv/bin/python -m pytest tests/test_eval_framework.py -v'
 ```
 
 Expected: 2 new FAILs (`ImportError: cannot import name '_assert_within_budget'`).
 
 - [ ] **Step 3: Add the helper + module-level `mx` import**
 
-In `~/eu-kiki/scripts/eval_framework.py`, add near the top (after the existing `import` block, before line 50):
+In `~/ailiance/scripts/eval_framework.py`, add near the top (after the existing `import` block, before line 50):
 
 ```python
 import mlx.core as mx  # noqa: E402  module-level handle for monkey-patchable probe
@@ -242,7 +242,7 @@ def _assert_within_budget(budget_gib: int = 440) -> None:
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-ssh studio 'cd ~/eu-kiki && /Users/clems/KIKI-Mac_tunner/.venv/bin/python -m pytest tests/test_eval_framework.py -v'
+ssh studio 'cd ~/ailiance && /Users/clems/ailiance-mac-tuner/.venv/bin/python -m pytest tests/test_eval_framework.py -v'
 ```
 
 Expected: all 3 tests PASS.
@@ -250,7 +250,7 @@ Expected: all 3 tests PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-ssh studio 'cd ~/eu-kiki && git add scripts/eval_framework.py tests/test_eval_framework.py && GIT_EDITOR=true git -c user.name=electron-rare -c user.email=108685187+electron-rare@users.noreply.github.com commit -m "feat(eval): _assert_within_budget probe with clean RuntimeError"'
+ssh studio 'cd ~/ailiance && git add scripts/eval_framework.py tests/test_eval_framework.py && GIT_EDITOR=true git -c user.name=electron-rare -c user.email=108685187+electron-rare@users.noreply.github.com commit -m "feat(eval): _assert_within_budget probe with clean RuntimeError"'
 ```
 
 ---
@@ -258,7 +258,7 @@ ssh studio 'cd ~/eu-kiki && git add scripts/eval_framework.py tests/test_eval_fr
 ## Task 4: Add `--mode sequential-strict` CLI flag
 
 **Files:**
-- Modify: `~/eu-kiki/scripts/eval_framework.py` — `parse_args()` (find with `grep -n "argparse\|add_argument\|--mode" ~/eu-kiki/scripts/eval_framework.py`; the parser is in `main()` around line 1277), the `run_eval()` signature, and the Phase 2/3 loop iteration order
+- Modify: `~/ailiance/scripts/eval_framework.py` — `parse_args()` (find with `grep -n "argparse\|add_argument\|--mode" ~/ailiance/scripts/eval_framework.py`; the parser is in `main()` around line 1277), the `run_eval()` signature, and the Phase 2/3 loop iteration order
 
 - [ ] **Step 1: Write the failing test**
 
@@ -306,14 +306,14 @@ def test_load_group_order_strict_groups_by_model():
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-ssh studio 'cd ~/eu-kiki && /Users/clems/KIKI-Mac_tunner/.venv/bin/python -m pytest tests/test_eval_framework.py -v'
+ssh studio 'cd ~/ailiance && /Users/clems/ailiance-mac-tuner/.venv/bin/python -m pytest tests/test_eval_framework.py -v'
 ```
 
 Expected: 2 new FAILs.
 
 - [ ] **Step 3: Add the iteration helper near `run_eval()`**
 
-In `~/eu-kiki/scripts/eval_framework.py` insert just above the `def run_eval(` definition (around line 1146):
+In `~/ailiance/scripts/eval_framework.py` insert just above the `def run_eval(` definition (around line 1146):
 
 ```python
 def _strict_iteration_order(
@@ -358,7 +358,7 @@ Apply the same `_strict_iteration_order` + post-group `unload_model()` + `_asser
 - [ ] **Step 5: Run tests to verify they pass**
 
 ```bash
-ssh studio 'cd ~/eu-kiki && /Users/clems/KIKI-Mac_tunner/.venv/bin/python -m pytest tests/test_eval_framework.py -v'
+ssh studio 'cd ~/ailiance && /Users/clems/ailiance-mac-tuner/.venv/bin/python -m pytest tests/test_eval_framework.py -v'
 ```
 
 Expected: all 5 tests PASS.
@@ -366,7 +366,7 @@ Expected: all 5 tests PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-ssh studio 'cd ~/eu-kiki && git add scripts/eval_framework.py tests/test_eval_framework.py && GIT_EDITOR=true git -c user.name=electron-rare -c user.email=108685187+electron-rare@users.noreply.github.com commit -m "feat(eval): --mode sequential-strict + per-model budget probe"'
+ssh studio 'cd ~/ailiance && git add scripts/eval_framework.py tests/test_eval_framework.py && GIT_EDITOR=true git -c user.name=electron-rare -c user.email=108685187+electron-rare@users.noreply.github.com commit -m "feat(eval): --mode sequential-strict + per-model budget probe"'
 ```
 
 ---
@@ -374,12 +374,12 @@ ssh studio 'cd ~/eu-kiki && git add scripts/eval_framework.py tests/test_eval_fr
 ## Task 5: Forward `--mode sequential-strict` through `run_eval.sh`
 
 **Files:**
-- Modify: `~/eu-kiki/scripts/run_eval.sh` (the `case "$1" in` block that builds `MODE` for the Python invocation)
+- Modify: `~/ailiance/scripts/run_eval.sh` (the `case "$1" in` block that builds `MODE` for the Python invocation)
 
 - [ ] **Step 1: Find the dispatch block**
 
 ```bash
-ssh studio 'grep -n "v1-only\|v2-only\|--compare\|MODE=" ~/eu-kiki/scripts/run_eval.sh | head -20'
+ssh studio 'grep -n "v1-only\|v2-only\|--compare\|MODE=" ~/ailiance/scripts/run_eval.sh | head -20'
 ```
 
 The block accepts `--v1-only`, `--v2-only`, `--compare`. Add a `--sequential-strict` branch.
@@ -389,13 +389,13 @@ The block accepts `--v1-only`, `--v2-only`, `--compare`. Add a `--sequential-str
 Locate the `--compare` case and add the sibling case immediately after:
 
 ```bash
-ssh studio 'awk "/^[[:space:]]*--compare\)/,/^[[:space:]]*;;/" ~/eu-kiki/scripts/run_eval.sh'
+ssh studio 'awk "/^[[:space:]]*--compare\)/,/^[[:space:]]*;;/" ~/ailiance/scripts/run_eval.sh'
 ```
 
 Then patch by inserting after the `--compare;;` block:
 
 ```bash
-ssh studio 'sed -i "" "s|--compare)|--sequential-strict) MODE=sequential-strict; shift;;\n        --compare)|" ~/eu-kiki/scripts/run_eval.sh && grep -A1 "sequential-strict)" ~/eu-kiki/scripts/run_eval.sh'
+ssh studio 'sed -i "" "s|--compare)|--sequential-strict) MODE=sequential-strict; shift;;\n        --compare)|" ~/ailiance/scripts/run_eval.sh && grep -A1 "sequential-strict)" ~/ailiance/scripts/run_eval.sh'
 ```
 
 Expected: prints the new case.
@@ -403,13 +403,13 @@ Expected: prints the new case.
 - [ ] **Step 3: Update the help text**
 
 ```bash
-ssh studio 'sed -i "" "s|--compare          Evaluate both and compare (default)|--compare          Evaluate both and compare (default)\n  --sequential-strict  Same as --compare but unloads + budget-probes between models|" ~/eu-kiki/scripts/run_eval.sh'
+ssh studio 'sed -i "" "s|--compare          Evaluate both and compare (default)|--compare          Evaluate both and compare (default)\n  --sequential-strict  Same as --compare but unloads + budget-probes between models|" ~/ailiance/scripts/run_eval.sh'
 ```
 
 - [ ] **Step 4: Smoke-test the help**
 
 ```bash
-ssh studio 'bash ~/eu-kiki/scripts/run_eval.sh --help' | grep -i sequential
+ssh studio 'bash ~/ailiance/scripts/run_eval.sh --help' | grep -i sequential
 ```
 
 Expected: prints the new option line.
@@ -417,7 +417,7 @@ Expected: prints the new option line.
 - [ ] **Step 5: Commit**
 
 ```bash
-ssh studio 'cd ~/eu-kiki && git add scripts/run_eval.sh && GIT_EDITOR=true git -c user.name=electron-rare -c user.email=108685187+electron-rare@users.noreply.github.com commit -m "feat(run_eval): --sequential-strict forwarder"'
+ssh studio 'cd ~/ailiance && git add scripts/run_eval.sh && GIT_EDITOR=true git -c user.name=electron-rare -c user.email=108685187+electron-rare@users.noreply.github.com commit -m "feat(run_eval): --sequential-strict forwarder"'
 ```
 
 ---
@@ -425,25 +425,25 @@ ssh studio 'cd ~/eu-kiki && git add scripts/run_eval.sh && GIT_EDITOR=true git -
 ## Task 6: Wrapper `launch_eval_safe.sh` with structured exit reporting
 
 **Files:**
-- Create: `~/eu-kiki/scripts/launch_eval_safe.sh`
+- Create: `~/ailiance/scripts/launch_eval_safe.sh`
 
 - [ ] **Step 1: Write the wrapper script**
 
 ```bash
-ssh studio 'cat > ~/eu-kiki/scripts/launch_eval_safe.sh << "EOF"
+ssh studio 'cat > ~/ailiance/scripts/launch_eval_safe.sh << "EOF"
 #!/usr/bin/env bash
 # Wraps run_eval.sh and emits output/eval/last_run_status.json so downstream
 # automation can react without parsing free-form logs.
 set -euo pipefail
-EU_KIKI="$HOME/eu-kiki"
+AILIANCE="$HOME/ailiance"
 STAMP=$(date +%Y%m%d-%H%M%S)
-LOG="$EU_KIKI/output/eval/launch-${STAMP}.log"
-STATUS_FILE="$EU_KIKI/output/eval/last_run_status.json"
-mkdir -p "$EU_KIKI/output/eval"
+LOG="$AILIANCE/output/eval/launch-${STAMP}.log"
+STATUS_FILE="$AILIANCE/output/eval/last_run_status.json"
+mkdir -p "$AILIANCE/output/eval"
 
 START=$(date -u +%s)
 set +e
-bash "$EU_KIKI/scripts/run_eval.sh" "$@" 2>&1 | tee "$LOG"
+bash "$AILIANCE/scripts/run_eval.sh" "$@" 2>&1 | tee "$LOG"
 EC=${PIPESTATUS[0]}
 set -e
 END=$(date -u +%s)
@@ -468,14 +468,14 @@ JSON
 echo "Status: $STATUS_FILE (exit=$EC, signal=${SIGNAL:-none}, wall=${WALL}s)"
 exit $EC
 EOF
-chmod +x ~/eu-kiki/scripts/launch_eval_safe.sh
-ls -lah ~/eu-kiki/scripts/launch_eval_safe.sh'
+chmod +x ~/ailiance/scripts/launch_eval_safe.sh
+ls -lah ~/ailiance/scripts/launch_eval_safe.sh'
 ```
 
 - [ ] **Step 2: Smoke test the wrapper with `--quick`**
 
 ```bash
-ssh studio 'bash ~/eu-kiki/scripts/launch_eval_safe.sh --quick --v1-only --domains math-gsm8k 2>&1 | tail -5'
+ssh studio 'bash ~/ailiance/scripts/launch_eval_safe.sh --quick --v1-only --domains math-gsm8k 2>&1 | tail -5'
 ```
 
 Expected: completes within ~1 minute, exit 0, status file says `"exit_code": 0`.
@@ -483,7 +483,7 @@ Expected: completes within ~1 minute, exit 0, status file says `"exit_code": 0`.
 - [ ] **Step 3: Verify the status JSON**
 
 ```bash
-ssh studio 'cat ~/eu-kiki/output/eval/last_run_status.json'
+ssh studio 'cat ~/ailiance/output/eval/last_run_status.json'
 ```
 
 Expected: valid JSON with `exit_code: 0`, `signal: null`, non-zero `wall_seconds`.
@@ -491,7 +491,7 @@ Expected: valid JSON with `exit_code: 0`, `signal: null`, non-zero `wall_seconds
 - [ ] **Step 4: Commit**
 
 ```bash
-ssh studio 'cd ~/eu-kiki && git add scripts/launch_eval_safe.sh && GIT_EDITOR=true git -c user.name=electron-rare -c user.email=108685187+electron-rare@users.noreply.github.com commit -m "feat(eval): launch_eval_safe.sh with last_run_status.json"'
+ssh studio 'cd ~/ailiance && git add scripts/launch_eval_safe.sh && GIT_EDITOR=true git -c user.name=electron-rare -c user.email=108685187+electron-rare@users.noreply.github.com commit -m "feat(eval): launch_eval_safe.sh with last_run_status.json"'
 ```
 
 ---
@@ -511,7 +511,7 @@ Expected: `DOWN`.
 - [ ] **Step 2: Run quick sequential-strict end-to-end**
 
 ```bash
-ssh studio 'bash ~/eu-kiki/scripts/launch_eval_safe.sh --sequential-strict --quick --domains math-gsm8k python chat-fr 2>&1 | tail -25'
+ssh studio 'bash ~/ailiance/scripts/launch_eval_safe.sh --sequential-strict --quick --domains math-gsm8k python chat-fr 2>&1 | tail -25'
 ```
 
 Expected: completes in under 5 minutes, prints `EVAL COMPLETE`, status JSON has `exit_code: 0`.
@@ -519,7 +519,7 @@ Expected: completes in under 5 minutes, prints `EVAL COMPLETE`, status JSON has 
 - [ ] **Step 3: Verify raw outputs were written**
 
 ```bash
-ssh studio 'ls -lah ~/eu-kiki/output/eval/raw/perplexity_*$(date +%Y%m%d)*.json | tail -3'
+ssh studio 'ls -lah ~/ailiance/output/eval/raw/perplexity_*$(date +%Y%m%d)*.json | tail -3'
 ```
 
 Expected: at least one new `perplexity_*.json` file from this run.
@@ -527,7 +527,7 @@ Expected: at least one new `perplexity_*.json` file from this run.
 - [ ] **Step 4: Restart EuroLLM worker (production restore)**
 
 ```bash
-ssh studio 'mkdir -p $HOME/eu-kiki/logs && cd $HOME/eu-kiki && nohup $HOME/eu-kiki/.venv/bin/python -m uvicorn src.worker.server:make_eurollm_app --factory --host 0.0.0.0 --port 9303 > $HOME/eu-kiki/logs/eurollm.log 2>&1 & echo "EuroLLM PID $!"'
+ssh studio 'mkdir -p $HOME/ailiance/logs && cd $HOME/ailiance && nohup $HOME/ailiance/.venv/bin/python -m uvicorn src.worker.server:make_eurollm_app --factory --host 0.0.0.0 --port 9303 > $HOME/ailiance/logs/eurollm.log 2>&1 & echo "EuroLLM PID $!"'
 ```
 
 - [ ] **Step 5: Confirm worker is bound on 0.0.0.0**
@@ -555,7 +555,7 @@ ssh studio 'PID=$(lsof -tiTCP:9303 -sTCP:LISTEN 2>/dev/null); [ -n "$PID" ] && k
 - [ ] **Step 2: Launch the full eval in the background**
 
 ```bash
-ssh studio 'nohup bash ~/eu-kiki/scripts/launch_eval_safe.sh --sequential-strict 2>&1 > ~/eu-kiki/output/eval/full-sequential-strict.log & echo "PID $!"'
+ssh studio 'nohup bash ~/ailiance/scripts/launch_eval_safe.sh --sequential-strict 2>&1 > ~/ailiance/output/eval/full-sequential-strict.log & echo "PID $!"'
 ```
 
 - [ ] **Step 3: Poll until the launcher writes its status file**
@@ -563,7 +563,7 @@ ssh studio 'nohup bash ~/eu-kiki/scripts/launch_eval_safe.sh --sequential-strict
 Use Bash with `run_in_background: true` and an `until` loop:
 
 ```bash
-ssh studio 'until [ -f ~/eu-kiki/output/eval/last_run_status.json ] && [ "$(stat -f %m ~/eu-kiki/output/eval/last_run_status.json)" -gt $(($(date -u +%s) - 14400)) ]; do sleep 120; done; cat ~/eu-kiki/output/eval/last_run_status.json'
+ssh studio 'until [ -f ~/ailiance/output/eval/last_run_status.json ] && [ "$(stat -f %m ~/ailiance/output/eval/last_run_status.json)" -gt $(($(date -u +%s) - 14400)) ]; do sleep 120; done; cat ~/ailiance/output/eval/last_run_status.json'
 ```
 
 Expected eventual: `"exit_code": 0`. If `signal: 9` reappears, increment Task 3 budget down (e.g. 420 GiB) or lower per-domain `max_ppl_samples`.
@@ -571,7 +571,7 @@ Expected eventual: `"exit_code": 0`. If `signal: 9` reappears, increment Task 3 
 - [ ] **Step 4: Inventory raw output**
 
 ```bash
-ssh studio 'ls ~/eu-kiki/output/eval/raw/ | wc -l; ls ~/eu-kiki/output/eval/eval_report_v1_vs_v2.md'
+ssh studio 'ls ~/ailiance/output/eval/raw/ | wc -l; ls ~/ailiance/output/eval/eval_report_v1_vs_v2.md'
 ```
 
 Expected: 4+ JSON files (one per phase per version), and the markdown report exists.
@@ -579,7 +579,7 @@ Expected: 4+ JSON files (one per phase per version), and the markdown report exi
 - [ ] **Step 5: Restart EuroLLM (production restore)**
 
 ```bash
-ssh studio 'cd $HOME/eu-kiki && nohup $HOME/eu-kiki/.venv/bin/python -m uvicorn src.worker.server:make_eurollm_app --factory --host 0.0.0.0 --port 9303 > $HOME/eu-kiki/logs/eurollm.log 2>&1 & sleep 6; lsof -tiTCP:9303 -sTCP:LISTEN'
+ssh studio 'cd $HOME/ailiance && nohup $HOME/ailiance/.venv/bin/python -m uvicorn src.worker.server:make_eurollm_app --factory --host 0.0.0.0 --port 9303 > $HOME/ailiance/logs/eurollm.log 2>&1 & sleep 6; lsof -tiTCP:9303 -sTCP:LISTEN'
 ```
 
 ---
@@ -587,13 +587,13 @@ ssh studio 'cd $HOME/eu-kiki && nohup $HOME/eu-kiki/.venv/bin/python -m uvicorn 
 ## Task 9: Document in CLAUDE.md + push everything
 
 **Files:**
-- Modify: `~/eu-kiki/docs/CLAUDE.md` (Roadmap → Bloquants → mark item 3 (122B-Opus) and add the new sequential-strict runbook)
-- Create: `~/eu-kiki/docs/superpowers/plans/2026-05-10-eval-framework-oom-fix.md` (this plan, persisted)
+- Modify: `~/ailiance/docs/CLAUDE.md` (Roadmap → Bloquants → mark item 3 (122B-Opus) and add the new sequential-strict runbook)
+- Create: `~/ailiance/docs/superpowers/plans/2026-05-10-eval-framework-oom-fix.md` (this plan, persisted)
 
 - [ ] **Step 1: Save this plan into the repo**
 
 ```bash
-ssh studio 'mkdir -p ~/eu-kiki/docs/superpowers/plans && cp /tmp/2026-05-10-eval-framework-oom-fix.md ~/eu-kiki/docs/superpowers/plans/'
+ssh studio 'mkdir -p ~/ailiance/docs/superpowers/plans && cp /tmp/2026-05-10-eval-framework-oom-fix.md ~/ailiance/docs/superpowers/plans/'
 ```
 
 (The plan file should already be on Studio at `/tmp/2026-05-10-eval-framework-oom-fix.md` from the previous `scp` step in this session.)
@@ -601,9 +601,9 @@ ssh studio 'mkdir -p ~/eu-kiki/docs/superpowers/plans && cp /tmp/2026-05-10-eval
 - [ ] **Step 2: Append a runbook section to docs/CLAUDE.md**
 
 ```bash
-ssh studio 'cat >> ~/eu-kiki/docs/CLAUDE.md <<EOF
+ssh studio 'cat >> ~/ailiance/docs/CLAUDE.md <<EOF
 
-## EU-KIKI eval — sequential-strict runbook (added 2026-05-10)
+## AILIANCE eval — sequential-strict runbook (added 2026-05-10)
 
 Use \`--mode sequential-strict\` whenever the bench has to load multiple
 base models in one run. The launcher \`scripts/launch_eval_safe.sh\` writes
@@ -613,9 +613,9 @@ SIGKILL (\`signal: 9\`) without parsing logs.
 \`\`\`bash
 # Stop EuroLLM worker first so :9303 is free.
 kill -TERM \$(lsof -tiTCP:9303 -sTCP:LISTEN)
-bash ~/eu-kiki/scripts/launch_eval_safe.sh --sequential-strict
+bash ~/ailiance/scripts/launch_eval_safe.sh --sequential-strict
 # Restart EuroLLM after.
-cd ~/eu-kiki && nohup .venv/bin/python -m uvicorn src.worker.server:make_eurollm_app --factory --host 0.0.0.0 --port 9303 > logs/eurollm.log 2>&1 &
+cd ~/ailiance && nohup .venv/bin/python -m uvicorn src.worker.server:make_eurollm_app --factory --host 0.0.0.0 --port 9303 > logs/eurollm.log 2>&1 &
 \`\`\`
 
 Memory budget: \`mx.set_memory_limit(440 * 1024**3)\` stays 8 GiB under the
@@ -627,10 +627,10 @@ EOF'
 - [ ] **Step 3: Commit + push everything**
 
 ```bash
-ssh studio 'cd ~/eu-kiki && git add docs/CLAUDE.md docs/superpowers/plans/2026-05-10-eval-framework-oom-fix.md && GIT_EDITOR=true git -c user.name=electron-rare -c user.email=108685187+electron-rare@users.noreply.github.com commit -m "docs: sequential-strict runbook + plan" && git push 2>&1 | tail -3'
+ssh studio 'cd ~/ailiance && git add docs/CLAUDE.md docs/superpowers/plans/2026-05-10-eval-framework-oom-fix.md && GIT_EDITOR=true git -c user.name=electron-rare -c user.email=108685187+electron-rare@users.noreply.github.com commit -m "docs: sequential-strict runbook + plan" && git push 2>&1 | tail -3'
 ```
 
-Expected: push succeeds against `https://github.com/L-electron-Rare/ailiance.git` (the GitHub-renamed remote of `eu-kiki`).
+Expected: push succeeds against `https://github.com/ailiance/ailiance.git` (the GitHub-renamed remote of `ailiance`).
 
 - [ ] **Step 4: Update memory note on grosmac**
 

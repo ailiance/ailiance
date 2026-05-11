@@ -1,4 +1,4 @@
-model_path: /Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit
+model_path: /Users/clems/ailiance-mac-tuner/models/Devstral-Small-2-24B-MLX-4bit
 adapters_dir: output/adapters/devstral
 port: 9302
 precision: bf16

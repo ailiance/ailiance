@@ -17,8 +17,8 @@
       "n": 1
     }
   },
-  "model_id": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit",
-  "judge_model": "/Users/clems/KIKI-Mac_tunner/models/Mistral-Medium-3.5-128B-MLX-4bit",
+  "model_id": "/Users/clems/ailiance-mac-tuner/models/Devstral-Small-2-24B-MLX-4bit",
+  "judge_model": "/Users/clems/ailiance-mac-tuner/models/Mistral-Medium-3.5-128B-MLX-4bit",
   "base_url": "http://127.0.0.1:8870/v1",
   "judge_base_url": "http://127.0.0.1:8500/v1",
   "temperature": 0.7,

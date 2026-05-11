@@ -26,9 +26,9 @@ import eval_framework as ef  # noqa: E402
 
 import mlx.core as mx  # noqa: E402,F401
 
-EU_KIKI = Path.home() / "eu-kiki"
-HF_DATA = EU_KIKI / "data" / "hf-traced"
-RAW_OUTPUT = EU_KIKI / "output" / "eval" / "raw"
+AILIANCE = Path.home() / "ailiance"
+HF_DATA = AILIANCE / "data" / "hf-traced"
+RAW_OUTPUT = AILIANCE / "output" / "eval" / "raw"
 
 
 def list_domains_with_valid_jsonl() -> list[str]:

@@ -7,7 +7,7 @@ import pytest
 from scripts.kicad_sch.eval_n3 import eval_parse_ok  # noqa: F401
 
 
-REF_SCH = Path.home() / "eu-kiki-data/kicad-sch-refs/spi_bus_4devices.kicad_sch"
+REF_SCH = Path.home() / "ailiance-data/kicad-sch-refs/spi_bus_4devices.kicad_sch"
 HAS_CLI = shutil.which("kicad-cli") is not None
 
 

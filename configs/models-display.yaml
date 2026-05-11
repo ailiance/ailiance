@@ -93,7 +93,7 @@ models:
     base_model: "Google Gemma 4 E4B Instruction-Tuned"
     domain: "code / hardware / general"
     description: >-
-      Gemma 4 E4B-it MLX 4-bit + eu-kiki curriculum LoRA adapter.
+      Gemma 4 E4B-it MLX 4-bit + ailiance curriculum LoRA adapter.
       Phase 4 full training (14 domains : electronics-hw, python,
       typescript, cpp, shell, sql, docker, devops, yaml-json, kicad,
       stm32, embedded, iot, platformio). macM1 :8502 via autossh.

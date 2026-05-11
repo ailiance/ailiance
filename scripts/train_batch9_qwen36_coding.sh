@@ -19,18 +19,18 @@
 #   sudo sysctl -w iogpu.wired_limit_mb=458752
 #
 # Usage:
-#   bash ~/eu-kiki/scripts/train_batch9_qwen36_coding.sh
-#   bash ~/eu-kiki/scripts/train_batch9_qwen36_coding.sh --dry-run
+#   bash ~/ailiance/scripts/train_batch9_qwen36_coding.sh
+#   bash ~/ailiance/scripts/train_batch9_qwen36_coding.sh --dry-run
 # ==============================================================================
 
 set -euo pipefail
 
-KIKI_TUNNER="$HOME/KIKI-Mac_tunner"
-EU_KIKI="$HOME/eu-kiki"
-HF_DATA="$EU_KIKI/data/hf-traced"
-ADAPTERS="$EU_KIKI/output/adapters-v2/qwen36"
+KIKI_TUNNER="$HOME/ailiance-mac-tuner"
+AILIANCE="$HOME/ailiance"
+HF_DATA="$AILIANCE/data/hf-traced"
+ADAPTERS="$AILIANCE/output/adapters-v2/qwen36"
 OUTPUT_ROOT="$KIKI_TUNNER/output/ailiance-v2"
-LOG_DIR="$EU_KIKI/output/training-logs"
+LOG_DIR="$AILIANCE/output/training-logs"
 
 MODEL="$KIKI_TUNNER/models/Qwen3.6-35B-A3B"
 MODEL_LICENSE="Apache-2.0"
@@ -123,7 +123,7 @@ mx.set_cache_limit(cache_limit_gb * 1024**3)
 import os, time, yaml, shutil, json
 from pathlib import Path
 
-sys.path.insert(0, "/Users/clems/KIKI-Mac_tunner/lib")
+sys.path.insert(0, "/Users/clems/ailiance-mac-tuner/lib")
 
 model_path = sys.argv[1]
 data_dir = sys.argv[2]

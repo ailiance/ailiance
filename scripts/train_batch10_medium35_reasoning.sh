@@ -21,18 +21,18 @@
 #   sudo sysctl -w iogpu.wired_limit_mb=458752
 #
 # Usage:
-#   bash ~/eu-kiki/scripts/train_batch10_medium35_reasoning.sh
-#   bash ~/eu-kiki/scripts/train_batch10_medium35_reasoning.sh --dry-run
+#   bash ~/ailiance/scripts/train_batch10_medium35_reasoning.sh
+#   bash ~/ailiance/scripts/train_batch10_medium35_reasoning.sh --dry-run
 # ==============================================================================
 
 set -euo pipefail
 
-KIKI_TUNNER="$HOME/KIKI-Mac_tunner"
-EU_KIKI="$HOME/eu-kiki"
-HF_DATA="$EU_KIKI/data/hf-traced"
-ADAPTERS="$EU_KIKI/output/adapters-v2/medium35"
+KIKI_TUNNER="$HOME/ailiance-mac-tuner"
+AILIANCE="$HOME/ailiance"
+HF_DATA="$AILIANCE/data/hf-traced"
+ADAPTERS="$AILIANCE/output/adapters-v2/medium35"
 OUTPUT_ROOT="$KIKI_TUNNER/output/ailiance-v2"
-LOG_DIR="$EU_KIKI/output/training-logs"
+LOG_DIR="$AILIANCE/output/training-logs"
 
 MODEL="$KIKI_TUNNER/models/Mistral-Medium-3.5-128B-BF16"
 MODEL_LICENSE="Modified-MIT (Mistral Community License)"
@@ -122,7 +122,7 @@ mx.set_cache_limit(64 * 1024**3)
 import os, sys, time, yaml, shutil, json
 from pathlib import Path
 
-sys.path.insert(0, "/Users/clems/KIKI-Mac_tunner/lib")
+sys.path.insert(0, "/Users/clems/ailiance-mac-tuner/lib")
 
 model_path = sys.argv[1]
 data_dir = sys.argv[2]
