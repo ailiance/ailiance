@@ -140,6 +140,12 @@ MODEL_FORCE_MAP = {
     # Studio flagship 2026-05-12 — Qwen3-235B-A22B-Instruct MoE 4-bit.
     "ailiance-flagship": 9328,
     "ailiance-qwen-235b": 9328,
+    # Studio S3 additions 2026-05-12 — 5 MLX 4-bit workers on dedicated ports.
+    "ailiance-reasoning-r1": 9323,  # DeepSeek-R1-Distill-Qwen-32B 4-bit
+    "ailiance-llama": 9324,  # Llama-3.3-70B-Instruct 4-bit
+    "ailiance-pixtral": 9325,  # Pixtral-12B 4-bit (vision-language)
+    "ailiance-mistral-small": 9326,  # Mistral-Small-3.1-24B-Instruct 4-bit
+    "ailiance-coder-pro": 9327,  # Qwen3-Coder-30B-A3B-Instruct 4-bit
 }
 
 # Per-port forward overrides for non-ailiance backends. The gateway rewrites
@@ -207,6 +213,22 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     },
     "ailiance-qwen-235b": {
         "model": "/Users/clems/KIKI-Mac_tunner/models/Qwen3-235B-A22B-Instruct-MLX-4bit",
+    },
+    # Studio S3 additions 2026-05-12 — mlx_lm.server expects on-disk path.
+    "ailiance-reasoning-r1": {
+        "model": "/Users/clems/KIKI-Mac_tunner/models/DeepSeek-R1-Distill-Qwen-32B-MLX-4bit",
+    },
+    "ailiance-llama": {
+        "model": "/Users/clems/KIKI-Mac_tunner/models/Llama-3.3-70B-Instruct-MLX-4bit",
+    },
+    "ailiance-pixtral": {
+        "model": "/Users/clems/KIKI-Mac_tunner/models/Pixtral-12B-MLX-4bit",
+    },
+    "ailiance-mistral-small": {
+        "model": "/Users/clems/KIKI-Mac_tunner/models/Mistral-Small-3.1-24B-Instruct-MLX-4bit",
+    },
+    "ailiance-coder-pro": {
+        "model": "/Users/clems/KIKI-Mac_tunner/models/Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
     },
 }
 
@@ -522,6 +544,12 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 # Studio flagship 2026-05-12 — Qwen3-235B-A22B MoE 4-bit
                 {"id": "ailiance-flagship", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-qwen-235b", "object": "model", "owned_by": "ailiance"},
+                # Studio S3 additions 2026-05-12 — DeepSeek + Llama + Pixtral + Mistral-Small + Qwen3-Coder
+                {"id": "ailiance-reasoning-r1", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-llama", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-pixtral", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-mistral-small", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-coder-pro", "object": "model", "owned_by": "ailiance"},
             ],
         }
 
