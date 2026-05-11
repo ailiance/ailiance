@@ -256,9 +256,14 @@ class ChainOrchestrator:
                 prompt, domain=domain, model=model, tool=tool
             )
 
-        if policy in (ChainPolicy.MIXTURE, ChainPolicy.SEQUENTIAL):
+        if policy == ChainPolicy.MIXTURE:
+            return await self._mixture(
+                prompt, domain=domain, model=model, entry=entry
+            )
+
+        if policy == ChainPolicy.SEQUENTIAL:
             log.info(
-                "chain policy %s not implemented in v0.3.0 — "
+                "chain policy %s not implemented in v0.3.1 — "
                 "falling back to DIRECT for domain=%s",
                 policy.value,
                 domain,
@@ -303,6 +308,184 @@ class ChainOrchestrator:
             steps=steps,
             policy=ChainPolicy.DIRECT,
             domain=domain,
+        )
+        self._write_audit(result)
+        return result
+
+    async def _mixture(
+        self,
+        prompt: str,
+        *,
+        domain: str,
+        model: str,
+        entry: dict,
+    ) -> ChainResult:
+        """MIXTURE policy (v0.3.1).
+
+        Runs every worker in ``entry["workers"]`` in parallel against
+        the same prompt, then asks ``entry["judge"]`` to pick the best
+        candidate by index. If no judge is configured or the judge fails
+        to return a valid index, falls back to the first worker's output.
+
+        Each worker call and the judge call are recorded as ``ChainStep``
+        rows so the audit trail captures the full deliberation.
+        """
+        import asyncio as _asyncio
+        import re as _re
+
+        chain_id = uuid.uuid4().hex
+        steps: list[ChainStep] = []
+
+        workers = entry.get("workers") or []
+        if not isinstance(workers, list) or not workers:
+            log.warning(
+                "MIXTURE policy for domain=%s has no workers — "
+                "falling back to DIRECT (model=%s)",
+                domain, model,
+            )
+            return await self._direct(prompt, domain=domain, model=model)
+
+        judge = entry.get("judge")
+
+        # 1. Fan out — parallel llm_call against each worker.
+        async def _call_worker(w: str) -> tuple[str, str, float, bool]:
+            t0 = time.perf_counter()
+            try:
+                out = await self.llm_call(
+                    [{"role": "user", "content": prompt}], w
+                )
+                return (w, out, time.perf_counter() - t0, True)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("MIXTURE worker %s failed: %s", w, exc)
+                return (w, str(exc), time.perf_counter() - t0, False)
+
+        started = time.time()
+        results = await _asyncio.gather(
+            *(_call_worker(w) for w in workers),
+            return_exceptions=False,
+        )
+        for idx, (w, out, dur, ok) in enumerate(results):
+            steps.append(
+                ChainStep(
+                    step_idx=idx,
+                    attempt=1,
+                    kind="llm",
+                    started_at=started,
+                    duration_s=dur,
+                    payload={
+                        "model": w,
+                        "output_head": _truncate(out, _AUDIT_PAYLOAD_HEAD),
+                    },
+                    success=ok,
+                )
+            )
+
+        successful = [(w, out) for (w, out, _, ok) in results if ok]
+        if not successful:
+            log.error(
+                "MIXTURE: all %d workers failed for domain=%s — "
+                "returning first error",
+                len(workers), domain,
+            )
+            return ChainResult(
+                chain_id=chain_id,
+                final_output=results[0][1],
+                status="error",
+                steps=steps,
+                policy=ChainPolicy.MIXTURE,
+                domain=domain,
+            )
+
+        # 2. Single worker → no judging needed.
+        if len(successful) == 1 or not judge:
+            chosen_idx = 0
+            chosen_output = successful[0][1]
+            return ChainResult(
+                chain_id=chain_id,
+                final_output=chosen_output,
+                status="ok",
+                steps=steps,
+                policy=ChainPolicy.MIXTURE,
+                domain=domain,
+                metadata={
+                    "workers": [w for w, _ in successful],
+                    "chosen_index": chosen_idx,
+                    "judge_used": False,
+                },
+            )
+
+        # 3. Judge: build prompt and call.
+        candidates_md = "\n\n".join(
+            f"[{i}] (from `{w}`):\n{out}"
+            for i, (w, out) in enumerate(successful)
+        )
+        judge_prompt = (
+            "You are an expert judge. Given the user prompt below and "
+            f"{len(successful)} candidate answers, return ONLY a JSON "
+            'object of the form {"choice": <int>} where <int> is the '
+            "0-based index of the best answer based on accuracy, "
+            "helpfulness, and language quality. Do not explain.\n\n"
+            f"User prompt:\n{prompt}\n\n"
+            f"Candidates:\n{candidates_md}\n\n"
+            'Return only valid JSON like: {"choice": 0}'
+        )
+        t_judge = time.perf_counter()
+        try:
+            judge_out = await self.llm_call(
+                [{"role": "user", "content": judge_prompt}], judge
+            )
+            judge_ok = True
+        except Exception as exc:  # noqa: BLE001
+            log.warning("MIXTURE judge %s failed: %s", judge, exc)
+            judge_out = str(exc)
+            judge_ok = False
+
+        steps.append(
+            ChainStep(
+                step_idx=len(steps),
+                attempt=1,
+                kind="reflector",  # reuse the reflector kind for the judge step
+                started_at=time.time(),
+                duration_s=time.perf_counter() - t_judge,
+                payload={
+                    "model": judge,
+                    "role": "judge",
+                    "output_head": _truncate(judge_out, _AUDIT_PAYLOAD_HEAD),
+                },
+                success=judge_ok,
+            )
+        )
+
+        # Parse {"choice": <int>} from the judge output (robust to wrapping prose).
+        chosen_idx = 0
+        if judge_ok:
+            match = _re.search(r'\{[^{}]*"choice"\s*:\s*(\d+)[^{}]*\}', judge_out)
+            if match:
+                try:
+                    candidate = int(match.group(1))
+                    if 0 <= candidate < len(successful):
+                        chosen_idx = candidate
+                except (TypeError, ValueError):
+                    pass
+
+        chosen_output = successful[chosen_idx][1]
+        chosen_worker = successful[chosen_idx][0]
+
+        result = ChainResult(
+            chain_id=chain_id,
+            final_output=chosen_output,
+            status="ok",
+            steps=steps,
+            policy=ChainPolicy.MIXTURE,
+            domain=domain,
+            metadata={
+                "workers": [w for w, _ in successful],
+                "chosen_index": chosen_idx,
+                "chosen_worker": chosen_worker,
+                "judge": judge,
+                "judge_used": True,
+                "judge_ok": judge_ok,
+            },
         )
         self._write_audit(result)
         return result
