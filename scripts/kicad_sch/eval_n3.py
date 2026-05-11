@@ -213,3 +213,58 @@ def composite(scores: dict) -> float:
         total += weight * float(v)
     return total
 
+
+def eval_all(
+    sch_path: Path,
+    ref_netlist: Path | None,
+    cli_path: Path,
+    audit_logger,
+) -> dict:
+    """Run all 5 axes + composite; emit NDJSON audit events.
+
+    Args:
+        sch_path: candidate .kicad_sch to evaluate.
+        ref_netlist: reference netlist for sem_equiv. If None, sem_equiv=0.0.
+        cli_path: kicad-cli binary (default Path("kicad-cli")).
+        audit_logger: duck-typed logger exposing log_event(type, payload).
+
+    Returns:
+        dict with keys parse_ok, erc_clean, sch_render, drc_clean,
+        sem_equiv, composite. All numeric.
+    """
+    axes: dict = {}
+    axes["parse_ok"] = eval_parse_ok(sch_path, cli_path)
+    audit_logger.log_event(
+        "eval_n3.axis",
+        {"axis": "parse_ok", "sch": str(sch_path), "score": axes["parse_ok"]},
+    )
+    axes["erc_clean"] = eval_erc_clean(sch_path, cli_path)
+    audit_logger.log_event(
+        "eval_n3.axis",
+        {"axis": "erc_clean", "sch": str(sch_path), "score": axes["erc_clean"]},
+    )
+    axes["sch_render"] = eval_sch_render(sch_path, cli_path)
+    audit_logger.log_event(
+        "eval_n3.axis",
+        {"axis": "sch_render", "sch": str(sch_path), "score": axes["sch_render"]},
+    )
+    axes["drc_clean"] = eval_drc_clean(sch_path, cli_path)
+    audit_logger.log_event(
+        "eval_n3.axis",
+        {"axis": "drc_clean", "sch": str(sch_path), "score": axes["drc_clean"]},
+    )
+    if ref_netlist is not None and Path(ref_netlist).exists():
+        axes["sem_equiv"] = eval_sem_equiv(sch_path, ref_netlist)
+    else:
+        axes["sem_equiv"] = 0.0
+    audit_logger.log_event(
+        "eval_n3.axis",
+        {"axis": "sem_equiv", "sch": str(sch_path),
+         "score": axes["sem_equiv"]},
+    )
+    axes["composite"] = composite(axes)
+    audit_logger.log_event(
+        "eval_n3.summary",
+        {"sch": str(sch_path), "scores": dict(axes)},
+    )
+    return axes

@@ -190,3 +190,65 @@ def test_composite_partial_sem_equiv():
               "drc_clean": 0, "sem_equiv": 0.5}
     # 0.3 + 0.3 + 0.15 + 0 + 0.075 = 0.825
     assert abs(composite(scores) - 0.825) < 1e-9
+
+
+from scripts.kicad_sch.eval_n3 import eval_all
+
+
+class FakeAudit:
+    def __init__(self):
+        self.events = []
+
+    def log_event(self, event_type, payload):
+        self.events.append((event_type, payload))
+
+    def sha256_sign(self):
+        return "deadbeef" * 8
+
+
+def test_eval_all_returns_all_five_axes_plus_composite(tmp_path, monkeypatch):
+    fake = tmp_path / "x.kicad_sch"
+    fake.write_text("(kicad_sch (version 20240101))")
+    ref = tmp_path / "ref.kicad_sch"
+    ref.write_text("(kicad_sch (version 20240101))")
+
+    # Force all kicad-cli calls to succeed.
+    class FakeProc:
+        returncode = 0
+        stdout = "0 errors"
+        stderr = ""
+
+    monkeypatch.setattr("shutil.which", lambda x: "/usr/bin/kicad-cli")
+    monkeypatch.setattr("subprocess.run", lambda *a, **kw: FakeProc())
+
+    audit = FakeAudit()
+    result = eval_all(fake, ref, Path("kicad-cli"), audit)
+
+    for axis in ["parse_ok", "erc_clean", "sch_render",
+                 "drc_clean", "sem_equiv", "composite"]:
+        assert axis in result
+    assert result["parse_ok"] == 1
+    assert isinstance(result["composite"], float)
+    assert 0.0 <= result["composite"] <= 1.0
+    # AuditLogger received per-axis events + a summary.
+    types = [e[0] for e in audit.events]
+    assert "eval_n3.axis" in types
+    assert "eval_n3.summary" in types
+
+
+def test_eval_all_handles_missing_ref(tmp_path, monkeypatch):
+    fake = tmp_path / "x.kicad_sch"
+    fake.write_text("(kicad_sch)")
+
+    class FakeProc:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    monkeypatch.setattr("shutil.which", lambda x: "/usr/bin/kicad-cli")
+    monkeypatch.setattr("subprocess.run", lambda *a, **kw: FakeProc())
+
+    audit = FakeAudit()
+    result = eval_all(fake, None, Path("kicad-cli"), audit)
+    assert result["sem_equiv"] == 0.0
+    assert "composite" in result
