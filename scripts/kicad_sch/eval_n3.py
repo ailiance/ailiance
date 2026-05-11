@@ -9,9 +9,11 @@ Axes:
 """
 from __future__ import annotations
 
+import math
 import re
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 
@@ -72,3 +74,19 @@ def eval_erc_clean(sch_path: Path, cli_path: Path = Path("kicad-cli")) -> int:
         # kicad-cli versions that omit summary on zero-violations runs).
         return 1
     return 1 if int(match.group(1)) == 0 else 0
+
+
+def eval_sch_render(sch_path: Path, cli_path: Path = Path("kicad-cli")) -> int:
+    """Return 1 iff kicad-cli sch export svg <file> -o <tmp> exits 0."""
+    cli = _resolve_cli(cli_path)
+    with tempfile.TemporaryDirectory() as td:
+        try:
+            proc = subprocess.run(
+                [cli, "sch", "export", "svg", str(sch_path), "-o", td],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return 0
+    return 1 if proc.returncode == 0 else 0

@@ -80,3 +80,18 @@ def test_erc_clean_zero_errors(monkeypatch, tmp_path):
 
     monkeypatch.setattr("subprocess.run", lambda *a, **kw: FakeProc())
     assert eval_erc_clean(fake_sch, Path("kicad-cli")) == 1
+
+
+from scripts.kicad_sch.eval_n3 import eval_sch_render
+
+
+@pytest.mark.skipif(not REF_SCH.exists() or not HAS_CLI,
+                    reason="ref fixture or kicad-cli missing")
+def test_sch_render_returns_1_for_valid_sch():
+    assert eval_sch_render(REF_SCH, Path("kicad-cli")) == 1
+
+
+def test_sch_render_returns_0_for_broken_sch(tmp_path):
+    bad = make_broken_sch(tmp_path)
+    assert eval_sch_render(bad, Path("kicad-cli")) == 0
+
