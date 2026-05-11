@@ -48,17 +48,41 @@ def _load_worker_urls() -> dict[int, str]:
     Set ``AILIANCE_WORKERS_JSON='{"9301":"http://studio:9301", ...}'`` to point
     each worker at a Tailscale/LAN address. Defaults stay localhost so a
     single-host setup just works.
+
+    If the JSON is missing ports that are in _DEFAULT_WORKER_URLS, those
+    ports are NOT probed nor reachable — silently breaking the matching
+    ailiance-* aliases (they fall back to HEALTH_FALLBACK_PORT). When that
+    drift is detected we log a warning so operators see it on startup
+    instead of having to grep `model` field on every response. 2026-05-11
+    incident: the systemd drop-in for electron-server omitted :8004 after
+    the Tower Ollama wire-up shipped, silently routing all 13 mascarade
+    aliases to Gemma.
     """
     raw = os.environ.get("AILIANCE_WORKERS_JSON")
     if not raw:
         return dict(_DEFAULT_WORKER_URLS)
     try:
-        return {int(k): str(v) for k, v in json.loads(raw).items()}
+        resolved = {int(k): str(v) for k, v in json.loads(raw).items()}
     except Exception as exc:
         log.warning(
             "failed to parse AILIANCE_WORKERS_JSON (%s); using defaults", exc,
         )
         return dict(_DEFAULT_WORKER_URLS)
+
+    missing = set(_DEFAULT_WORKER_URLS) - set(resolved)
+    if missing:
+        # Don't reference HEALTH_FALLBACK_PORT here — that constant
+        # is defined below `_load_worker_urls()` and this fn runs at
+        # module load time, so the symbol isn't bound yet.
+        log.warning(
+            "AILIANCE_WORKERS_JSON omits %d default port(s): %s — "
+            "aliases routed to those ports will fall back to the "
+            "health-probe default (Gemma 9304). Update the systemd "
+            "drop-in or unset the env var to use defaults.",
+            len(missing),
+            sorted(missing),
+        )
+    return resolved
 
 
 WORKER_URLS = _load_worker_urls()
