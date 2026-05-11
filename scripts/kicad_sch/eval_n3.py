@@ -192,3 +192,24 @@ def eval_sem_equiv(sch_path: Path, ref_netlist: Path) -> float:
     b = _extract_netlist_features(ref_netlist)
     return float(_cosine(a, b))
 
+
+_WEIGHTS = {
+    "parse_ok": 0.30,
+    "erc_clean": 0.30,
+    "sch_render": 0.15,
+    "drc_clean": 0.10,
+    "sem_equiv": 0.15,
+}
+
+
+def composite(scores: dict) -> float:
+    """Weighted sum per spec §Eval N3 (weights sum to 1.0 exactly).
+
+    Missing axes contribute 0. Extra axes are ignored (forward-compat).
+    """
+    total = 0.0
+    for axis, weight in _WEIGHTS.items():
+        v = scores.get(axis, 0)
+        total += weight * float(v)
+    return total
+

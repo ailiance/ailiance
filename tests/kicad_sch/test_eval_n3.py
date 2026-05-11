@@ -163,3 +163,30 @@ def test_sem_equiv_returns_float_in_unit_interval(tmp_path):
     assert isinstance(score, float)
     assert 0.0 <= score <= 1.0
 
+
+from scripts.kicad_sch.eval_n3 import composite
+
+
+def test_composite_weights_sum_to_1():
+    scores = {"parse_ok": 1, "erc_clean": 1, "sch_render": 1,
+              "drc_clean": 1, "sem_equiv": 1.0}
+    assert abs(composite(scores) - 1.0) < 1e-9
+
+
+def test_composite_parse_only_yields_0_3():
+    scores = {"parse_ok": 1, "erc_clean": 0, "sch_render": 0,
+              "drc_clean": 0, "sem_equiv": 0.0}
+    assert abs(composite(scores) - 0.3) < 1e-9
+
+
+def test_composite_zero_when_all_zero():
+    scores = {"parse_ok": 0, "erc_clean": 0, "sch_render": 0,
+              "drc_clean": 0, "sem_equiv": 0.0}
+    assert composite(scores) == 0.0
+
+
+def test_composite_partial_sem_equiv():
+    scores = {"parse_ok": 1, "erc_clean": 1, "sch_render": 1,
+              "drc_clean": 0, "sem_equiv": 0.5}
+    # 0.3 + 0.3 + 0.15 + 0 + 0.075 = 0.825
+    assert abs(composite(scores) - 0.825) < 1e-9
