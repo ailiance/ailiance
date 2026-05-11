@@ -24,6 +24,55 @@ _UUID_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Default keyword shards: gh search code caps at 1000 hits per query, so
+# we fan out across hardware-relevant keywords to grow the corpus.
+DEFAULT_QUERIES = [
+    "extension:kicad_sch resistor",
+    "extension:kicad_sch capacitor",
+    "extension:kicad_sch led",
+    "extension:kicad_sch transistor",
+    "extension:kicad_sch power",
+    "extension:kicad_sch microcontroller",
+    "extension:kicad_sch sensor",
+    "extension:kicad_sch amplifier",
+    "extension:kicad_sch filter",
+    "extension:kicad_sch oscillator",
+    "extension:kicad_sch motor",
+    "extension:kicad_sch battery",
+    "extension:kicad_sch usb",
+    "extension:kicad_sch esp32",
+    "extension:kicad_sch stm32",
+    "extension:kicad_sch arduino",
+    "extension:kicad_sch raspberry",
+    "extension:kicad_sch audio",
+    "extension:kicad_sch power supply",
+    "extension:kicad_sch analog",
+]
+
+# Hardware-community canonical license set: CERN-OHL dominates KiCad
+# projects; without it we starve D1.
+DEFAULT_LICENSE_ALLOWLIST = ",".join(
+    [
+        "MIT",
+        "Apache-2.0",
+        "CC0-1.0",
+        "GPL-3.0",
+        "CERN-OHL-S-2.0",
+        "CERN-OHL-P-2.0",
+        "CERN-OHL-W-2.0",
+        "BSD-2-Clause",
+        "BSD-3-Clause",
+        "ISC",
+        "Unlicense",
+        "GPL-2.0",
+        "LGPL-3.0",
+        "LGPL-2.1",
+        "MPL-2.0",
+        "CC-BY-4.0",
+        "CC-BY-SA-4.0",
+    ]
+)
+
 
 def canonical_hash(text: str) -> str:
     """Hash schematic text after UUID normalization (placement-stable)."""
@@ -42,8 +91,12 @@ def license_allowed(spdx: str | None, allow: set[str]) -> bool:
 
 
 def _fetch_raw(url: str) -> str:
+    # gh search code returns blob HTML URLs; rewrite to raw.githubusercontent.com.
+    raw_url = url.replace(
+        "https://github.com/", "https://raw.githubusercontent.com/"
+    ).replace("/blob/", "/")
     r = subprocess.run(
-        ["curl", "-fsSL", url],
+        ["curl", "-fsSL", raw_url],
         capture_output=True,
         text=True,
         timeout=60,
@@ -54,21 +107,22 @@ def _fetch_raw(url: str) -> str:
 
 
 def _kicad_update(path: Path) -> int:
+    # KiCad 10.0.x: subcommand is `upgrade` (not `update`).
     r = subprocess.run(
-        ["kicad-cli", "sch", "update", str(path)],
+        ["kicad-cli", "sch", "upgrade", str(path)],
         capture_output=True,
         timeout=120,
     )
     return r.returncode
 
 
-def _gh_search(max_files: int) -> list[dict]:
+def _gh_search_one(query: str, max_files: int) -> list[dict]:
     r = subprocess.run(
         [
             "gh",
             "search",
             "code",
-            "extension:kicad_sch",
+            query,
             "--limit",
             str(max_files),
             "--json",
@@ -76,24 +130,47 @@ def _gh_search(max_files: int) -> list[dict]:
         ],
         capture_output=True,
         text=True,
-        timeout=120,
+        timeout=180,
     )
     if r.returncode != 0:
         return []
     return json.loads(r.stdout or "[]")
 
 
+def _gh_search(queries: list[str], max_files: int) -> list[dict]:
+    """Fan-out search across keyword shards and dedupe by url."""
+    per_query_cap = min(max_files, 1000)
+    seen: set[str] = set()
+    out: list[dict] = []
+    for q in queries:
+        if len(out) >= max_files:
+            break
+        hits = _gh_search_one(q, per_query_cap)
+        for h in hits:
+            key = h.get("url") or ""
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            out.append(h)
+            if len(out) >= max_files:
+                break
+    return out
+
+
 def _repo_license(name_with_owner: str) -> str | None:
+    # REST API returns spdx_id; GraphQL/gh repo view --json licenseInfo lacks it.
     r = subprocess.run(
-        ["gh", "repo", "view", name_with_owner, "--json", "licenseInfo"],
+        ["gh", "api", f"repos/{name_with_owner}", "--jq", ".license.spdx_id"],
         capture_output=True,
         text=True,
         timeout=30,
     )
     if r.returncode != 0:
         return None
-    info = json.loads(r.stdout or "{}").get("licenseInfo") or {}
-    return info.get("spdxId")
+    val = (r.stdout or "").strip()
+    if not val or val == "null":
+        return None
+    return val
 
 
 def download_and_normalize(
@@ -104,7 +181,7 @@ def download_and_normalize(
     license_spdx: str,
     out_dir: Path,
 ) -> Path | None:
-    """Fetch a raw file, run kicad-cli update, dedupe-rename.
+    """Fetch a raw file, run kicad-cli upgrade, dedupe-rename.
 
     Returns the final ``Path`` or ``None`` when kicad-cli rejects the
     input (parse error on legacy v5/v6 schemas).
@@ -131,7 +208,17 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--max-files", type=int, default=10000)
     p.add_argument(
         "--license-allowlist",
-        default="MIT,Apache-2.0,CC0-1.0,GPL-3.0",
+        default=DEFAULT_LICENSE_ALLOWLIST,
+        help="Comma-separated SPDX IDs to accept.",
+    )
+    p.add_argument(
+        "--queries",
+        default=",".join(DEFAULT_QUERIES),
+        help=(
+            "Comma-separated gh-search-code queries. Each query is "
+            "capped at 1000 hits by gh; shard across keywords to grow "
+            "the corpus."
+        ),
     )
     p.add_argument(
         "--out-dir",
@@ -150,13 +237,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     a = p.parse_args(argv)
     allow = set(a.license_allowlist.split(","))
+    queries = [q.strip() for q in a.queries.split(",") if q.strip()]
     a.out_dir.mkdir(parents=True, exist_ok=True)
     run_stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     audit_path = a.audit_dir / f"d1-{run_stamp}.ndjson"
     log = AuditLogger(audit_path)
     manifest = DatasetManifest(a.manifest, split="D1")
-    hits = _gh_search(a.max_files)
-    log.log("d1_search_done", n=len(hits))
+    hits = _gh_search(queries, a.max_files)
+    log.log("d1_search_done", n=len(hits), n_queries=len(queries))
     n_ok = 0
     for h in hits:
         repo = h["repository"]["nameWithOwner"]
