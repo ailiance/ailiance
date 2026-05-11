@@ -168,7 +168,10 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
     requests_total = Counter(
         "ailiance_gw_requests_total",
         "Gateway requests",
-        ["model", "status"],
+        # path: proxy (1-shot), chain (orchestrator), stream (SSE).
+        # auto: 1 when chain engaged via auto-router (model=ailiance +
+        # YAML deliberate), 0 for explicit opt-in or proxy/stream.
+        ["model", "status", "path", "auto"],
         registry=reg,
     )
     route_latency = Histogram(
@@ -189,6 +192,10 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             **{k: v for k, v in rcfg_dict.items() if k in RouterConfig.__dataclass_fields__}
         )
         router = DomainRouter(rcfg, Path(rcfg_dict.get("weights_dir", "output/router")))
+
+    # Expose on app.state so tests can inject a fake classifier without
+    # touching the closure. Production handler reads from app.state.
+    app.state.router = router
 
     start_time = time.time()
     http_client = httpx.AsyncClient(timeout=600.0)
@@ -383,15 +390,16 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
     @app.post("/v1/chat/completions")
     async def chat_completions(req: ChatCompletionRequest):
         forced_port = MODEL_FORCE_MAP.get(req.model)
+        active_router = app.state.router
         if forced_port:
             domain = ""
             worker_port = _gate_port(forced_port)
-        elif router is not None:
+        elif active_router is not None:
             user_msg = next(
                 (m.content for m in reversed(req.messages) if m.role == "user"), ""
             )
             t0 = time.perf_counter()
-            selections = router.route(user_msg)
+            selections = active_router.route(user_msg)
             route_latency.observe(time.perf_counter() - t0)
             domain = selections[0][0] if selections else "python"
             # Fallback to Gemma (9304): reachable + fast for unmapped domains.
@@ -405,26 +413,32 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             domain = "general"
             worker_port = _gate_port(9304)
 
-        # Router v0.3 opt-in: dispatch through the chain orchestrator
-        # when extra_body.chain_policy selects a non-direct policy. Keeps
-        # the legacy 1-shot proxy path intact for clients that don't pass
-        # extra_body, so v0.3.0 ships as a pure additive change.
+        # Router v0.3 dispatch resolution. Two ways to engage the chain:
+        #   (1) explicit  — extra_body.chain_policy from any request,
+        #   (2) automatic — req.model == "ailiance" (router-driven, no
+        #       MODEL_FORCE_MAP entry), policy taken from the YAML map
+        #       per the classified domain. Forced aliases stay DIRECT
+        #       unless extra_body.chain_policy is set, so a caller
+        #       picking ailiance-mistral keeps the OpenAI-style "I know
+        #       what I want" 1-shot semantics.
+        # Streaming + non-direct is unsupported in v0.3.0: explicit
+        # opt-in returns 400 (the user asked for the impossible);
+        # auto-engagement silently degrades to DIRECT (the user did
+        # not opt in, so we MUST NOT break their stream).
+        # Note: extra_body.chain_policy="direct" intentionally falls
+        # through both branches below. Explicit DIRECT is a caller
+        # saying "no chain even on the auto-router alias" — it must
+        # bypass the orchestrator and reach the legacy proxy.
         extra = req.extra_body or {}
         chain_policy_raw = extra.get("chain_policy")
+        policy: ChainPolicy | None = None
+        auto_engaged = False
+        explicit_override: ChainPolicy | None = None
+        cached_orch: ChainOrchestrator | None = None
+
         if chain_policy_raw and chain_policy_raw != ChainPolicy.DIRECT.value:
-            if req.stream:
-                raise HTTPException(
-                    status_code=400,
-                    detail={
-                        "type": "invalid_request",
-                        "message": (
-                            "stream=true is not supported with "
-                            "chain_policy != direct in v0.3.0"
-                        ),
-                    },
-                )
             try:
-                policy = ChainPolicy(chain_policy_raw)
+                explicit_override = ChainPolicy(chain_policy_raw)
             except ValueError as exc:
                 raise HTTPException(
                     status_code=400,
@@ -436,8 +450,38 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                         ),
                     },
                 ) from exc
+            if req.stream:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "type": "invalid_request",
+                        "message": (
+                            "stream=true is not supported with "
+                            "chain_policy != direct in v0.3.0"
+                        ),
+                    },
+                )
+            policy = explicit_override
+        elif (
+            not forced_port
+            and not req.stream
+            and chain_policy_raw is None
+            and domain
+        ):
+            # Auto-router: look up the YAML default for the classified
+            # domain. Engage only if it is non-DIRECT. `domain` is the
+            # classifier's top-1 string; an empty/falsy value (rare but
+            # possible if the classifier returns no selections) skips
+            # auto-engagement and falls through to the legacy proxy.
+            cached_orch = _build_orchestrator()
+            if cached_orch is not None:
+                yaml_policy, _ = cached_orch.policy_for_domain(domain)
+                if yaml_policy != ChainPolicy.DIRECT:
+                    policy = yaml_policy
+                    auto_engaged = True
 
-            orch = _build_orchestrator()
+        if policy is not None:
+            orch = cached_orch or _build_orchestrator()
             if orch is None:
                 raise HTTPException(
                     status_code=503,
@@ -470,14 +514,22 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                         ),
                     },
                 ) from None
+            # Auto-engaged path: pass override_policy=None so the YAML
+            # entry stays the source of truth (max_retries from YAML
+            # too). Explicit opt-in path: pass the override.
             chain_result = await orch.execute(
                 user_msg,
                 domain=domain or "_default",
                 model=req.model,
-                override_policy=policy,
+                override_policy=explicit_override,
                 max_retries=max_retries_override,
             )
-            requests_total.labels(model=req.model, status="200").inc()
+            requests_total.labels(
+                model=req.model,
+                status="200",
+                path="chain",
+                auto="1" if auto_engaged else "0",
+            ).inc()
             response: dict = {
                 "id": f"chatcmpl-{chain_result.chain_id[:12]}",
                 "object": "chat.completion",
@@ -501,6 +553,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 "ailiance_chain": {
                     "chain_id": chain_result.chain_id,
                     "policy": chain_result.policy.value,
+                    "auto_engaged": auto_engaged,
                     "status": chain_result.status,
                     "domain": chain_result.domain,
                 },
@@ -550,7 +603,10 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             )
             worker_resp = await http_client.send(req_stream, stream=True)
             requests_total.labels(
-                model=req.model, status=str(worker_resp.status_code)
+                model=req.model,
+                status=str(worker_resp.status_code),
+                path="stream",
+                auto="0",
             ).inc()
 
             async def relay() -> "object":
@@ -572,7 +628,12 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             headers=headers,
         )
 
-        requests_total.labels(model=req.model, status=str(resp.status_code)).inc()
+        requests_total.labels(
+            model=req.model,
+            status=str(resp.status_code),
+            path="proxy",
+            auto="0",
+        ).inc()
         try:
             return resp.json()
         except ValueError:

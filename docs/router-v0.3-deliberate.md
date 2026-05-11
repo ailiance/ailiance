@@ -20,6 +20,31 @@ prompt -> LLM -> validator -> exit_code
 Mixture (v0.3.1) and Sequential (v0.4) are scaffolded but degrade
 silently to DIRECT in v0.3.0.
 
+## Auto-router (default for `model: "ailiance"`)
+
+When `req.model == "ailiance"` (the bare auto-router alias, no
+`MODEL_FORCE_MAP` entry), the gateway:
+
+1. Classifies the prompt → domain.
+2. Looks up `chain_policies.yaml` for that domain.
+3. If the policy is non-`direct`, **engages the chain orchestrator
+   automatically** — no `extra_body` opt-in required.
+
+Forced aliases (`ailiance-mistral`, `ailiance-qwen`, …) bypass the
+classifier and stay on the legacy 1-shot proxy unless the caller
+sends `extra_body.chain_policy` explicitly. Rule of thumb: naming
+a specific worker = "I know what I want, no chain"; using the
+generic alias = "router, do the right thing".
+
+Streaming requests with `model: "ailiance"` that auto-classify to a
+non-direct domain **silently degrade to direct** so the SSE stream
+keeps flowing. Only an explicit `extra_body.chain_policy + stream`
+combination returns 400 (the caller asked for the impossible).
+
+The response envelope exposes `ailiance_chain.auto_engaged` (bool)
+so observability can distinguish auto-engaged chains from explicit
+opt-in chains.
+
 ## How to call it
 
 The orchestrator is **opt-in per request** via the OpenAI-compatible
