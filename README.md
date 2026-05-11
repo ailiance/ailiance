@@ -4,7 +4,7 @@
 
 ### EU-sovereign LLM gateway — five production workers, full provenance, no cloud
 
-[![status](https://img.shields.io/badge/status-5%2F5%20healthy-success)](https://ailiance.fr/api/public/status)
+[![status](https://img.shields.io/badge/status-4%2F5%20healthy%20%2B%20mascarade-success)](https://ailiance.fr/api/public/status)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![EU AI Act](https://img.shields.io/badge/EU%20AI%20Act-Art.%2052%2F53-1f4e8a)](docs/eu-ai-act-transparency.md)
 [![router](https://img.shields.io/badge/router--v6-87.7%25%20top--1-brightgreen)](docs/transparency/router-training-data.md)
@@ -262,6 +262,23 @@ docker. See [`docs/router-v0.3-deliberate.md`](docs/router-v0.3-deliberate.md)
 for the full API contract, audit-trail layout, validator-pin
 update workflow, and performance budget. Mixture (v0.3.1) and
 Sequential (v0.4) are scaffolded but degrade to direct in v0.3.0.
+
+### Router v0.3.1 — Mascarade Tower override (shipped 2026-05-11)
+
+Ten hardware domains now bypass Apertus and route to the Tower-Ollama
+`mascarade-*:latest` LoRA stack (Qwen3 4B Q4_K_M) via autossh tunnel
+`:8004`. Throughput jumps from ~3 tok/s (Studio 128B Q8) to
+~80 tok/s on a single P2000 5 GB — **~20x speedup** on `kicad`,
+`stm32`, `spice`, `emc`, `embedded`, `platformio`, `freecad`,
+`dsp`, `iot`, `power`.
+
+Paired with a temporary fallback from EuroLLM `:9303` (down,
+Studio plist requires GUI bootstrap) to Gemma `:9304` for the
+4 `chat-fr`/`traduction-tech`/`redaction-multilingue`/`localisation-doc`
+labels. Flag `EUROLLM_LIVE` in `src/router/domain_map.py` controls revert.
+
+Full spec, test coverage, revert path, and follow-ups in
+[`docs/router-mascarade-override-2026-05-11.md`](docs/router-mascarade-override-2026-05-11.md).
 
 ## Provenance & EU AI Act compliance
 
