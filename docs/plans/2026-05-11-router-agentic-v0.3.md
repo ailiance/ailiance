@@ -240,20 +240,99 @@ This is **v0.4 territory** — out of v0.3 scope. Document for roadmap.
   (with retry loop), not a streaming refinement queue. Could be a v0.5
   feature.
 
-## Open questions for brainstorm
+## Resolved design decisions (brainstorm 2026-05-11)
 
-1. **Submodule vs. HTTP fetch** for `domain_validators.yaml` sharing?
-2. **Reflector prompt template** — exact wording for the retry?
-   Variants per domain (KiCad vs. SPICE vs. shell)?
-3. **`extra_body` API** for the chain trace — what format gives
-   auditors the most readable evidence? `tool_calls[]` is OpenAI
-   standard but lossy for stderr blobs.
-4. **Mixture aggregator policy** — best-of-N pick, vote, or weighted
-   ensemble? Pick simplifies UI; weighted ensemble would need
-   workers to return logprobs (Mistral MLX doesn't expose those).
-5. **Streaming with retries** — should we stream the winning attempt
-   only, or stream each attempt's prefix with a marker? Latter is
+### Registry sharing — **git submodule**
+
+`ailiance/configs/validators` is a submodule pinned at a specific
+commit of `iact-bench`. Pin advances explicitly via
+`git submodule update --remote && git commit`. Each gateway run
+records the submodule's commit SHA in `manifest.json`, so an
+auditor sees the exact validator versions in production.
+
+### Reflector prompts — **per-domain templates**
+
+`configs/reflector_prompts.yaml` keys by domain, each entry holds
+a context-aware retry template. Examples:
+
+```yaml
+kicad-pcb: |
+  You produced a `.kicad_pcb` file that fails DRC. The validator
+  reported these violations:
+
+  {stderr}
+
+  Your previous attempt was:
+  ```
+  {previous_output}
+  ```
+
+  Fix the DRC violations and emit the corrected `.kicad_pcb`. Keep
+  nets and component placements where possible.
+
+ngspice-converge: |
+  Your SPICE netlist failed to converge or referenced undefined
+  nodes:
+
+  {stderr}
+
+  Previous netlist:
+  ```
+  {previous_output}
+  ```
+
+  Common fixes: add `.options abstol=1n reltol=1m`, ensure every
+  voltage source is referenced to a defined node, check that every
+  node has at least one DC path to ground.
+
+compile-shell: |
+  Your shell script fails `bash -n` or `shellcheck -S error`:
+
+  {stderr}
+
+  Fix the syntax/quoting issues. Re-emit the full script.
+
+# … one entry per validator-domain pair; fallback to _default.
+```
+
+Authoring rule: each template hints at the **class of fix** (DRC
+vs. parse vs. linker), not just dumps the stderr.
+
+### Mixture aggregator — **judge-weighted ensemble**
+
+```python
+# fan-out to N workers in parallel
+candidates = await gather(*(call(w, prompt) for w in workers))
+
+# judge scores each candidate on [0, 1] via structured prompt:
+#   "Score each candidate 0-1 on correctness/completeness/clarity.
+#    Output JSON: {scores: [..], rationales: [..]}"
+scores = await judge_score(prompt, candidates)
+
+# weight by judge score; if a worker exposes logprobs, multiply
+weights = [
+    s * (math.exp(c.mean_logprob) if c.has_logprobs else 1.0)
+    for s, c in zip(scores, candidates)
+]
+winner = candidates[argmax(weights)]
+```
+
+Workers without logprobs (Mistral MLX, Devstral MLX) contribute
+weighted only by `judge_score`. Workers with logprobs (llama.cpp
+backends like Qwen, Granite) get the bonus multiplier when
+available. Auditor sees the full weight vector in the chain trace.
+
+## Open questions remaining (defer to implementation)
+
+1. **`extra_body` API trace format** — `tool_calls[]` (OpenAI
+   standard) is lossy for multi-KB stderr blobs. Options:
+   `(a)` inline truncated head + URL pointer to full log,
+   `(b)` separate `audit_trace[]` field with full content.
+   Decide during v0.3.0 implementation review.
+2. **Streaming with retries** — stream the winning attempt only,
+   or stream each attempt's prefix with a marker? Latter is
    richer for the UI but bloats the OpenAI stream protocol.
+   Defer to UX iteration after v0.3.0 ships.
 
 ## AI Act / audit considerations
 
