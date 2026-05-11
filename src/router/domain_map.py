@@ -104,12 +104,14 @@ for d in APERTUS_DOMAINS:
     DOMAIN_TO_WORKER[d] = APERTUS_PORT
 for d in DEVSTRAL_DOMAINS:
     DOMAIN_TO_WORKER[d] = DEVSTRAL_PORT
-# EuroLLM (:9303) on Studio is DOWN as of 2026-05-11 (plist refuses
-# bootstrap via SSH, requires GUI session). Temporarily reroute all
-# EUROLLM_DOMAINS to Gemma (:9304, Tower llama.cpp) which is the closest
-# fit for short chat-fr / translation prompts. Revert by flipping the
-# next loop back to EUROLLM_PORT once :9303 is healthy.
-EUROLLM_LIVE = False  # set to True when Studio :9303 is back up
+# EuroLLM (:9303) on Studio: status flag toggled via EUROLLM_LIVE.
+# When False, the 4 EUROLLM_DOMAINS fall back to Gemma (:9304, Tower
+# llama.cpp), which is the closest fit for short chat-fr / translation
+# prompts during outages.
+# 2026-05-11 08:50 CEST: :9303 restored after the morning bench killed it
+# at 04:35 to free RAM. Confirmed UP via direct curl. Flag flipped back
+# to True to restore the EuroLLM 22B quality on chat-fr (vs Gemma 4B).
+EUROLLM_LIVE = True  # set to False if Studio :9303 goes down again
 _eurollm_target = EUROLLM_PORT if EUROLLM_LIVE else GEMMA_PORT
 for d in EUROLLM_DOMAINS:
     DOMAIN_TO_WORKER[d] = _eurollm_target
