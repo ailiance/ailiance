@@ -7,7 +7,8 @@ def test_domain_map_lookup():
 
     assert get_worker_for_domain("python") == 9302
     assert get_worker_for_domain("electronics-hw") == 9301
-    assert get_worker_for_domain("chat-fr") == 9303
+    # chat-fr fallbacks to Gemma (:9304) while EuroLLM :9303 is down
+    assert get_worker_for_domain("chat-fr") == 9304
     assert get_worker_for_domain("unknown-domain") is None
 
 
@@ -106,3 +107,29 @@ def test_confidence_gating_falls_back_to_apertus():
     )
     # Empty/None safe
     assert get_worker_for_domain_with_confidence(None, 0.99) is None
+
+
+
+def test_eurollm_fallback_to_gemma_while_down():
+    """EuroLLM :9303 (Studio) is DOWN as of 2026-05-11.
+    Until Studio plist is bootstrapped via GUI, chat-fr / traduction-tech /
+    redaction-multilingue / localisation-doc must hit Gemma (:9304) to
+    avoid 502 timeouts on common French greetings.
+
+    Flip EUROLLM_LIVE=True in domain_map.py to revert."""
+    from src.router.domain_map import (
+        EUROLLM_DOMAINS,
+        EUROLLM_LIVE,
+        GEMMA_PORT,
+        get_worker_for_domain,
+    )
+
+    assert EUROLLM_LIVE is False, (
+        "EUROLLM_LIVE=True means Studio :9303 is back up — "
+        "this test must then be inverted to expect EUROLLM_PORT."
+    )
+    for d in EUROLLM_DOMAINS:
+        assert get_worker_for_domain(d) == GEMMA_PORT, (
+            f"{d!r} must fallback to Gemma while EuroLLM down, "
+            f"got {get_worker_for_domain(d)}"
+        )

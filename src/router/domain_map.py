@@ -104,8 +104,15 @@ for d in APERTUS_DOMAINS:
     DOMAIN_TO_WORKER[d] = APERTUS_PORT
 for d in DEVSTRAL_DOMAINS:
     DOMAIN_TO_WORKER[d] = DEVSTRAL_PORT
+# EuroLLM (:9303) on Studio is DOWN as of 2026-05-11 (plist refuses
+# bootstrap via SSH, requires GUI session). Temporarily reroute all
+# EUROLLM_DOMAINS to Gemma (:9304, Tower llama.cpp) which is the closest
+# fit for short chat-fr / translation prompts. Revert by flipping the
+# next loop back to EUROLLM_PORT once :9303 is healthy.
+EUROLLM_LIVE = False  # set to True when Studio :9303 is back up
+_eurollm_target = EUROLLM_PORT if EUROLLM_LIVE else GEMMA_PORT
 for d in EUROLLM_DOMAINS:
-    DOMAIN_TO_WORKER[d] = EUROLLM_PORT
+    DOMAIN_TO_WORKER[d] = _eurollm_target
 for d in GEMMA_DOMAINS:
     DOMAIN_TO_WORKER[d] = GEMMA_PORT
 for d in QWEN_DOMAINS:
