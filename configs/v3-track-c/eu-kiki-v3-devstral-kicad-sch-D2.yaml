@@ -1,0 +1,25 @@
+# STATUS: M3/M4 stub, training deferred until M2 results validated
+# eu-kiki-v3-devstral-kicad-sch-D2.yaml
+# Track C - kicad-sch v10 LoRA, devstral on D2
+model: /Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2507-MLX-4bit
+data: /Users/clems/eu-kiki-data/kicad-sch-synth-stripped
+train: true
+fine_tune_type: lora
+optimizer: adamw
+num_layers: -1
+lora_parameters:
+  rank: 16
+  scale: 2.0
+  dropout: 0.05
+batch_size: 1
+iters: 3000
+val_batches: 5
+learning_rate: 1.0e-4
+steps_per_report: 100
+steps_per_eval: 250
+save_every: 250
+grad_accumulation_steps: 8
+max_seq_length: 8192
+grad_checkpoint: true
+adapter_path: /Users/clems/eu-kiki/adapters/v3/kicad-sch-devstral-D2
+seed: 42
