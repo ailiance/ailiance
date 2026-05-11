@@ -22,7 +22,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from src.orchestrator.chain_orchestrator import ChainOrchestrator
-from src.orchestrator.validators import StubValidator
+from src.orchestrator.validators import StubValidator, ValidatorResult
 
 
 def _stub_orch_factory(audit_dir: Path):
@@ -143,6 +143,76 @@ def test_stream_with_chain_policy_rejected(tmp_path: Path) -> None:
     assert resp.status_code == 400
     detail = resp.json()["detail"]
     assert detail["type"] == "invalid_request"
+
+
+class _AlwaysFailValidator:
+    """Validator that always reports exit_code=1 so DELIBERATE retries."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def run(
+        self, output: str, *, domain: str, tool: str
+    ) -> ValidatorResult:
+        self.calls += 1
+        return ValidatorResult(
+            exit_code=1,
+            stdout="",
+            stderr="forced failure",
+            duration_s=0.001,
+            image_digest="sha256:test",
+        )
+
+
+def test_extra_body_max_retries_overrides_policy_default(
+    tmp_path: Path,
+) -> None:
+    """extra_body.max_retries must override the per-domain YAML default.
+
+    Critic (MEDIUM): the field was advertised in the API doc and
+    schema comment but never read by server.py. Wired through to
+    ChainOrchestrator.execute now.
+
+    chain_policies.yaml sets max_retries=1 for python; sending
+    max_retries=3 with an always-failing validator must produce
+    exactly 4 LLM attempts (1 initial + 3 retries).
+    """
+    from src.gateway import server as gw
+
+    app = gw.make_gateway_app(skip_router_load=True)
+
+    llm_calls = {"n": 0}
+
+    async def counting_llm(messages, model: str) -> str:
+        llm_calls["n"] += 1
+        return "draft"
+
+    app.state.orchestrator = ChainOrchestrator(
+        policies_path=Path("configs/chain_policies.yaml"),
+        reflector_path=Path("configs/reflector_prompts.yaml"),
+        validator=_AlwaysFailValidator(),
+        llm_call=counting_llm,
+        audit_dir=tmp_path,
+    )
+    client = TestClient(app)
+
+    body = {
+        "model": "ailiance-mistral",
+        "messages": [
+            {"role": "user", "content": "write a python function"},
+        ],
+        "extra_body": {
+            "chain_policy": "deliberate",
+            "max_retries": 3,
+        },
+    }
+    resp = client.post("/v1/chat/completions", json=body)
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["ailiance_chain"]["status"] == "exhausted"
+    # 1 initial + 3 retries = 4 LLM attempts. Without the override the
+    # python policy would cap at 1 + 1 = 2.
+    assert llm_calls["n"] == 4
 
 
 def test_unknown_chain_policy_rejected(tmp_path: Path) -> None:

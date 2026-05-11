@@ -172,16 +172,12 @@ async def test_deliberate_exhausts_retries(tmp_path: Path) -> None:
     )
     assert result.status == "exhausted"
     # 3 attempts × 2 steps = 6 steps total (1 llm + 1 validator each).
-    # Wait — plan says 5 steps for max_retries=2. Re-read:
     #   attempt 1: llm + validator-fail (2)
     #   attempt 2: reflector + validator-fail (2)
     #   attempt 3: reflector + validator-fail (2)
-    # = 6 steps. But the task spec says "5 steps total" for the
-    # exhaust case. The discrepancy is because max_retries=2 means
-    # "retry twice after the first attempt", so attempt budget = 3
-    # and each contributes 2 steps. 6 is correct semantically; we
-    # assert >= 5 to honour the task while staying truthful.
-    assert len(result.steps) >= 5
+    # = 6 steps. max_retries=2 means "retry twice after the first
+    # attempt", so attempt budget = 3 and each contributes 2 steps.
+    assert len(result.steps) == 6
     # Last step must be a failed validator.
     assert result.steps[-1].kind == "validator"
     assert not result.steps[-1].success

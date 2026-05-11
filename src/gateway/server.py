@@ -445,11 +445,30 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 "",
             ) or ""
             include_audit = bool(extra.get("include_audit", False))
+            # extra_body.max_retries is documented in the API contract;
+            # forward it through so callers can override the per-domain
+            # policy default for DELIBERATE chains. None = honour YAML.
+            raw_retries = extra.get("max_retries")
+            try:
+                max_retries_override: int | None = (
+                    int(raw_retries) if raw_retries is not None else None
+                )
+            except (TypeError, ValueError):
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "type": "invalid_request",
+                        "message": (
+                            "extra_body.max_retries must be an integer"
+                        ),
+                    },
+                ) from None
             chain_result = await orch.execute(
                 user_msg,
                 domain=domain or "_default",
                 model=req.model,
                 override_policy=policy,
+                max_retries=max_retries_override,
             )
             requests_total.labels(model=req.model, status="200").inc()
             response: dict = {

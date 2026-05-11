@@ -183,12 +183,17 @@ class ChainOrchestrator:
         domain: str,
         model: str,
         override_policy: ChainPolicy | None = None,
+        max_retries: int | None = None,
     ) -> ChainResult:
         """Dispatch to the right pattern based on domain policy.
 
         ``override_policy`` (typically from ``extra_body.chain_policy``)
         wins when set. Unsupported policies (MIXTURE, SEQUENTIAL) are
         logged and silently degraded to DIRECT in v0.3.0.
+
+        ``max_retries`` (typically from ``extra_body.max_retries``) is
+        honoured only on the DELIBERATE branch and overrides the
+        policy-YAML default when set.
         """
         policy, entry = self.policy_for_domain(domain)
         if override_policy is not None:
@@ -196,12 +201,16 @@ class ChainOrchestrator:
 
         if policy == ChainPolicy.DELIBERATE:
             tool = entry.get("tool", "")
-            max_retries = int(entry.get("max_retries", 2))
+            effective_retries = (
+                max_retries
+                if max_retries is not None
+                else int(entry.get("max_retries", 2))
+            )
             return await self.deliberate(
                 prompt,
                 domain=domain,
                 model=model,
-                max_retries=max_retries,
+                max_retries=effective_retries,
                 tool=tool,
             )
 
