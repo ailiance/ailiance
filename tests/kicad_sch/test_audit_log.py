@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 from scripts.kicad_sch.audit_log import AuditLogger, sha256_manifest, verify
@@ -57,3 +58,31 @@ def test_verify_passes_untampered(tmp_path: Path) -> None:
     log_path.write_text('{"a": 1}\n')
     sha = sha256_manifest(log_path)
     assert verify(log_path, sha) is True
+
+
+def test_audit_logger_auto_injects_timestamp(tmp_path: Path) -> None:
+    log_path = tmp_path / "audit.ndjson"
+    logger = AuditLogger(log_path)
+    logger.log("generation", model_id="apertus")
+    record = json.loads(log_path.read_text().strip())
+    assert "timestamp" in record
+    # ISO 8601 UTC: YYYY-MM-DDTHH:MM:SS.microsecond+00:00
+    assert record["timestamp"].endswith("+00:00") or record["timestamp"].endswith("Z")
+
+
+def test_audit_logger_respects_explicit_timestamp(tmp_path: Path) -> None:
+    log_path = tmp_path / "audit.ndjson"
+    logger = AuditLogger(log_path)
+    logger.log("generation", timestamp="2026-05-11T05:00:00+00:00", model_id="x")
+    record = json.loads(log_path.read_text().strip())
+    assert record["timestamp"] == "2026-05-11T05:00:00+00:00"
+
+
+def test_audit_logger_serializes_path_and_datetime(tmp_path: Path) -> None:
+    log_path = tmp_path / "audit.ndjson"
+    logger = AuditLogger(log_path)
+    logger.log("eval", adapter_path=Path("/tmp/adapter"), generated_at=datetime(2026, 5, 11, 5, 0, 0, tzinfo=timezone.utc))
+    record = json.loads(log_path.read_text().strip())
+    # default=str converts Path → str and datetime → str
+    assert record["adapter_path"] == "/tmp/adapter"
+    assert "2026-05-11" in record["generated_at"]

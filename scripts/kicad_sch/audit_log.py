@@ -10,8 +10,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+_HASH_CHUNK_SIZE = 65_536
 
 
 class AuditLogger:
@@ -26,17 +30,21 @@ class AuditLogger:
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
     def log(self, event_type: str, **fields: Any) -> None:
+        if "timestamp" not in fields:
+            fields["timestamp"] = datetime.now(timezone.utc).isoformat()
         record: dict[str, Any] = {"event_type": event_type, **fields}
-        line = json.dumps(record, ensure_ascii=False, sort_keys=True)
+        line = json.dumps(record, ensure_ascii=False, sort_keys=True, default=str)
         with self.path.open("a", encoding="utf-8") as fh:
             fh.write(line + "\n")
+            fh.flush()
+            os.fsync(fh.fileno())
 
 
 def sha256_manifest(log_path: Path) -> str:
     """Return the hex sha256 of the log file's bytes."""
     h = hashlib.sha256()
     with Path(log_path).open("rb") as fh:
-        for chunk in iter(lambda: fh.read(65536), b""):
+        for chunk in iter(lambda: fh.read(_HASH_CHUNK_SIZE), b""):
             h.update(chunk)
     return h.hexdigest()
 
