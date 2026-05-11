@@ -20,7 +20,7 @@ MASCARADE_PORT = 8004
 # ailiance curriculum LoRA. Bench ailiance/ailiance-bench Phase 6
 # (commit 46801af 2026-05-11) confirms this is the P1 generation champion:
 # kicad-dsl +55 pts, kicad-pcb +42 pts vs prior fallbacks.
-EUKIKI_PORT = 8502
+AILIANCE_MACM1_PORT = 8502
 
 # `reasoning` moved off Apertus so the 80B sparse MoE handles complex
 # multi-step reasoning — strictly more capable on benchmarks like GSM8K /
@@ -75,7 +75,7 @@ MASCARADE_DOMAINS = frozenset({
 # Mascarade-kicad (0 lift on generation) and Apertus (prior PCB target).
 # These are *generation* labels — distinct from mascarade-kicad which
 # wins only on P3 extraction (+48). Override applied last (last-write-wins).
-EUKIKI_DOMAINS = frozenset({"kicad-dsl", "kicad-pcb"})
+AILIANCE_MACM1_DOMAINS = frozenset({"kicad-dsl", "kicad-pcb"})
 
 # Aliases for label drift between training and runtime: the router was
 # trained on slightly different surface forms than DOMAIN_TO_WORKER keys.
@@ -111,18 +111,18 @@ DOMAIN_ALIASES: dict[str, str] = {
 
 ALL_DOMAINS = (
     APERTUS_DOMAINS | DEVSTRAL_DOMAINS | EUROLLM_DOMAINS | GEMMA_DOMAINS
-    | QWEN_DOMAINS | EUKIKI_DOMAINS
+    | QWEN_DOMAINS | AILIANCE_MACM1_DOMAINS
 )
 # Sanity: MASCARADE_DOMAINS must be a subset of APERTUS (we override, not extend)
 assert MASCARADE_DOMAINS <= APERTUS_DOMAINS, (
     "MASCARADE_DOMAINS must be a subset of APERTUS_DOMAINS "
     f"(extra: {MASCARADE_DOMAINS - APERTUS_DOMAINS})"
 )
-# Sanity: EUKIKI_DOMAINS must be disjoint from MASCARADE and APERTUS core
+# Sanity: AILIANCE_MACM1_DOMAINS must be disjoint from MASCARADE and APERTUS core
 # (these are *new* labels, not overrides of existing ones).
-assert EUKIKI_DOMAINS.isdisjoint(APERTUS_DOMAINS), (
-    "EUKIKI_DOMAINS must be disjoint from APERTUS_DOMAINS "
-    f"(overlap: {EUKIKI_DOMAINS & APERTUS_DOMAINS})"
+assert AILIANCE_MACM1_DOMAINS.isdisjoint(APERTUS_DOMAINS), (
+    "AILIANCE_MACM1_DOMAINS must be disjoint from APERTUS_DOMAINS "
+    f"(overlap: {AILIANCE_MACM1_DOMAINS & APERTUS_DOMAINS})"
 )
 
 DOMAIN_TO_WORKER: dict[str, int] = {}
@@ -152,8 +152,8 @@ for d in MASCARADE_DOMAINS:
 # kicad-dsl and kicad-pcb are first-class labels (not aliased); the
 # kicad-pcb alias to "kicad" was removed to prevent the alias resolution
 # from bypassing this override in get_worker_for_domain().
-for d in EUKIKI_DOMAINS:
-    DOMAIN_TO_WORKER[d] = EUKIKI_PORT
+for d in AILIANCE_MACM1_DOMAINS:
+    DOMAIN_TO_WORKER[d] = AILIANCE_MACM1_PORT
 
 
 # Minimum classifier score to route to a Mascarade specialist. Below this

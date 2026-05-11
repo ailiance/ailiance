@@ -71,28 +71,28 @@ def test_kicad_pcb_routes_to_eukiki():
     (macm1 Gemma-4 E4B + curriculum LoRA). It was previously aliased to
     'kicad' → Mascarade :8004. Bench Phase 6 (commit 46801af) shows eu-kiki
     wins P1 generation by +42 pts — kicad-pcb alias removed, direct mapping
-    added to EUKIKI_DOMAINS."""
-    from src.router.domain_map import EUKIKI_PORT, get_worker_for_domain
+    added to AILIANCE_MACM1_DOMAINS."""
+    from src.router.domain_map import AILIANCE_MACM1_PORT, get_worker_for_domain
 
-    assert get_worker_for_domain("kicad-pcb") == EUKIKI_PORT
+    assert get_worker_for_domain("kicad-pcb") == AILIANCE_MACM1_PORT
 
 
 def test_kicad_dsl_routes_to_eukiki():
     """'kicad-dsl' is a new P1 generation label routed to :8502
     (macm1 Gemma-4 E4B + curriculum LoRA). Bench Phase 6 (commit 46801af)
     shows eu-kiki wins P1 generation by +55 pts vs base Gemma-E4B."""
-    from src.router.domain_map import EUKIKI_PORT, get_worker_for_domain
+    from src.router.domain_map import AILIANCE_MACM1_PORT, get_worker_for_domain
 
-    assert get_worker_for_domain("kicad-dsl") == EUKIKI_PORT
+    assert get_worker_for_domain("kicad-dsl") == AILIANCE_MACM1_PORT
 
 
 def test_eukiki_domains_all_route_to_8502():
-    """All EUKIKI_DOMAINS must resolve to :8502 — regression guard."""
-    from src.router.domain_map import EUKIKI_DOMAINS, EUKIKI_PORT, get_worker_for_domain
+    """All AILIANCE_MACM1_DOMAINS must resolve to :8502 — regression guard."""
+    from src.router.domain_map import AILIANCE_MACM1_DOMAINS, AILIANCE_MACM1_PORT, get_worker_for_domain
 
-    assert EUKIKI_PORT == 8502
-    for d in EUKIKI_DOMAINS:
-        assert get_worker_for_domain(d) == EUKIKI_PORT, (
+    assert AILIANCE_MACM1_PORT == 8502
+    for d in AILIANCE_MACM1_DOMAINS:
+        assert get_worker_for_domain(d) == AILIANCE_MACM1_PORT, (
             f"{d!r} must route to eu-kiki macm1 :8502, "
             f"got {get_worker_for_domain(d)}"
         )
