@@ -7,6 +7,7 @@ EuroLLM    (:9303) — multilingual EU
 Gemma      (:9304) — quick / fallback / generalist short
 Qwen3-Next (:8002) — reasoning (80B sparse MoE, served via tunnel to kxkm-ai)
 Mascarade  (:8004) — domain LoRA specialists via Tower Ollama tunnel
+eu-kiki    (:8502) — Gemma-4 E4B + ailiance curriculum LoRA on macm1
 """
 
 APERTUS_PORT = 9301
@@ -15,6 +16,11 @@ EUROLLM_PORT = 9303
 GEMMA_PORT = 9304
 QWEN_PORT = 8002
 MASCARADE_PORT = 8004
+# macm1 mlx_lm.server (alias `ailiance-gemma4`): Gemma-4 E4B + eu-kiki
+# ailiance curriculum LoRA. Bench ailiance/ailiance-bench Phase 6
+# (commit 46801af 2026-05-11) confirms this is the P1 generation champion:
+# kicad-dsl +55 pts, kicad-pcb +42 pts vs prior fallbacks.
+EUKIKI_PORT = 8502
 
 # `reasoning` moved off Apertus so the 80B sparse MoE handles complex
 # multi-step reasoning — strictly more capable on benchmarks like GSM8K /
@@ -59,6 +65,14 @@ MASCARADE_DOMAINS = frozenset({
     "platformio", "freecad", "dsp", "iot", "power",
 })
 
+# eu-kiki P1 champion domains: Gemma-4 E4B + ailiance curriculum LoRA
+# on macm1 :8502. Bench Phase 6 (commit 46801af) shows eu-kiki wins
+# P1 generation decisively (+55 kicad-dsl, +42 kicad-pcb) against both
+# Mascarade-kicad (0 lift on generation) and Apertus (prior PCB target).
+# These are *generation* labels — distinct from mascarade-kicad which
+# wins only on P3 extraction (+48). Override applied last (last-write-wins).
+EUKIKI_DOMAINS = frozenset({"kicad-dsl", "kicad-pcb"})
+
 # Aliases for label drift between training and runtime: the router was
 # trained on slightly different surface forms than DOMAIN_TO_WORKER keys.
 DOMAIN_ALIASES: dict[str, str] = {
@@ -84,19 +98,27 @@ DOMAIN_ALIASES: dict[str, str] = {
     "bash": "shell",
     "sh": "shell",
     # Misc
-    "kicad-pcb": "kicad",
+    # NOTE: kicad-pcb was previously aliased to "kicad" (→ Mascarade :8004).
+    # Removed 2026-05-11 — kicad-pcb is now a first-class EUKIKI_DOMAIN
+    # routing to macm1 :8502 (bench Phase 6 shows +42 pts vs mascarade).
     "ml": "ml-training",
     "embedded-c": "embedded",
 }
 
 ALL_DOMAINS = (
     APERTUS_DOMAINS | DEVSTRAL_DOMAINS | EUROLLM_DOMAINS | GEMMA_DOMAINS
-    | QWEN_DOMAINS
+    | QWEN_DOMAINS | EUKIKI_DOMAINS
 )
 # Sanity: MASCARADE_DOMAINS must be a subset of APERTUS (we override, not extend)
 assert MASCARADE_DOMAINS <= APERTUS_DOMAINS, (
     "MASCARADE_DOMAINS must be a subset of APERTUS_DOMAINS "
     f"(extra: {MASCARADE_DOMAINS - APERTUS_DOMAINS})"
+)
+# Sanity: EUKIKI_DOMAINS must be disjoint from MASCARADE and APERTUS core
+# (these are *new* labels, not overrides of existing ones).
+assert EUKIKI_DOMAINS.isdisjoint(APERTUS_DOMAINS), (
+    "EUKIKI_DOMAINS must be disjoint from APERTUS_DOMAINS "
+    f"(overlap: {EUKIKI_DOMAINS & APERTUS_DOMAINS})"
 )
 
 DOMAIN_TO_WORKER: dict[str, int] = {}
@@ -120,9 +142,14 @@ for d in GEMMA_DOMAINS:
 for d in QWEN_DOMAINS:
     DOMAIN_TO_WORKER[d] = QWEN_PORT
 # Override APERTUS for the 10 mascarade-specialized domains.
-# Must come LAST so dict-write-last-wins selects Tower over Studio.
 for d in MASCARADE_DOMAINS:
     DOMAIN_TO_WORKER[d] = MASCARADE_PORT
+# eu-kiki P1 KiCad generation domains — must come LAST (last-write-wins).
+# kicad-dsl and kicad-pcb are first-class labels (not aliased); the
+# kicad-pcb alias to "kicad" was removed to prevent the alias resolution
+# from bypassing this override in get_worker_for_domain().
+for d in EUKIKI_DOMAINS:
+    DOMAIN_TO_WORKER[d] = EUKIKI_PORT
 
 
 # Minimum classifier score to route to a Mascarade specialist. Below this
