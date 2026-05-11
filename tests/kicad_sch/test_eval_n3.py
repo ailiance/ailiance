@@ -130,3 +130,36 @@ def test_drc_clean_returns_1_when_drc_passes(monkeypatch, tmp_path):
     finally:
         monkeypatch.setattr(Path, "exists", real_path_exists)
 
+
+from scripts.kicad_sch.eval_n3 import eval_sem_equiv
+
+
+def test_sem_equiv_returns_1_for_identical(tmp_path):
+    # Two identical kicad_sch files -> sem_equiv == 1.0
+    src = tmp_path / "a.kicad_sch"
+    dst = tmp_path / "b.kicad_sch"
+    content = "(kicad_sch (version 20240101) (symbol U1) (symbol R1) (net N1 U1 R1))"
+    src.write_text(content)
+    dst.write_text(content)
+    score = eval_sem_equiv(src, dst)
+    assert abs(score - 1.0) < 1e-6
+
+
+def test_sem_equiv_returns_0_for_empty_vs_full(tmp_path):
+    src = tmp_path / "a.kicad_sch"
+    dst = tmp_path / "b.kicad_sch"
+    src.write_text("(kicad_sch)")
+    dst.write_text("(kicad_sch (symbol U1) (symbol R1) (net N1 U1 R1))")
+    score = eval_sem_equiv(src, dst)
+    assert 0.0 <= score < 0.5
+
+
+def test_sem_equiv_returns_float_in_unit_interval(tmp_path):
+    src = tmp_path / "a.kicad_sch"
+    dst = tmp_path / "b.kicad_sch"
+    src.write_text("(kicad_sch (symbol U1) (symbol R1))")
+    dst.write_text("(kicad_sch (symbol U1) (symbol C1))")
+    score = eval_sem_equiv(src, dst)
+    assert isinstance(score, float)
+    assert 0.0 <= score <= 1.0
+
