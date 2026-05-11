@@ -385,3 +385,45 @@ def test_validator_protocol_runtime_check() -> None:
     """StubValidator and our scripted helper satisfy the Protocol."""
     assert isinstance(StubValidator(), Validator)
     assert isinstance(_ScriptedValidator([0]), Validator)
+
+
+@pytest.mark.asyncio
+async def test_audit_manifest_records_submodule_sha(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Manifest sidecar records validator kind + submodule pin."""
+    from src.orchestrator import chain_orchestrator as co
+
+    # Reset the cache and stub out the subprocess call.
+    co._submodule_sha_cache = (False, None)
+    monkeypatch.setattr(
+        co, "_read_submodule_sha", lambda: "deadbeef" * 5
+    )
+
+    llm, _ = _make_llm(["good"])
+    validator = _ScriptedValidator([0])
+    orch = ChainOrchestrator(
+        policies_path=POLICIES_PATH,
+        reflector_path=REFLECTOR_PATH,
+        validator=validator,
+        llm_call=llm,
+        audit_dir=tmp_path,
+    )
+    result = await orch.execute(
+        "x",
+        domain="kicad-pcb",
+        model="ailiance",
+    )
+    manifest_path = (
+        tmp_path / "chains" / result.chain_id / "manifest.json"
+    )
+    assert manifest_path.exists()
+    manifest = json.loads(manifest_path.read_text())
+    assert manifest["chain_id"] == result.chain_id
+    assert manifest["policy"] == "deliberate"
+    assert manifest["domain"] == "kicad-pcb"
+    assert manifest["tool"] == "kicad-drc"
+    assert manifest["validator_kind"] == "_ScriptedValidator"
+    assert manifest["submodule_sha"] == "deadbeef" * 5
+    assert manifest["status"] == "ok"
+    assert isinstance(manifest["started_at"], float)

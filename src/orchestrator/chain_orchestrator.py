@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import logging
+import subprocess
 import time
 import uuid
 from collections.abc import Awaitable, Callable
@@ -28,6 +29,41 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
+
+# Repo-relative path to the iact-bench submodule. Cached at module
+# import time so the SHA lookup runs at most once per process.
+_SUBMODULE_PATH = Path(__file__).resolve().parents[2] / "vendored" / "iact-bench"
+_submodule_sha_cache: tuple[bool, str | None] = (False, None)
+
+
+def _read_submodule_sha() -> str | None:
+    """Return the iact-bench submodule HEAD SHA, or None on any error.
+
+    Cached at module level so chain runs do not fork a subprocess per
+    request. ``git -C <path> rev-parse HEAD`` is the cheapest reliable
+    way to read submodule pin (works whether the submodule is checked
+    out as a worktree or as a packed gitdir).
+    """
+    global _submodule_sha_cache
+    cached, value = _submodule_sha_cache
+    if cached:
+        return value
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(_SUBMODULE_PATH), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        sha: str | None = result.stdout.strip() or None
+        if result.returncode != 0:
+            sha = None
+    except Exception:  # noqa: BLE001
+        sha = None
+    _submodule_sha_cache = (True, sha)
+    return sha
 
 from src.orchestrator.chain_policy import (
     ChainPolicy,
@@ -568,3 +604,29 @@ class ChainOrchestrator:
         with path.open("w", encoding="utf-8") as fh:
             for step in result.steps:
                 fh.write(json.dumps(asdict(step)) + "\n")
+        self._write_manifest(chain_dir, result)
+
+    def _write_manifest(self, chain_dir: Path, result: ChainResult) -> None:
+        # First validator step (if any) carries the tool name; first
+        # step carries the chain start_at.
+        tool: str | None = None
+        for step in result.steps:
+            if step.kind == "validator":
+                tool = step.payload.get("tool") or None
+                break
+        started_at: float | None = (
+            result.steps[0].started_at if result.steps else None
+        )
+        manifest = {
+            "chain_id": result.chain_id,
+            "policy": result.policy.value,
+            "domain": result.domain,
+            "tool": tool,
+            "started_at": started_at,
+            "validator_kind": type(self.validator).__name__,
+            "submodule_sha": _read_submodule_sha(),
+            "status": result.status,
+        }
+        (chain_dir / "manifest.json").write_text(
+            json.dumps(manifest, indent=2), encoding="utf-8"
+        )
