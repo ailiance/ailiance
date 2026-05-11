@@ -199,3 +199,82 @@ def run_all(
     if summary_path is not None:
         Path(summary_path).write_text(json.dumps(summary, indent=2))
     return summary
+
+
+SMOKE_PROMPTS = ["voltage divider 10k 10k"]
+FULL_PROMPTS = [
+    # 20 reference circuits - keep stable, do not reorder.
+    "voltage divider 10k 10k",
+    "RC low pass 1k 100nF",
+    "LED blinker with NE555 astable",
+    "non-inverting opamp gain 10 with rail-to-rail input",
+    "ESP32 mini board with USB-C and 3V3 LDO",
+    "I2C pull-up pair 4k7 on SDA/SCL",
+    "diode bridge full-wave rectifier",
+    "common-emitter NPN amplifier",
+    "two-stage RC filter 1k 1k 100nF 100nF",
+    "MOSFET low-side switch with gate pulldown",
+    "TL431 shunt reference 2.5V",
+    "linear regulator LM7805 with input and output caps",
+    "buck converter MP1584 12V to 5V minimal",
+    "RS485 transceiver SN65HVD75",
+    "shift register 74HC595 LED driver",
+    "ADC reference divider for 3V3 from 12V input",
+    "audio amplifier LM386 minimal",
+    "EEPROM 24LC256 with I2C address pins tied low",
+    "RGB LED with three current-limit resistors",
+    "current sense amplifier INA199 with 10mohm shunt",
+]
+
+
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+    p = argparse.ArgumentParser(prog="hybrid_pipeline")
+    p.add_argument("--mode", choices=["smoke", "full"], default="smoke")
+    p.add_argument("--out-dir", required=True)
+    p.add_argument("--audit-path", required=True)
+    p.add_argument("--summary-path", required=True)
+    p.add_argument("--base-models", nargs="+", default=None)
+    p.add_argument("--compilers", nargs="+", default=None)
+    p.add_argument("--n-samples", type=int, default=1)
+    p.add_argument("--seeds", nargs="+", type=int, default=None)
+    args = p.parse_args(argv)
+
+    if args.mode == "smoke":
+        prompts = SMOKE_PROMPTS
+        base_models = args.base_models or ["qwen36"]
+        compilers = args.compilers or ["skidl"]
+        seeds = args.seeds or [42]
+    else:
+        prompts = FULL_PROMPTS
+        base_models = args.base_models or list(BASE_MODELS)
+        compilers = args.compilers or list(COMPILERS)
+        seeds = args.seeds or list(DEFAULT_SEEDS)
+
+    logger = AuditLogger(Path(args.audit_path))
+    logger.log(
+        "run_start", mode=args.mode, base_models=base_models,
+        compilers=compilers, seeds=seeds, n_samples=args.n_samples,
+        n_prompts=len(prompts),
+    )
+    summary = run_all(
+        prompts=prompts,
+        base_models=base_models,
+        compilers=compilers,
+        seeds=seeds,
+        n_samples=args.n_samples,
+        out_dir=Path(args.out_dir),
+        audit_logger=logger,
+        summary_path=Path(args.summary_path),
+    )
+    logger.log(
+        "run_end",
+        n_attempts_total=summary["n_attempts_total"],
+        compile_ok_rate_overall=summary["compile_ok_rate_overall"],
+        dsl_parse_ok_rate_overall=summary["dsl_parse_ok_rate_overall"],
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

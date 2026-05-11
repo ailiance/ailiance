@@ -171,3 +171,30 @@ def test_run_all_writes_summary_json(tmp_path, monkeypatch):
     payload = json.loads(summary_path.read_text())
     assert payload["cells"][0]["base_model_key"] == "qwen36"
     assert payload["cells"][0]["compiler"] == "skidl"
+
+
+def test_cli_smoke_mode_runs_one_cell(tmp_path, monkeypatch):
+    monkeypatch.setattr(hybrid_pipeline, "load_model_and_tokenizer", _stub_load)
+    monkeypatch.setattr(hybrid_pipeline, "generate_sample", _stub_generate)
+    monkeypatch.setattr(hybrid_pipeline, "unload_model", lambda: None)
+
+    from scripts.kicad_sch.compilers.result import CompileResult
+
+    class _OK:
+        def run(self, dsl, out_dir, **_):
+            return CompileResult(dsl_parse_ok=True, compile_ok=True)
+
+    for c in hybrid_pipeline.COMPILERS:
+        monkeypatch.setitem(hybrid_pipeline.RUNNERS, c, _OK())
+
+    rc = hybrid_pipeline.main([
+        "--mode", "smoke",
+        "--out-dir", str(tmp_path / "art"),
+        "--audit-path", str(tmp_path / "audit.ndjson"),
+        "--summary-path", str(tmp_path / "summary.json"),
+    ])
+    assert rc == 0
+    assert (tmp_path / "summary.json").exists()
+    payload = json.loads((tmp_path / "summary.json").read_text())
+    # smoke = 1 model x 1 compiler x 1 prompt x 1 seed x 1 sample = 1 cell
+    assert len(payload["cells"]) == 1
