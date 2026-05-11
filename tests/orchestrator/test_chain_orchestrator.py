@@ -269,6 +269,76 @@ async def test_validator_unavailable_falls_back_to_direct(
     assert result.status == "direct"
 
 
+@pytest.mark.asyncio
+async def test_reflector_lookup_by_tool_when_domain_missing(
+    tmp_path: Path,
+) -> None:
+    """Lookup falls back to the tool key when the domain key is absent.
+
+    Critic finding (MAJOR): ``configs/reflector_prompts.yaml`` keys
+    ``ngspice-converge`` / ``compile-shell`` are tool names while the
+    orchestrator looks up by domain (``spice-sim`` / ``shell``). The
+    fallback keeps both naming conventions working.
+    """
+    llm, seen = _make_llm(["bad", "good"])
+    validator = _ScriptedValidator([1, 0], stderr="LIBRARY_NOT_FOUND")
+    orch = ChainOrchestrator(
+        policies_path=POLICIES_PATH,
+        reflector_path=REFLECTOR_PATH,
+        validator=validator,
+        llm_call=llm,
+        audit_dir=tmp_path,
+    )
+    # spice-sim has policy=deliberate tool=ngspice-converge; the
+    # reflector YAML keys this template under the tool name.
+    result = await orch.execute(
+        "simulate this netlist",
+        domain="spice-sim",
+        model="ailiance",
+    )
+    assert result.status == "ok"
+    second_call = seen[1]
+    reflector_prompt = second_call[-1]["content"]
+    # Must come from the ngspice-converge template, not _default —
+    # signature phrase from configs/reflector_prompts.yaml.
+    assert "converge" in reflector_prompt.lower()
+    assert "LIBRARY_NOT_FOUND" in reflector_prompt
+
+
+@pytest.mark.asyncio
+async def test_reflector_template_with_unknown_placeholder_does_not_crash(
+    tmp_path: Path,
+) -> None:
+    """Stray placeholder in a reflector template must not crash the chain.
+
+    Bonus finding #4: ``format()`` raises KeyError on unknown
+    placeholders. Switching to ``format_map(defaultdict(str, ...))``
+    means a stray ``{nope}`` resolves to empty string instead.
+    """
+    llm, seen = _make_llm(["bad", "good"])
+    validator = _ScriptedValidator([1, 0], stderr="OOPS")
+    orch = ChainOrchestrator(
+        policies_path=POLICIES_PATH,
+        reflector_path=REFLECTOR_PATH,
+        validator=validator,
+        llm_call=llm,
+        audit_dir=tmp_path,
+    )
+    # Inject a template with a stray placeholder under the domain key.
+    orch._reflector["zzz-unknown-domain"] = (
+        "stderr={stderr} prev={previous_output} stray={nope}"
+    )
+    result = await orch.execute(
+        "x",
+        domain="zzz-unknown-domain",
+        model="ailiance",
+        override_policy=ChainPolicy.DELIBERATE,
+    )
+    assert result.status == "ok"
+    second_call = seen[1]
+    assert "stray=" in second_call[-1]["content"]
+
+
 def test_validator_protocol_runtime_check() -> None:
     """StubValidator and our scripted helper satisfy the Protocol."""
     assert isinstance(StubValidator(), Validator)

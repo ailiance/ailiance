@@ -137,10 +137,22 @@ class ChainOrchestrator:
     # ------------------------------------------------------------------
 
     def _reflector_prompt(
-        self, domain: str, *, stderr: str, previous_output: str
+        self,
+        domain: str,
+        *,
+        stderr: str,
+        previous_output: str,
+        tool: str = "",
     ) -> str:
-        template = self._reflector.get(domain) or self._reflector.get(
-            "_default"
+        # Lookup order: domain key first (preferred convention), then
+        # the tool name (some YAML entries are keyed by tool, e.g.
+        # ``ngspice-converge`` / ``compile-shell``), then ``_default``.
+        # Both naming conventions resolve cleanly so editors can pick
+        # either one without silently falling through.
+        template = (
+            self._reflector.get(domain)
+            or (self._reflector.get(tool) if tool else None)
+            or self._reflector.get("_default")
         )
         if template is None:
             # Last-ditch hard-coded fallback so we never crash on a
@@ -150,10 +162,15 @@ class ChainOrchestrator:
                 "{stderr}\n\nPrevious output:\n```\n{previous_output}\n"
                 "```\n\nFix and retry."
             )
-        return template.format(
-            stderr=_truncate(stderr, _STDERR_HEAD_BYTES),
-            previous_output=previous_output,
-        )
+        # Use defaultdict via format_map so stray placeholders authored
+        # in YAML (e.g. ``{nope}``) resolve to "" instead of crashing
+        # the whole chain on KeyError.
+        from collections import defaultdict
+
+        values: defaultdict[str, str] = defaultdict(str)
+        values["stderr"] = _truncate(stderr, _STDERR_HEAD_BYTES)
+        values["previous_output"] = previous_output
+        return template.format_map(values)
 
     # ------------------------------------------------------------------
     # Public dispatch
@@ -439,6 +456,7 @@ class ChainOrchestrator:
                 domain,
                 stderr=last_stderr,
                 previous_output=last_output,
+                tool=tool,
             )
             current_messages = [
                 {"role": "user", "content": prompt},
