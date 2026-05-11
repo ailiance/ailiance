@@ -27,6 +27,8 @@ _DEFAULT_WORKER_URLS = {
     8502: "http://localhost:8502",  # ailiance / ailiance worker on macm1 (Gemma 4 E4B + LoRA)
     9303: "http://localhost:9303",
     9304: "http://localhost:9304",
+    # Qwen3.6-35B-A3B MLX BF16 on Studio (mlx_lm.server :9305)
+    9305: "http://localhost:9305",
     # Qwen3-Next 80B-A3B MoE on kxkm-ai (llama-server, alias 'qwen-32b-awq')
     # reached via the autossh tunnel listening on 0.0.0.0:8002.
     8002: "http://localhost:8002",
@@ -97,6 +99,7 @@ MODEL_FORCE_MAP = {
     "ailiance-gemma": 9304,  # Gemma 3 4B IT on tower
     "ailiance-qwen": 8002,  # llama-server on kxkm-ai (RTX 4090) via autossh tunnel
     "ailiance-granite": 8003,  # Granite 4.1 30B Q4_K_M GGUF on kxkm-ai
+    "ailiance-qwen36": 9305,  # Qwen3.6-35B-A3B-MLX-BF16 on Studio (deeper specialist vs ailiance-qwen Q4)
     "ailiance-ministral": 8502,  # Ministral-3-14B-Instruct MLX 4-bit on macM1
     "ailiance-ministral-reasoning": 8502,  # Ministral-3-14B-Reasoning MLX 4-bit on macM1
     "ailiance-gemma2": 8502,  # Gemma-4-E2B-it MLX 4-bit on macM1 (lighter than E4B)
@@ -135,6 +138,8 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     "ailiance-ministral-reasoning": {"model": "mlx-community/Ministral-3-14B-Reasoning-2512-4bit"},
     # kxkm-ai llama-server :8003 (via tunnel) - alias is granite-30b, bearer key.
     "ailiance-granite": {"model": "granite-30b", "auth_env": "AILIANCE_QWEN_KEY"},
+    # studio mlx_lm.server :9305 - rewrite to on-disk path the server has loaded.
+    "ailiance-qwen36": {"model": "/Users/clems/KIKI-Mac_tunner/models/Qwen3.6-35B-A3B-MLX-BF16"},
     # studio mlx_lm.server :9301 - rewrite to on-disk path the server has loaded
     # (mlx_lm.server resolves an unknown model field as an HF repo id, causing 404 + 60s timeout).
     "ailiance-mistral-medium": {"model": "/Users/clems/KIKI-Mac_tunner/models/Mistral-Medium-3.5-128B-MLX-Q8"},
@@ -385,6 +390,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 {"id": "ailiance-gemma", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-qwen", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-granite", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-qwen36", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-ministral", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-ministral-reasoning", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-gemma2", "object": "model", "owned_by": "ailiance"},
@@ -432,6 +438,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             "ailiance-gemma",
             "ailiance-qwen",
             "ailiance-granite",
+            "ailiance-qwen36",
             "ailiance-ministral",
             "ailiance-ministral-reasoning",
             "ailiance-gemma2",
