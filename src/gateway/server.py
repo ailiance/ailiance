@@ -137,6 +137,9 @@ MODEL_FORCE_MAP = {
     "ailiance-apertus-spice-sim": 9322,
     "ailiance-apertus-emc-dsp-power": 9322,
     "ailiance-apertus-embedded": 9322,
+    # Studio flagship 2026-05-12 — Qwen3-235B-A22B-Instruct MoE 4-bit.
+    "ailiance-flagship": 9328,
+    "ailiance-qwen-235b": 9328,
 }
 
 # Per-port forward overrides for non-ailiance backends. The gateway rewrites
@@ -198,6 +201,13 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     "ailiance-apertus-spice-sim": {"model": "apertus-spice-sim"},
     "ailiance-apertus-emc-dsp-power": {"model": "apertus-emc-dsp-power-curriculum"},
     "ailiance-apertus-embedded": {"model": "apertus-embedded"},
+    # Studio flagship 2026-05-12 — Qwen3-235B-A22B-Instruct MoE 4-bit (~120GB VRAM).
+    "ailiance-flagship": {
+        "model": "/Users/clems/KIKI-Mac_tunner/models/Qwen3-235B-A22B-Instruct-MLX-4bit",
+    },
+    "ailiance-qwen-235b": {
+        "model": "/Users/clems/KIKI-Mac_tunner/models/Qwen3-235B-A22B-Instruct-MLX-4bit",
+    },
 }
 
 
@@ -509,6 +519,9 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 {"id": "ailiance-apertus-spice-sim", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-apertus-emc-dsp-power", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-apertus-embedded", "object": "model", "owned_by": "ailiance"},
+                # Studio flagship 2026-05-12 — Qwen3-235B-A22B MoE 4-bit
+                {"id": "ailiance-flagship", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-qwen-235b", "object": "model", "owned_by": "ailiance"},
             ],
         }
 
