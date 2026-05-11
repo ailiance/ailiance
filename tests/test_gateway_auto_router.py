@@ -201,6 +201,58 @@ def test_auto_silently_degrades_to_direct_on_stream(
     assert captured["streamed"] is True
 
 
+def test_metrics_distinguish_chain_proxy_and_auto(tmp_path: Path) -> None:
+    """Critic M1: ailiance_gw_requests_total must label chain vs proxy
+    and auto vs explicit, otherwise the auto-router activation hides a
+    multi-second latency regression behind a single counter."""
+    from src.gateway import server as gw
+
+    app = gw.make_gateway_app(skip_router_load=True)
+    app.state.router = _FakeRouter(domain="kicad-pcb")
+    app.state.orchestrator = _build_orch(tmp_path)
+    client = TestClient(app)
+
+    # Auto-engaged chain.
+    client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "ailiance",
+            "messages": [{"role": "user", "content": "design a pcb"}],
+        },
+    )
+
+    # Proxy path on a forced alias.
+    class _FakeResp:
+        status_code = 200
+        content = b"{}"
+
+        def json(self):
+            return {"id": "x", "choices": [{"message": {"content": "ok"}}]}
+
+    async def fake_post(self, *args, **kwargs):
+        return _FakeResp()
+
+    with patch("httpx.AsyncClient.post", new=fake_post):
+        client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "ailiance-mistral",
+                "messages": [{"role": "user", "content": "x"}],
+            },
+        )
+
+    metrics = client.get("/metrics").text
+    # Chain path with auto=1 must be present.
+    assert (
+        'ailiance_gw_requests_total{auto="1",model="ailiance",path="chain",status="200"}'
+        in metrics
+    ), metrics
+    # Proxy path with auto=0 must be present (forced alias call).
+    assert (
+        'path="proxy"' in metrics and 'auto="0"' in metrics
+    ), metrics
+
+
 def test_explicit_extra_body_still_overrides_for_forced_alias(
     tmp_path: Path,
 ) -> None:

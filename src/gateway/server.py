@@ -168,7 +168,10 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
     requests_total = Counter(
         "ailiance_gw_requests_total",
         "Gateway requests",
-        ["model", "status"],
+        # path: proxy (1-shot), chain (orchestrator), stream (SSE).
+        # auto: 1 when chain engaged via auto-router (model=ailiance +
+        # YAML deliberate), 0 for explicit opt-in or proxy/stream.
+        ["model", "status", "path", "auto"],
         registry=reg,
     )
     route_latency = Histogram(
@@ -422,11 +425,16 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         # opt-in returns 400 (the user asked for the impossible);
         # auto-engagement silently degrades to DIRECT (the user did
         # not opt in, so we MUST NOT break their stream).
+        # Note: extra_body.chain_policy="direct" intentionally falls
+        # through both branches below. Explicit DIRECT is a caller
+        # saying "no chain even on the auto-router alias" — it must
+        # bypass the orchestrator and reach the legacy proxy.
         extra = req.extra_body or {}
         chain_policy_raw = extra.get("chain_policy")
         policy: ChainPolicy | None = None
         auto_engaged = False
         explicit_override: ChainPolicy | None = None
+        cached_orch: ChainOrchestrator | None = None
 
         if chain_policy_raw and chain_policy_raw != ChainPolicy.DIRECT.value:
             try:
@@ -461,16 +469,19 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             and domain
         ):
             # Auto-router: look up the YAML default for the classified
-            # domain. Engage only if it is non-DIRECT.
-            orch_for_lookup = _build_orchestrator()
-            if orch_for_lookup is not None:
-                yaml_policy, _ = orch_for_lookup.policy_for_domain(domain)
+            # domain. Engage only if it is non-DIRECT. `domain` is the
+            # classifier's top-1 string; an empty/falsy value (rare but
+            # possible if the classifier returns no selections) skips
+            # auto-engagement and falls through to the legacy proxy.
+            cached_orch = _build_orchestrator()
+            if cached_orch is not None:
+                yaml_policy, _ = cached_orch.policy_for_domain(domain)
                 if yaml_policy != ChainPolicy.DIRECT:
                     policy = yaml_policy
                     auto_engaged = True
 
         if policy is not None:
-            orch = _build_orchestrator()
+            orch = cached_orch or _build_orchestrator()
             if orch is None:
                 raise HTTPException(
                     status_code=503,
@@ -513,7 +524,12 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 override_policy=explicit_override,
                 max_retries=max_retries_override,
             )
-            requests_total.labels(model=req.model, status="200").inc()
+            requests_total.labels(
+                model=req.model,
+                status="200",
+                path="chain",
+                auto="1" if auto_engaged else "0",
+            ).inc()
             response: dict = {
                 "id": f"chatcmpl-{chain_result.chain_id[:12]}",
                 "object": "chat.completion",
@@ -587,7 +603,10 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             )
             worker_resp = await http_client.send(req_stream, stream=True)
             requests_total.labels(
-                model=req.model, status=str(worker_resp.status_code)
+                model=req.model,
+                status=str(worker_resp.status_code),
+                path="stream",
+                auto="0",
             ).inc()
 
             async def relay() -> "object":
@@ -609,7 +628,12 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             headers=headers,
         )
 
-        requests_total.labels(model=req.model, status=str(resp.status_code)).inc()
+        requests_total.labels(
+            model=req.model,
+            status=str(resp.status_code),
+            path="proxy",
+            auto="0",
+        ).inc()
         try:
             return resp.json()
         except ValueError:
