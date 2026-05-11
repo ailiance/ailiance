@@ -111,6 +111,11 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     "ailiance-ministral-reasoning": {"model": "mlx-community/Ministral-3-14B-Reasoning-2512-4bit"},
     # kxkm-ai llama-server :8003 (via tunnel) - alias is granite-30b, bearer key.
     "ailiance-granite": {"model": "granite-30b", "auth_env": "KXKM_QWEN_KEY"},
+    # studio mlx_lm.server :9301 - rewrite to on-disk path the server has loaded
+    # (mlx_lm.server resolves an unknown model field as an HF repo id, causing 404 + 60s timeout).
+    "ailiance-mistral-medium": {"model": "/Users/clems/KIKI-Mac_tunner/models/Mistral-Medium-3.5-128B-MLX-Q8"},
+    "ailiance-mistral": {"model": "/Users/clems/KIKI-Mac_tunner/models/Mistral-Medium-3.5-128B-MLX-Q8"},
+    "ailiance-apertus": {"model": "/Users/clems/KIKI-Mac_tunner/models/Mistral-Medium-3.5-128B-MLX-Q8"},  # legacy alias
     # Tower Ollama :11434 via tunnel :8004 - Ollama needs the exact tag.
     "ailiance-kicad": {"model": "mascarade-kicad:latest"},
     "ailiance-spice": {"model": "mascarade-spice:latest"},
