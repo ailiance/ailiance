@@ -20,7 +20,9 @@ def test_domain_map_completeness():
     # classification, tldr). The MLP head still emits 40 logits — the
     # 5 extras are routing-only post-fallback targets. Bumps here MUST
     # be reviewed against RouterConfig.num_domains (still 40).
-    assert len(ALL_DOMAINS) == 45
+    # + 2 eu-kiki P1 KiCad generation domains added 2026-05-11 (kicad-dsl,
+    # kicad-pcb): bench Phase 6 champion, routed to macm1 :8502.
+    assert len(ALL_DOMAINS) == 47
     for domain in ALL_DOMAINS:
         assert domain in DOMAIN_TO_WORKER, f"Missing mapping for {domain}"
 
@@ -64,13 +66,36 @@ def test_mascarade_overrides_apertus():
         assert get_worker_for_domain(d) == APERTUS_PORT
 
 
-def test_kicad_pcb_alias_routes_to_mascarade():
-    """Regression: the bare 'kicad-pcb' surface form (emitted by the
-    Jina v3 classifier head) must canonicalize to 'kicad' AND end up on
-    Mascarade Tower, not Apertus Studio."""
-    from src.router.domain_map import MASCARADE_PORT, get_worker_for_domain
+def test_kicad_pcb_routes_to_eukiki():
+    """'kicad-pcb' is now a first-class eu-kiki domain routed to :8502
+    (macm1 Gemma-4 E4B + curriculum LoRA). It was previously aliased to
+    'kicad' → Mascarade :8004. Bench Phase 6 (commit 46801af) shows eu-kiki
+    wins P1 generation by +42 pts — kicad-pcb alias removed, direct mapping
+    added to EUKIKI_DOMAINS."""
+    from src.router.domain_map import EUKIKI_PORT, get_worker_for_domain
 
-    assert get_worker_for_domain("kicad-pcb") == MASCARADE_PORT
+    assert get_worker_for_domain("kicad-pcb") == EUKIKI_PORT
+
+
+def test_kicad_dsl_routes_to_eukiki():
+    """'kicad-dsl' is a new P1 generation label routed to :8502
+    (macm1 Gemma-4 E4B + curriculum LoRA). Bench Phase 6 (commit 46801af)
+    shows eu-kiki wins P1 generation by +55 pts vs base Gemma-E4B."""
+    from src.router.domain_map import EUKIKI_PORT, get_worker_for_domain
+
+    assert get_worker_for_domain("kicad-dsl") == EUKIKI_PORT
+
+
+def test_eukiki_domains_all_route_to_8502():
+    """All EUKIKI_DOMAINS must resolve to :8502 — regression guard."""
+    from src.router.domain_map import EUKIKI_DOMAINS, EUKIKI_PORT, get_worker_for_domain
+
+    assert EUKIKI_PORT == 8502
+    for d in EUKIKI_DOMAINS:
+        assert get_worker_for_domain(d) == EUKIKI_PORT, (
+            f"{d!r} must route to eu-kiki macm1 :8502, "
+            f"got {get_worker_for_domain(d)}"
+        )
 
 
 def test_confidence_gating_falls_back_to_apertus():
