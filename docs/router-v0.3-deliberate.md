@@ -151,11 +151,38 @@ uv run uvicorn src.gateway.server:app
 
 `chain_policy=deliberate` requests now spawn 1-N validator
 containers (~1-5 s each, sandboxed `--network=none --read-only`).
-Keep `max_retries` low for hot paths and treat `deliberate` as
-opt-in (it already is — only requests that set
-`extra_body.chain_policy` enter the chain orchestrator). Domains
-where no validator exists in iact-bench v0.2.0 (e.g. `python`) are
-mapped to `direct` in `configs/chain_policies.yaml`.
+Hardware validators are the slowest tier (5-15 s per container)
+because they invoke real toolchains: `kicad-drc`, `freecad-script`,
+`atopile-build`, `compile-arm-gcc`. Keep `max_retries` low for hot
+paths and treat `deliberate` as opt-in (it already is — only
+requests that set `extra_body.chain_policy` enter the chain
+orchestrator). Domains where no validator exists in iact-bench
+v0.2.0 (e.g. `python`) are mapped to `direct` in
+`configs/chain_policies.yaml`.
+
+### Production rollout — first client
+
+The first production consumer of `extra_body.chain_policy=deliberate`
+is **electron-rare** (L'Electron Rare hardware/PCB consulting).
+Their workload concentrates on hardware verification domains, all
+covered by iact-bench v0.2.0:
+
+| Client domain      | Validator        | Container budget |
+| ------------------ | ---------------- | ---------------- |
+| `kicad-pcb`        | `kicad-drc`      | 8-15 s           |
+| `kicad-dsl`        | `atopile-build`  | 5-10 s           |
+| `spice-sim`        | `ngspice-converge` | 2-5 s          |
+| `freecad`          | `freecad-script` | 5-12 s           |
+| `cpp`              | `compile-cpp`    | 1-3 s            |
+| `embedded`         | `compile-arm-gcc` | 2-4 s           |
+
+Recommended initial config for electron-rare workload:
+- Set `max_retries: 1` for `kicad-pcb` (the slowest validator) for
+  the first weeks of production use to bound p95 latency.
+- Monitor `ailiance_gw_route_seconds` p95 via `/metrics` — flip to
+  `max_retries: 2` once the histogram stabilises.
+- The Python `pass-rate-execute` gap is acceptable for this client
+  cohort (Python is not on their production hot path).
 
 ## What this does **not** do (v0.3.0 scope)
 
