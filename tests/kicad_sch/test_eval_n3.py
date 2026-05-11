@@ -35,3 +35,48 @@ def test_parse_ok_returns_0_for_broken_sch(tmp_path):
     bad = make_broken_sch(tmp_path)
     score = eval_parse_ok(bad)
     assert score == 0
+
+
+from scripts.kicad_sch.eval_n3 import eval_erc_clean
+
+
+@pytest.mark.skipif(not REF_SCH.exists() or not HAS_CLI,
+                    reason="ref fixture or kicad-cli missing")
+def test_erc_clean_returns_1_when_no_errors():
+    score = eval_erc_clean(REF_SCH, Path("kicad-cli"))
+    assert score == 1
+
+
+def test_erc_clean_returns_0_when_parse_fails(tmp_path):
+    bad = make_broken_sch(tmp_path)
+    assert eval_erc_clean(bad, Path("kicad-cli")) == 0
+
+
+def test_erc_clean_parses_violations_count(monkeypatch, tmp_path):
+    """Stub subprocess to return synthetic ERC output with 2 errors."""
+    fake_sch = tmp_path / "x.kicad_sch"
+    fake_sch.write_text("(kicad_sch)")
+
+    class FakeProc:
+        returncode = 0
+        stdout = "ERC report\nViolations: 2 errors, 0 warnings\n"
+        stderr = ""
+
+    def fake_run(*a, **kw):
+        return FakeProc()
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    assert eval_erc_clean(fake_sch, Path("kicad-cli")) == 0
+
+
+def test_erc_clean_zero_errors(monkeypatch, tmp_path):
+    fake_sch = tmp_path / "x.kicad_sch"
+    fake_sch.write_text("(kicad_sch)")
+
+    class FakeProc:
+        returncode = 0
+        stdout = "ERC report\nViolations: 0 errors, 0 warnings\n"
+        stderr = ""
+
+    monkeypatch.setattr("subprocess.run", lambda *a, **kw: FakeProc())
+    assert eval_erc_clean(fake_sch, Path("kicad-cli")) == 1

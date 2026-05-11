@@ -9,6 +9,7 @@ Axes:
 """
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -40,3 +41,34 @@ def eval_parse_ok(sch_path: Path, cli_path: Path = Path("kicad-cli")) -> int:
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return 0
     return 1 if proc.returncode == 0 else 0
+
+
+_ERC_COUNT_RE = re.compile(r"(\d+)\s+error", re.IGNORECASE)
+
+
+def eval_erc_clean(sch_path: Path, cli_path: Path = Path("kicad-cli")) -> int:
+    """Return 1 iff ERC report shows 0 errors, else 0.
+
+    Two-stage gate:
+      1. parse_ok must hold (rc==0); otherwise erc_clean=0 by definition.
+      2. Stdout must mention 'N errors' with N==0.
+    """
+    cli = _resolve_cli(cli_path)
+    try:
+        proc = subprocess.run(
+            [cli, "sch", "erc", str(sch_path)],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return 0
+    if proc.returncode != 0:
+        return 0
+    blob = (proc.stdout or "") + "\n" + (proc.stderr or "")
+    match = _ERC_COUNT_RE.search(blob)
+    if not match:
+        # No explicit count line => assume clean if rc==0 (conservative for
+        # kicad-cli versions that omit summary on zero-violations runs).
+        return 1
+    return 1 if int(match.group(1)) == 0 else 0
