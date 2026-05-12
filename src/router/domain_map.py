@@ -157,17 +157,13 @@ for d in APERTUS_DOMAINS:
 # alias resolved by ALIAS_MODEL_REWRITES → devstral multi-LoRA :9330.
 for d in DEVSTRAL_DOMAINS:
     DOMAIN_TO_WORKER[d] = QWEN_CODER_PORT
-# EuroLLM (:9303) on Studio: status flag toggled via EUROLLM_LIVE.
-# When False, the 4 EUROLLM_DOMAINS fall back to Gemma (:9304, Tower
-# llama.cpp), which is the closest fit for short chat-fr / translation
-# prompts during outages.
-# 2026-05-11 08:50 CEST: :9303 restored after the morning bench killed it
-# at 04:35 to free RAM. Confirmed UP via direct curl. Flag flipped back
-# to True to restore the EuroLLM 22B quality on chat-fr (vs Gemma 4B).
-EUROLLM_LIVE = True  # set to False if Studio :9303 goes down again
-_eurollm_target = EUROLLM_PORT if EUROLLM_LIVE else GEMMA_PORT
+# EuroLLM-22B removed from Studio fleet 2026-05-12 (RAM-expensive,
+# ~22 GB warm). The 4 EUROLLM_DOMAINS (chat-fr, traduction-tech,
+# redaction-multilingue, localisation-doc) now route to Apertus
+# (Mistral-Medium-128B Q8 :9301) which handles FR-strong tasks well.
+# EUROLLM_PORT constant kept for clarity but no longer wired.
 for d in EUROLLM_DOMAINS:
-    DOMAIN_TO_WORKER[d] = _eurollm_target
+    DOMAIN_TO_WORKER[d] = APERTUS_PORT
 for d in GEMMA_DOMAINS:
     DOMAIN_TO_WORKER[d] = GEMMA_PORT
 # Reasoning: prefer Qwen3-Next 80B (:8002, kxkm-ai tunnel) when QWEN_LIVE,
