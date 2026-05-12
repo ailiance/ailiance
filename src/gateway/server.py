@@ -685,6 +685,37 @@ def _request_has_input_files(req) -> bool:
     return False
 
 
+def _content_to_text(content: Any) -> str:
+    """Flatten a ChatMessage.content value to a routing-friendly string.
+
+    After the inline file/image rewrites, ``content`` may legitimately
+    be a list of OpenAI blocks (text + image_url + input_file →
+    rewritten text). Components downstream that expect a plain string
+    (the classifier, complexity heuristics, cascade pick) need the
+    concatenated text. We pull ``text`` from text blocks and drop the
+    rest — non-text blocks (image_url) don't carry routing signal.
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                t = block.get("text")
+                if isinstance(t, str):
+                    parts.append(t)
+        return "\n".join(parts)
+    return ""
+
+
+def _last_user_text(req) -> str:
+    """Return the last user message's text content, flat string only."""
+    for msg in reversed(getattr(req, "messages", []) or []):
+        if getattr(msg, "role", None) == "user":
+            return _content_to_text(getattr(msg, "content", None))
+    return ""
+
+
 def _public_base_url() -> str:
     """Public base URL the gateway is reachable at — for staged image URLs.
 
@@ -1263,9 +1294,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             domain = ""
             worker_port = _gate_port(forced_port)
         elif active_router is not None:
-            user_msg = next(
-                (m.content for m in reversed(req.messages) if m.role == "user"), ""
-            )
+            user_msg = _last_user_text(req)
             t0 = time.perf_counter()
             selections = active_router.route(user_msg)
             route_latency.observe(time.perf_counter() - t0)
@@ -1290,10 +1319,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         # ------------------------------------------------------------------
         cascade_alias: str | None = None
         if not forced_port and domain:
-            user_msg_for_cascade = next(
-                (m.content for m in reversed(req.messages) if m.role == "user"),
-                "",
-            ) or ""
+            user_msg_for_cascade = _last_user_text(req)
             cascade_alias = _cascade_pick(domain, user_msg_for_cascade)
             if cascade_alias:
                 cascade_port = MODEL_FORCE_MAP.get(cascade_alias)
@@ -1408,10 +1434,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                     },
                 )
 
-            user_msg = next(
-                (m.content for m in reversed(req.messages) if m.role == "user"),
-                "",
-            ) or ""
+            user_msg = _last_user_text(req)
             include_audit = bool(extra.get("include_audit", False))
             # extra_body.max_retries is documented in the API contract;
             # forward it through so callers can override the per-domain
