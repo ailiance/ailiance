@@ -54,7 +54,7 @@ def train(args):
     train_data = load_jsonl(Path(args.data_dir) / "train.jsonl")
     valid_data = load_jsonl(Path(args.data_dir) / "valid.jsonl")
 
-    all_domains = sorted({r["domain"] for r in train_data})
+    all_domains = sorted({r["domain"] for r in train_data + valid_data})
     label_map = {d: i for i, d in enumerate(all_domains)}
     num_domains = len(all_domains)
     print(f"Domains: {num_domains}")

@@ -10,7 +10,7 @@ router:
   embedding_model: sentence-transformers/all-MiniLM-L6-v2
   embedding_dim: 384
   hidden_dim: 256
-  num_domains: 32
+  num_domains: 47
   threshold: 0.50
   max_active: 4
 
