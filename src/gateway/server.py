@@ -310,7 +310,7 @@ WORKER_FORWARD_OVERRIDES: dict[int, dict[str, str]] = {
     },
     # Studio EuroLLM mlx_lm.server :9303.
     9303: {
-        "model": "EuroLLM-22B-Instruct-2512",
+        "model": "/Users/clems/KIKI-Mac_tunner/models/EuroLLM-22B-Instruct-2512",
     },
     # Tower llama.cpp :9304 served via Tailscale, model loaded with --alias eu-kiki-gemma.
     9304: {
