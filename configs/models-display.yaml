@@ -243,3 +243,163 @@ models:
       Ollama :11434 via tunnel :8004. Use for RAG indexing on F4L
       docs/datasheets (EU-multilingual ready).
     headline: "567M · F16 · Tower Ollama · multilingual embed"
+
+  # ------------------------------------------------------------------
+  # Studio M3 Ultra catalog (post-reboot 2026-05-12)
+  # ------------------------------------------------------------------
+
+  ailiance-coder-pro:
+    display_name: "Qwen3-Coder 30B-A3B"
+    base_model: "Qwen3-Coder-30B-A3B-Instruct (Alibaba)"
+    domain: "code / agentic"
+    description: >-
+      30B Mixture-of-Experts code specialist (3B active). MLX 4-bit on
+      Mac Studio :9327. Native function calling supported. Strong on
+      multi-file refactors and tool-augmented coding.
+    headline: "30B MoE · MLX 4-bit · Mac Studio · code agentic"
+
+  ailiance-mistral-small:
+    display_name: "Mistral-Small 3.1 24B"
+    base_model: "Mistral-Small-3.1-24B-Instruct (Mistral AI 🇫🇷)"
+    domain: "general / fast"
+    description: >-
+      24B sovereign EU mid-tier — faster than Mistral-Medium 128B with
+      most of the instruction-following quality. MLX 4-bit on Mac
+      Studio :9326.
+    headline: "24B · MLX 4-bit · Mac Studio · EU-sovereign"
+
+  ailiance-llama:
+    display_name: "Llama 3.3 70B"
+    base_model: "Llama-3.3-70B-Instruct (Meta)"
+    domain: "general / heavy"
+    description: >-
+      Llama-3.3 70B for cross-checking outputs from EU-native models
+      and tasks where benchmark parity matters. MLX 4-bit on Mac
+      Studio :9324. Non-EU sovereign — use ailiance-mistral-* for
+      sovereignty-bound deployments.
+    headline: "70B · MLX 4-bit · Mac Studio · cross-check"
+
+  ailiance-reasoning-r1:
+    display_name: "DeepSeek-R1 Distill Qwen 32B"
+    base_model: "DeepSeek-R1-Distill-Qwen-32B (DeepSeek)"
+    domain: "reasoning"
+    description: >-
+      Chain-of-thought reasoning specialist — distilled from R1 to
+      a 32B Qwen base. Replaces the qwen-next-80b tunnel target for
+      the `reasoning` classifier label. MLX 4-bit on Mac Studio :9323.
+    headline: "32B · MLX 4-bit · Mac Studio · CoT-tuned"
+
+  ailiance-qwen36:
+    display_name: "Qwen 3.6 35B-A3B BF16"
+    base_model: "Qwen3.6-35B-A3B-MLX-BF16 (Alibaba)"
+    domain: "specialist code / general"
+    description: >-
+      Deeper Qwen3.6 variant (35B MoE, 3B active) served in BF16 on
+      Mac Studio :9305. Trade-off vs ailiance-qwen (Q4_K_M on
+      kxkm-ai): BF16 better quality, no native FC; ailiance-qwen has
+      native FC for tool-augmented agentic tasks.
+    headline: "35B MoE BF16 · MLX · Mac Studio · code specialist"
+
+  ailiance-mixtral:
+    display_name: "Mixtral 8x22B"
+    base_model: "Mixtral-8x22B-Instruct (Mistral AI 🇫🇷)"
+    domain: "general / heavy / EU-sovereign"
+    description: >-
+      141B-param sparse MoE (39B active). EU-sovereign alternative to
+      Llama 70B at comparable cost. MLX 4-bit on Mac Studio :9329.
+      Available since 2026-05-12.
+    headline: "8x22B MoE · MLX 4-bit · Mac Studio · EU-sovereign"
+
+  ailiance-flagship:
+    display_name: "Qwen 3 235B (provisional alias)"
+    base_model: "Qwen3-235B-A22B (Alibaba)"
+    domain: "general / heavy"
+    description: >-
+      Provisional flagship slot. Backend Qwen3-235B-A22B MLX on Mac
+      Studio :9328, alias `ailiance-qwen-235b` is the canonical name;
+      `ailiance-flagship` is reserved for future re-routing as the
+      parc evolves. Download in progress 2026-05-12.
+    headline: "235B MoE · MLX · Mac Studio · provisional"
+
+  ailiance-qwen-235b:
+    display_name: "Qwen 3 235B-A22B"
+    base_model: "Qwen3-235B-A22B (Alibaba)"
+    domain: "general / heavy"
+    description: >-
+      235B Mixture-of-Experts (22B active). Largest model in the
+      Studio parc. MLX 4-bit on Mac Studio :9328. Download in progress
+      2026-05-12 — may be unavailable during initial rollout.
+    headline: "235B MoE · MLX 4-bit · Mac Studio"
+
+  ailiance-pixtral:
+    display_name: "Pixtral 12B (vision)"
+    base_model: "Pixtral-12B (Mistral AI 🇫🇷)"
+    domain: "multimodal / vision"
+    description: >-
+      Vision-language model. Not yet wired into the router (no
+      multimodal classifier label). Direct invocation only via
+      explicit model=ailiance-pixtral. MLX 4-bit on Mac Studio :9325.
+    headline: "12B · MLX 4-bit · Mac Studio · multimodal"
+
+  # ------------------------------------------------------------------
+  # Devstral multi-LoRA base + 5 hot-swappable code specialists
+  # (Studio :9330, mlx_lm.server with LoRA registry).
+  # ------------------------------------------------------------------
+
+  ailiance-devstral-base:
+    display_name: "Devstral Small 2 24B (base)"
+    base_model: "Devstral-Small-2-24B-MLX-4bit (Mistral AI 🇫🇷)"
+    domain: "code / EU-sovereign"
+    description: >-
+      EU-sovereign code base model from Mistral. Backbone for the 5
+      Devstral LoRA specialists below (python/cpp/rust-emb/html/
+      ml-training). MLX 4-bit on Mac Studio :9330.
+    headline: "24B · MLX 4-bit · Mac Studio · EU code base"
+
+  ailiance-python:
+    display_name: "Devstral · Python LoRA"
+    base_model: "Devstral-Small-2-24B + python LoRA"
+    domain: "code / python"
+    description: >-
+      Devstral 24B base with a Python-focused LoRA hot-swapped at
+      request time. Studio :9330. Bench Phase 6 candidate for the
+      `python` classifier label.
+    headline: "24B + LoRA · MLX 4-bit · Mac Studio · python"
+
+  ailiance-cpp:
+    display_name: "Devstral · C++ LoRA"
+    base_model: "Devstral-Small-2-24B + cpp LoRA"
+    domain: "code / cpp"
+    description: >-
+      Devstral 24B base with a C++ LoRA. Studio :9330. Native FC not
+      supported — for `tools[]` requests the gateway force-routes to
+      ailiance-qwen instead.
+    headline: "24B + LoRA · MLX 4-bit · Mac Studio · cpp"
+
+  ailiance-rust-emb:
+    display_name: "Devstral · Rust Embedded LoRA"
+    base_model: "Devstral-Small-2-24B + rust-embedded LoRA"
+    domain: "code / rust-embedded"
+    description: >-
+      Devstral 24B base with a Rust embedded LoRA — narrow specialist
+      for `no_std`, `embedded-hal`, microcontroller targets. Studio
+      :9330.
+    headline: "24B + LoRA · MLX 4-bit · Mac Studio · rust-embedded"
+
+  ailiance-html:
+    display_name: "Devstral · HTML/CSS LoRA"
+    base_model: "Devstral-Small-2-24B + html LoRA"
+    domain: "code / web-frontend"
+    description: >-
+      Devstral 24B base with an HTML/CSS LoRA. Studio :9330. Routed
+      to from the `html-css` classifier label.
+    headline: "24B + LoRA · MLX 4-bit · Mac Studio · html"
+
+  ailiance-ml-training:
+    display_name: "Devstral · ML-Training LoRA"
+    base_model: "Devstral-Small-2-24B + ml-training LoRA"
+    domain: "code / ml-training"
+    description: >-
+      Devstral 24B base with a PyTorch/MLX training-loop LoRA. Studio
+      :9330. Routed to from the `ml-training` classifier label.
+    headline: "24B + LoRA · MLX 4-bit · Mac Studio · ml-training"
