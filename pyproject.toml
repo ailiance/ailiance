@@ -15,6 +15,7 @@ dependencies = [
     "prometheus-client>=0.21",
     "pydantic>=2.10",
     "networkx>=3.6.1",
+    "langfuse>=3.0",
 ]
 
 [project.optional-dependencies]
