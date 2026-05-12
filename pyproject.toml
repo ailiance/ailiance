@@ -19,6 +19,16 @@ dependencies = [
     # switched to an OTEL exporter incompatible with the v2 ingestion endpoint.
     "langfuse>=2.50,<3",
     "structlog>=24.0",
+    # File extraction for /v1/files/extract — PDF/docx/xlsx/pptx/html/etc.
+    # markitdown is MIT-licensed. Pinned light deps directly to avoid the
+    # markitdown[*] extras which pull onnxruntime (no cp314 wheels yet)
+    # for image/OCR features we don't enable here.
+    "pdfminer-six>=20231228",  # PDF text extraction
+    "python-docx>=1.1",  # .docx
+    "openpyxl>=3.1",  # .xlsx
+    "python-pptx>=1.0",  # .pptx
+    "beautifulsoup4>=4.12",  # HTML / fallback
+    "python-multipart>=0.0.9",  # FastAPI multipart upload parser
 ]
 
 [project.optional-dependencies]

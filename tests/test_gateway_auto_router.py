@@ -176,6 +176,13 @@ def test_auto_silently_degrades_to_direct_on_stream(
             captured["streamed"] = True
             yield b"data: {}\n\n"
 
+        async def aiter_text(self):
+            # Gateway switched to aiter_text() in PR #81 (SSE normalizer);
+            # the test mock keeps aiter_raw for back-compat callers but the
+            # relay now consumes this method.
+            captured["streamed"] = True
+            yield "data: {}\n\n"
+
         async def aclose(self):
             return None
 
