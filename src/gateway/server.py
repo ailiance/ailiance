@@ -16,6 +16,7 @@ from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from prometheus_client import CollectorRegistry, Counter, Histogram, generate_latest
 
+from src.gateway.observability import track_chat
 from src.orchestrator.chain_orchestrator import ChainOrchestrator
 from src.orchestrator.chain_policy import ChainPolicy
 from src.orchestrator.validators import StubValidator, make_validator
@@ -699,6 +700,8 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
 
     @app.post("/v1/chat/completions")
     async def chat_completions(req: ChatCompletionRequest):
+        _trace_started_at = time.perf_counter()
+        _trace_req_body = req.model_dump(exclude_none=True)
         forced_port = MODEL_FORCE_MAP.get(req.model)
         active_router = app.state.router
         if forced_port:
@@ -879,6 +882,15 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                     }
                     for s in chain_result.steps
                 ]
+            track_chat(
+                model_alias=req.model,
+                domain=domain,
+                kind="chain",
+                request_body=_trace_req_body,
+                response_body=response,
+                started_at=_trace_started_at,
+                chain_id=chain_result.chain_id,
+            )
             return response
 
         # ALIAS_WORKER_URLS: if alias has HA list, pick healthy URL
@@ -963,11 +975,20 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             auto="0",
         ).inc()
         try:
-            return resp.json()
+            response_body = resp.json()
         except ValueError:
             log.exception(
                 "Worker %d returned non-JSON body (status=%d, len=%d)",
                 worker_port, resp.status_code, len(resp.content),
+            )
+            track_chat(
+                model_alias=req.model,
+                domain=domain,
+                kind="direct",
+                request_body=_trace_req_body,
+                response_body={},
+                started_at=_trace_started_at,
+                error=f"bad_gateway worker={worker_port} status={resp.status_code}",
             )
             raise HTTPException(
                 status_code=502,
@@ -978,5 +999,15 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                     "message": "Worker returned an empty or invalid response",
                 },
             ) from None
+        track_chat(
+            model_alias=req.model,
+            domain=domain,
+            kind="direct",
+            request_body=_trace_req_body,
+            response_body=response_body,
+            started_at=_trace_started_at,
+            upstream_model=response_body.get("model"),
+        )
+        return response_body
 
     return app
