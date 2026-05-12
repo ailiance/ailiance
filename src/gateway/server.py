@@ -213,6 +213,32 @@ def _cascade_pick(domain: str, prompt: str) -> str | None:
     return table.get(domain) or table.get("_default")
 
 
+# Workers whose backend supports OpenAI native function calling (tool_calls
+# JSON array in responses). Today only the kxkm-ai vLLM Qwen 32B native-FC
+# worker on port 8002 qualifies; all MLX backends (Mistral-Medium-128B :9301,
+# EuroLLM :9303, Gemma macm1 :8502, Studio MLX :9305/9323-9327) and llama.cpp
+# servers (Gemma :9304, Granite :8003, Qwen-80B via :8002 tunnel when running
+# llama-server rather than vLLM) either lack FC support entirely or emit
+# hallucinated XML shapes that downstream parsers cannot dispatch. When a
+# request carries tools[], FC_FORCE_ROUTE_PORT below pins the dispatch to
+# this port regardless of which alias the caller picked. This override
+# composes with the cascade above: if cascade picks a non-FC alias and
+# tools[] is present, the force-route still wins.
+FC_CAPABLE_PORTS: frozenset[int] = frozenset({8002})
+FC_FORCE_ROUTE_PORT: int = 8002
+
+
+def _fc_force_route_enabled() -> bool:
+    """Toggle for the tools[] -> qwen-32b-awq force-route.
+
+    Default ON. Set GATEWAY_FC_FORCE_ROUTE=false to allow tools[] requests to
+    follow normal routing (useful for testing FC support on new workers).
+    """
+    return os.environ.get("GATEWAY_FC_FORCE_ROUTE", "true").lower() not in (
+        "0", "false", "no", "off",
+    )
+
+
 MODEL_FORCE_MAP = {
     "ailiance-mistral-medium": 9301,  # Mistral Medium 3.5 128B Q8 (studio:9301, renamed from ailiance-apertus 2026-05-11)
     "ailiance-mistral": 9301,  # alias for ailiance-mistral-medium (same backend)
@@ -824,6 +850,32 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                         "cascade: domain=%s complexity-override → %s (port %d)",
                         domain, cascade_alias, worker_port,
                     )
+
+        # ------------------------------------------------------------------
+        # Native function-calling force-route. Composes with the cascade
+        # above: if cascade picked a non-FC alias and the caller shipped
+        # tools[], this still wins. The kxkm-ai vLLM Qwen 32B worker on
+        # 8002 is the only backend in the parc that serves tool_calls as a
+        # structured JSON array; MLX and llama.cpp backends either lack FC
+        # or hallucinate XML shapes downstream parsers cannot dispatch
+        # (observed 2026-05-12: ailiance-agent CLI v0.6.0-beta hit a
+        # 5-retry storm because Mistral-Medium-128B received tools[] via
+        # the auto-router and emitted <function=NAME>...</function> blocks
+        # the client could not dispatch). Set GATEWAY_FC_FORCE_ROUTE=false
+        # to disable when testing FC support on a new worker.
+        # ------------------------------------------------------------------
+        if (
+            req.tools
+            and _fc_force_route_enabled()
+            and worker_port not in FC_CAPABLE_PORTS
+        ):
+            log.info(
+                "fc-force-route: model=%s tools=%d redirect %d -> %d",
+                req.model, len(req.tools), worker_port, FC_FORCE_ROUTE_PORT,
+            )
+            forced_port = FC_FORCE_ROUTE_PORT
+            domain = ""
+            worker_port = _gate_port(FC_FORCE_ROUTE_PORT)
 
         # Router v0.3 dispatch resolution. Two ways to engage the chain:
         #   (1) explicit  — extra_body.chain_policy from any request,
