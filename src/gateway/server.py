@@ -148,7 +148,6 @@ MODEL_FORCE_MAP = {
     "ailiance-apertus": 9301,  # legacy alias preserved for backwards compatibility — routes to Mistral-Medium
     "ailiance-devstral": 8502,  # legacy alias — macm1 worker now serves Gemma 4
     "ailiance-gemma4": 8502,  # Gemma 4 E4B + ailiance curriculum LoRA (macm1)
-    "ailiance-eurollm": 9303,
     "ailiance-gemma": 9304,  # Gemma 3 4B IT on tower
     "ailiance-qwen": 8002,  # llama-server on kxkm-ai (RTX 4090) via autossh tunnel
     "ailiance-granite": 8003,  # Granite 4.1 30B Q4_K_M GGUF on kxkm-ai
@@ -575,7 +574,6 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 {"id": "ailiance-mistral-medium", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-mistral", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-gemma4", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-eurollm", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-gemma", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-qwen", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-granite", "object": "model", "owned_by": "ailiance"},
@@ -651,7 +649,6 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             "ailiance-mistral-medium",
             "ailiance-mistral",
             "ailiance-gemma4",
-            "ailiance-eurollm",
             "ailiance-gemma",
             "ailiance-qwen",
             "ailiance-granite",
