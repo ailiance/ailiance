@@ -299,10 +299,22 @@ WORKER_FORWARD_OVERRIDES: dict[int, dict[str, str]] = {
         "model": "qwen-32b-awq",  # the alias llama-server expects
         "auth_env": "AILIANCE_QWEN_KEY",
     },
+    # kxkm-ai llama.cpp :18889 served via tunnel :8003.
+    8003: {
+        "model": "granite-30b",
+    },
     # mlx_lm.server resolves an unknown `model` field as a HF repo and tries to
     # download it; rewrite to the on-disk path the server already has loaded.
     9301: {
         "model": "/Users/clems/KIKI-Mac_tunner/models/Mistral-Medium-3.5-128B-MLX-Q8",
+    },
+    # Studio EuroLLM mlx_lm.server :9303.
+    9303: {
+        "model": "EuroLLM-22B-Instruct-2512",
+    },
+    # Tower llama.cpp :9304 served via Tailscale, model loaded with --alias eu-kiki-gemma.
+    9304: {
+        "model": "eu-kiki-gemma",
     },
     8502: {
         "model": "lmstudio-community/gemma-4-E4B-it-MLX-4bit",  # base model id loaded with curriculum LoRA adapter
@@ -917,6 +929,13 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 key = os.environ.get(auth_env, "")
                 if key:
                     headers["Authorization"] = f"Bearer {key}"
+        elif req.model == "ailiance":
+            # Auto-router fallback: when no override matched the chosen worker,
+            # the workers (mlx_lm.server, llama.cpp) don't know what "ailiance"
+            # means and treat it as a HF repo / on-disk path → 404 with
+            # "ailiance/config.json: No such file or directory". Strip the
+            # model field so the worker uses its loaded default model.
+            body.pop("model", None)
 
         # Per-worker FIFO: serialize requests to this worker URL to bound
         # KV cache pressure. Lock is held for the entire forward including
