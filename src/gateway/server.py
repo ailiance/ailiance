@@ -227,6 +227,33 @@ def _cascade_pick(domain: str, prompt: str) -> str | None:
 FC_CAPABLE_PORTS: frozenset[int] = frozenset({8002})
 FC_FORCE_ROUTE_PORT: int = 8002
 
+# Effective context window each worker actually accepts. Source of truth: the
+# launch flags of the worker process (llama.cpp --ctx-size, mlx_lm.server
+# --max-tokens, Ollama Modelfile parameter num_ctx). Upstream Dirac defaults
+# OpenAI-compatible clients to a 128k contextWindow when the model is not in
+# its known-model table, which under-counts every backend in the parc and
+# triggers the auto-condense / truncate path well before the real ceiling.
+# CLI clients read this header off the response and override info.contextWindow
+# accordingly. Numbers verified 2026-05-12 from live ps + worker launch args.
+WORKER_CONTEXT_WINDOWS: dict[int, int] = {
+    8002: 196608,   # llama-server Qwen3-Next-80B-A3B Q4_K_M (--ctx-size 196608)
+    8003: 131072,   # llama-server Granite-4.1-30B Q4_K_M (n_ctx_train 131072)
+    8004: 32768,    # Tower Ollama: Qwen3 4B Q4 mascarade fine-tunes (32k default)
+    8502: 32768,    # macm1 mlx_lm.server multi-model (Ministral/Gemma/Qwen 32k)
+    9301: 256000,   # Studio Mistral-Medium-3.5-128B-MLX-Q8
+    9303: 131072,   # Studio EuroLLM-22B-Instruct-2512
+    9304: 131072,   # Tower llama.cpp Gemma 3 4B IT
+    9305: 131072,   # Studio Qwen3.6-35B-A3B-MLX-BF16
+    9323: 131072,   # Studio DeepSeek-R1-Distill-Qwen-32B-MLX-4bit
+    9324: 131072,   # Studio Llama-3.3-70B-Instruct-MLX-4bit
+    9325: 131072,   # Studio Pixtral-12B-MLX-4bit (multimodal)
+    9326: 32768,    # Studio Mistral-Small-3.1-24B-Instruct-MLX-4bit
+    9327: 262144,   # Studio Qwen3-Coder-30B-A3B-Instruct-MLX-4bit (long ctx)
+    9328: 131072,   # Studio Qwen3-235B-A22B-MLX-4bit (when running)
+    9329: 65536,    # Studio Mixtral-8x22B-Instruct-MLX-4bit
+    9330: 131072,   # Studio Devstral multi-LoRA base
+}
+
 
 def _worker_headers(
     worker_port: int,
@@ -260,6 +287,14 @@ def _worker_headers(
         "X-Ailiance-Domain": domain or "",
         "X-Ailiance-Chain": chain_policy or "",
     }
+    ctx_window = WORKER_CONTEXT_WINDOWS.get(worker_port)
+    if ctx_window:
+        # Lets the CLI override its default modelInfo.contextWindow (128k
+        # for unknown OpenAI-compatible backends) with the real ceiling
+        # of the worker that served the response. Affects when the
+        # auto-condense path triggers in subsequent turns of the same
+        # task.
+        headers["X-Ailiance-Context-Window"] = str(ctx_window)
     if response_body:
         fp = response_body.get("system_fingerprint")
         if fp:
