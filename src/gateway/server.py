@@ -7,6 +7,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -140,6 +141,76 @@ async def _worker_fifo(worker_url: str):
     lock = await _acquire_worker_lock(worker_url)
     async with lock:
         yield
+
+
+# ---------------------------------------------------------------------------
+# Cascade complexity-based selection (v0.4)
+# ---------------------------------------------------------------------------
+#
+# Heuristic: when the auto-router classifies a prompt, optionally rewrite the
+# target alias based on prompt complexity. Short / non-reasoning prompts get
+# a fast small model; long / reasoning-heavy prompts get a flagship cascade.
+# Disabled by default (env AILIANCE_CASCADE_ENABLED=1 to opt in) so legacy
+# behaviour is preserved for production until the bench validates the
+# heuristic on real traffic. Forced aliases (ailiance-mistral, …) are NEVER
+# cascaded — they remain caller-chosen.
+
+_REASONING_MARKERS = re.compile(
+    r"\b(why|step by step|explain|prove|reason|analyze|compare|derive|"
+    r"pourquoi|raison|étape|expliquer|démontrer|analyser|comparer)\b",
+    re.IGNORECASE,
+)
+_CODE_MARKERS = re.compile(
+    r"```|def\s+\w|class\s+\w|function\s+\w|import\s+\w",
+)
+
+
+def _complexity_estimate(prompt: str) -> str:
+    """Return one of ``simple`` / ``medium`` / ``complex`` for a prompt.
+
+    Pure heuristic — word count + lexical markers. Keep cheap so it runs
+    on every request without measurable latency.
+    """
+    if not prompt:
+        return "simple"
+    n_words = len(prompt.split())
+    has_reasoning = bool(_REASONING_MARKERS.search(prompt))
+    has_code = bool(_CODE_MARKERS.search(prompt))
+    if n_words < 15 and not has_reasoning and not has_code:
+        return "simple"
+    if n_words > 100 or has_reasoning:
+        return "complex"
+    return "medium"
+
+
+# Cascade table: (complexity, domain) → alias override.
+# A ``None`` (or absent key) means "no override". Domain ``_default`` applies
+# when the classifier domain is not explicitly listed.
+_CASCADE_OVERRIDES: dict[str, dict[str, str]] = {
+    "simple": {
+        # Tiny prompts → cheapest reachable worker: Tower Gemma 3 4B.
+        "_default": "ailiance-gemma",
+        "chat-fr": "ailiance-gemma",
+        "math-gsm8k": "ailiance-gemma",
+    },
+    "complex": {
+        # Reasoning-heavy → flagship cascade.
+        "_default": "ailiance-mistral-medium",
+        "chat-fr": "ailiance-mistral-medium",
+        "math-reasoning": "ailiance-reasoning-r1",
+        "llm-orch": "ailiance-mistral-medium",
+    },
+    # ``medium`` falls through to the router's pick.
+}
+
+
+def _cascade_pick(domain: str, prompt: str) -> str | None:
+    """Return an alias override based on complexity, or None to keep default."""
+    if os.environ.get("AILIANCE_CASCADE_ENABLED", "0") != "1":
+        return None
+    bucket = _complexity_estimate(prompt)
+    table = _CASCADE_OVERRIDES.get(bucket) or {}
+    return table.get(domain) or table.get("_default")
 
 
 MODEL_FORCE_MAP = {
@@ -731,6 +802,29 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             domain = "general"
             worker_port = _gate_port(9304)
 
+        # ------------------------------------------------------------------
+        # Cascade complexity-based override (v0.4).
+        # Only applies on the auto-router path (req.model == "ailiance" /
+        # no forced port). When AILIANCE_CASCADE_ENABLED=1, short prompts
+        # are rerouted to a fast small model and reasoning-heavy prompts
+        # are escalated to a flagship. Forced aliases are NEVER cascaded.
+        # ------------------------------------------------------------------
+        cascade_alias: str | None = None
+        if not forced_port and domain:
+            user_msg_for_cascade = next(
+                (m.content for m in reversed(req.messages) if m.role == "user"),
+                "",
+            ) or ""
+            cascade_alias = _cascade_pick(domain, user_msg_for_cascade)
+            if cascade_alias:
+                cascade_port = MODEL_FORCE_MAP.get(cascade_alias)
+                if cascade_port is not None:
+                    worker_port = _gate_port(cascade_port)
+                    log.info(
+                        "cascade: domain=%s complexity-override → %s (port %d)",
+                        domain, cascade_alias, worker_port,
+                    )
+
         # Router v0.3 dispatch resolution. Two ways to engage the chain:
         #   (1) explicit  — extra_body.chain_policy from any request,
         #   (2) automatic — req.model == "ailiance" (router-driven, no
@@ -913,7 +1007,11 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         # Forward rewrites: per-alias takes precedence over per-port. Lets a
         # single backend port host multiple ailiance-* aliases each rewritten
         # to a distinct upstream model id.
-        override = ALIAS_MODEL_REWRITES.get(req.model) or WORKER_FORWARD_OVERRIDES.get(worker_port)
+        # Cascade: when the v0.4 complexity heuristic remapped this request,
+        # honour the cascade alias's rewrite (e.g. mlx_lm.server :8502 needs
+        # the on-disk path the cascade target loaded).
+        rewrite_key = cascade_alias if cascade_alias else req.model
+        override = ALIAS_MODEL_REWRITES.get(rewrite_key) or WORKER_FORWARD_OVERRIDES.get(worker_port)
         if override:
             if "model" in override:
                 body["model"] = override["model"]
