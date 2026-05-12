@@ -618,6 +618,110 @@ _BLOCKED_CHAT_ALIASES: frozenset[str] = frozenset({
 })
 
 
+def _normalize_message_dict(msg: dict) -> None:
+    """Apply reasoning→content promotion + tag stripping to one message dict.
+
+    Mutates ``msg`` in place. Shared by the non-streaming response
+    normalizer and the SSE stream normalizer (which operates on each
+    chunk's ``delta``).
+    """
+    content = msg.get("content")
+    reasoning = msg.get("reasoning")
+    if (not content) and isinstance(reasoning, str) and reasoning.strip():
+        msg["content"] = reasoning
+        content = reasoning
+    if isinstance(content, str) and ("THINK" in content.upper() or "<think" in content.lower()):
+        stripped = _THINK_BLOCK_RE.sub("", content)
+        stripped = _THINK_ORPHAN_RE.sub("", stripped)
+        msg["content"] = stripped.strip()
+
+
+async def _normalize_sse_stream(raw_stream):
+    """Pipe and normalize an OpenAI-compatible SSE chat-completion stream.
+
+    Buffers the byte stream until each ``data: …\\n\\n`` event is
+    complete, then parses the JSON payload, applies
+    :func:`_normalize_message_dict` to each ``choice.delta``, and yields
+    the rewritten event back as ``bytes``. Non-JSON events (``data:
+    [DONE]``, comments, keep-alives) and parse failures are passed
+    through unchanged so we never break a working client over a bad
+    rewrite.
+
+    Limitations
+    -----------
+    Cross-event stripping of ``[THINK]…[/THINK]`` blocks is *not*
+    performed — only blocks that fit inside a single SSE event are
+    removed. Most workers emit the whole opening tag in one chunk and
+    the closing tag arrives a few chunks later; in that intermediate
+    window, tokens between the two tags will reach the client. The
+    follow-up sweep to add a per-stream ``in_think`` state machine is
+    tracked separately.
+    """
+    buf = ""
+    async for raw in raw_stream:
+        if isinstance(raw, bytes):
+            try:
+                raw = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                # Non-UTF8 bytes (e.g. binary): drop normalization,
+                # passthrough so the client gets *something*.
+                yield raw if isinstance(raw, bytes) else raw.encode("utf-8")
+                continue
+        buf += raw
+        while "\n\n" in buf:
+            event, _, buf = buf.partition("\n\n")
+            yield _rewrite_sse_event(event) + b"\n\n"
+    # Flush any trailing fragment (no terminating \n\n) untouched.
+    if buf:
+        yield buf.encode("utf-8")
+
+
+def _rewrite_sse_event(event: str) -> bytes:
+    """Rewrite a single SSE event, normalizing ``delta`` if it's chat JSON.
+
+    Falls back to a byte-for-byte passthrough on any parse failure.
+    """
+    # SSE events may contain comment lines (':...') and multiple field
+    # lines. We rewrite only ``data: <json>`` payloads.
+    lines = event.split("\n")
+    rewrote_any = False
+    for i, line in enumerate(lines):
+        if not line.startswith("data:"):
+            continue
+        payload = line[5:].lstrip()
+        if not payload or payload == "[DONE]":
+            continue
+        try:
+            obj = json.loads(payload)
+        except (ValueError, TypeError):
+            continue
+        choices = obj.get("choices") if isinstance(obj, dict) else None
+        if not isinstance(choices, list):
+            continue
+        mutated = False
+        for choice in choices:
+            delta = choice.get("delta") if isinstance(choice, dict) else None
+            if isinstance(delta, dict):
+                before = (delta.get("content"), delta.get("reasoning"))
+                _normalize_message_dict(delta)
+                if (delta.get("content"), delta.get("reasoning")) != before:
+                    mutated = True
+            # Some workers emit a terminal frame with `message` instead
+            # of `delta`. Normalize that too.
+            msg = choice.get("message") if isinstance(choice, dict) else None
+            if isinstance(msg, dict):
+                before = (msg.get("content"), msg.get("reasoning"))
+                _normalize_message_dict(msg)
+                if (msg.get("content"), msg.get("reasoning")) != before:
+                    mutated = True
+        if mutated:
+            lines[i] = "data: " + json.dumps(obj, ensure_ascii=False)
+            rewrote_any = True
+    if rewrote_any:
+        return "\n".join(lines).encode("utf-8")
+    return event.encode("utf-8")
+
+
 def _normalize_response_body(body: dict) -> dict:
     """Normalize worker chat-completion responses for OpenAI-spec clients.
 
@@ -640,17 +744,8 @@ def _normalize_response_body(body: dict) -> dict:
         return body
     for choice in choices:
         msg = choice.get("message") if isinstance(choice, dict) else None
-        if not isinstance(msg, dict):
-            continue
-        content = msg.get("content")
-        reasoning = msg.get("reasoning")
-        if (not content) and isinstance(reasoning, str) and reasoning.strip():
-            msg["content"] = reasoning
-            content = reasoning
-        if isinstance(content, str) and ("THINK" in content.upper() or "<think" in content.lower()):
-            stripped = _THINK_BLOCK_RE.sub("", content)
-            stripped = _THINK_ORPHAN_RE.sub("", stripped)
-            msg["content"] = stripped.strip()
+        if isinstance(msg, dict):
+            _normalize_message_dict(msg)
     return body
 
 
@@ -1265,7 +1360,9 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
 
                 async def relay() -> "object":
                     try:
-                        async for chunk in worker_resp.aiter_raw():
+                        async for chunk in _normalize_sse_stream(
+                            worker_resp.aiter_text()
+                        ):
                             yield chunk
                     finally:
                         await worker_resp.aclose()
