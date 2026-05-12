@@ -15,7 +15,10 @@ dependencies = [
     "prometheus-client>=0.21",
     "pydantic>=2.10",
     "networkx>=3.6.1",
-    "langfuse>=3.0",
+    # Langfuse server is v2.x — pin SDK to the matching v2.x branch since v3+
+    # switched to an OTEL exporter incompatible with the v2 ingestion endpoint.
+    "langfuse>=2.50,<3",
+    "structlog>=24.0",
 ]
 
 [project.optional-dependencies]
