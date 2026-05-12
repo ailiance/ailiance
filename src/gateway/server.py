@@ -25,6 +25,11 @@ from src.gateway.file_extract import (
     MAX_BYTES as FILE_MAX_BYTES,
     extract as extract_file,
 )
+from src.gateway.inline_files import (
+    image_store,
+    rewrite_image_urls,
+    rewrite_input_files,
+)
 from src.gateway.observability import track_chat
 from src.orchestrator.chain_orchestrator import ChainOrchestrator
 from src.orchestrator.chain_policy import ChainPolicy
@@ -669,6 +674,28 @@ def _request_has_images(req) -> bool:
     return False
 
 
+def _request_has_input_files(req) -> bool:
+    """Return True iff any message in ``req`` carries an ``input_file`` part."""
+    for msg in getattr(req, "messages", []) or []:
+        content = getattr(msg, "content", None)
+        if isinstance(content, list):
+            for part in content:
+                if isinstance(part, dict) and part.get("type") == "input_file":
+                    return True
+    return False
+
+
+def _public_base_url() -> str:
+    """Public base URL the gateway is reachable at — for staged image URLs.
+
+    Set via ``AILIANCE_PUBLIC_BASE_URL`` (e.g. ``https://gateway.ailiance.fr``).
+    Falls back to ``http://localhost:9300`` for local dev / tests; that
+    fallback is only useful when both gateway and worker run on the
+    same host.
+    """
+    return os.environ.get("AILIANCE_PUBLIC_BASE_URL", "http://localhost:9300")
+
+
 def _inject_stop_tokens(body: dict, alias: str) -> None:
     """Merge :data:`_STOP_TOKEN_DEFAULTS` for ``alias`` into ``body['stop']``.
 
@@ -1136,6 +1163,21 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             "max_bytes": FILE_MAX_BYTES,
         }
 
+    @app.get("/v1/_staged/{key}")
+    def get_staged(key: str) -> Response:
+        """Serve a staged image so vision workers can fetch it over HTTP.
+
+        Used by the data-URL rewrite: when a caller embeds
+        ``image_url.url = "data:image/png;base64,…"`` the gateway stages
+        the bytes here and rewrites the URL to ``…/v1/_staged/<key>``.
+        Worker downloads as a normal HTTP image. TTL is enforced inside
+        :class:`_ImageStore`; expired keys return 404.
+        """
+        entry = image_store.get(key)
+        if entry is None:
+            raise HTTPException(status_code=404, detail="staged image not found or expired")
+        return Response(content=entry.data, media_type=entry.mime or "application/octet-stream")
+
     @app.post("/v1/route")
     def route_only(payload: dict) -> dict:
         """Read-only routing decision for a prompt — no chat side-effect.
@@ -1176,6 +1218,33 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                     ),
                 },
             )
+
+        # Inline file extraction: replace any input_file blocks in
+        # messages[].content with text blocks carrying the extracted
+        # markdown. Lets callers attach PDF/DOCX/etc. directly inside
+        # /v1/chat/completions without a separate /v1/files/extract
+        # round-trip.
+        if _request_has_input_files(req):
+            try:
+                await rewrite_input_files(req.messages, http_client)
+            except ExtractError as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "type": "invalid_request_error",
+                        "code": exc.code,
+                        "message": exc.message,
+                    },
+                ) from exc
+
+        # Image data-URL staging: MLX vision workers (Pixtral on
+        # :9325) reject ``data:image/*;base64,…`` URLs silently. We
+        # decode any such URL, stash the bytes in a short-lived in-
+        # memory store, and rewrite the URL to a public endpoint
+        # this gateway serves. Worker fetches the image as a normal
+        # HTTP URL and actually sees it.
+        if _request_has_images(req):
+            rewrite_image_urls(req.messages, _public_base_url())
 
         # Multimodal auto-route: when the caller is on the auto-router
         # alias and the request body carries an image (or any non-text

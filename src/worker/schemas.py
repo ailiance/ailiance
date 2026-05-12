@@ -8,7 +8,19 @@ from pydantic import BaseModel, Field, field_validator
 
 
 _MULTIMODAL_BLOCK_TYPES: frozenset[str] = frozenset(
-    {"image_url", "image", "input_image", "audio_url", "audio", "input_audio"}
+    {
+        # vision / audio
+        "image_url",
+        "image",
+        "input_image",
+        "audio_url",
+        "audio",
+        "input_audio",
+        # documents — the gateway extracts these inline at /v1/chat/completions
+        # (input_file → text block carrying the markdown).
+        "input_file",
+        "file",
+    }
 )
 
 
