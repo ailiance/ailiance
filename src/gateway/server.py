@@ -634,6 +634,33 @@ _STOP_TOKEN_DEFAULTS: dict[str, tuple[str, ...]] = {
 }
 
 
+# Aliases backed by a vision-capable worker. Used by the multimodal
+# auto-route override: when the request body carries any ``image_url``
+# content and the caller is on the auto-router (``model == "ailiance"``),
+# we transparently re-route to the canonical vision alias. Aliases the
+# caller explicitly set are honoured verbatim — we never override an
+# explicit non-vision choice.
+_VISION_ALIASES: frozenset[str] = frozenset({"ailiance-pixtral"})
+_CANONICAL_VISION_ALIAS = "ailiance-pixtral"
+
+
+def _request_has_images(req) -> bool:
+    """Return True iff any message in ``req`` carries an image part.
+
+    The OpenAI multimodal spec sends mixed content as
+    ``messages[].content = [{"type":"text", ...}, {"type":"image_url", ...}, ...]``.
+    Plain text requests use a string for ``content`` and we shortcut.
+    """
+    for msg in getattr(req, "messages", []) or []:
+        content = getattr(msg, "content", None)
+        if isinstance(content, list):
+            for part in content:
+                t = part.get("type") if isinstance(part, dict) else None
+                if t in ("image_url", "image", "input_image"):
+                    return True
+    return False
+
+
 def _inject_stop_tokens(body: dict, alias: str) -> None:
     """Merge :data:`_STOP_TOKEN_DEFAULTS` for ``alias`` into ``body['stop']``.
 
@@ -1087,6 +1114,18 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                     ),
                 },
             )
+
+        # Multimodal auto-route: when the caller is on the auto-router
+        # alias and the request body carries an image (or any non-text
+        # block), transparently redirect to the canonical vision alias.
+        # An explicit non-vision choice from the caller is respected —
+        # they'll get whatever error the worker raises, never a silent
+        # rewrite that hides their intent.
+        _multimodal_routed = False
+        if req.model == "ailiance" and _request_has_images(req):
+            req.model = _CANONICAL_VISION_ALIAS
+            _multimodal_routed = True
+
         forced_port = MODEL_FORCE_MAP.get(req.model)
         active_router = app.state.router
         if forced_port:
