@@ -14,7 +14,7 @@ from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, HTTPException, Response
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from prometheus_client import CollectorRegistry, Counter, Histogram, generate_latest
 
 from src.gateway.observability import track_chat
@@ -226,6 +226,48 @@ def _cascade_pick(domain: str, prompt: str) -> str | None:
 # tools[] is present, the force-route still wins.
 FC_CAPABLE_PORTS: frozenset[int] = frozenset({8002})
 FC_FORCE_ROUTE_PORT: int = 8002
+
+
+def _worker_headers(
+    worker_port: int,
+    domain: str,
+    response_body: dict | None = None,
+    chain_policy: str | None = None,
+) -> dict[str, str]:
+    """Build the X-Ailiance-* headers exposing routing decisions.
+
+    Lets CLI / cockpit / debugging tooling see which worker actually
+    served the request without parsing the OpenAI-compatible body.
+
+    - X-Ailiance-Worker-Port: the port the request landed on (after
+      cascade override + FC force-route + chain dispatch).
+    - X-Ailiance-Domain:      classifier top-1 domain, empty when the
+      caller picked a forced alias (no router pass).
+    - X-Ailiance-Backend:     upstream `system_fingerprint` from the
+      worker (llama.cpp build hash, mlx version, fp_ollama, etc.).
+      Only populated on non-streaming responses (streaming body is
+      consumed lazily; emitting a header before reading it would
+      either block or guess).
+    - X-Ailiance-Upstream-Model: the model_id the worker reports
+      (e.g. mascarade-kicad:latest, eu-kiki-gemma, /Users/...MLX-Q8).
+      Distinct from the alias the caller asked for.
+    - X-Ailiance-Chain:       chain policy that was engaged
+      (direct / mixture / sequential / deliberate / validate), or
+      empty if no chain orchestrator ran.
+    """
+    headers = {
+        "X-Ailiance-Worker-Port": str(worker_port),
+        "X-Ailiance-Domain": domain or "",
+        "X-Ailiance-Chain": chain_policy or "",
+    }
+    if response_body:
+        fp = response_body.get("system_fingerprint")
+        if fp:
+            headers["X-Ailiance-Backend"] = str(fp)
+        upstream = response_body.get("model")
+        if upstream:
+            headers["X-Ailiance-Upstream-Model"] = str(upstream)
+    return headers
 
 
 def _fc_force_route_enabled() -> bool:
@@ -1042,7 +1084,15 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 started_at=_trace_started_at,
                 chain_id=chain_result.chain_id,
             )
-            return response
+            return JSONResponse(
+                content=response,
+                headers=_worker_headers(
+                    worker_port,
+                    domain,
+                    response,
+                    chain_policy=chain_result.policy.value,
+                ),
+            )
 
         # ALIAS_WORKER_URLS: if alias has HA list, pick healthy URL
         # instead of using the single WORKER_URLS[worker_port] entry.
@@ -1119,6 +1169,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                     relay(),
                     status_code=worker_resp.status_code,
                     media_type=worker_resp.headers.get("content-type", "text/event-stream"),
+                    headers=_worker_headers(worker_port, domain),
                 )
 
             resp = await http_client.post(
@@ -1170,6 +1221,9 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             started_at=_trace_started_at,
             upstream_model=response_body.get("model"),
         )
-        return response_body
+        return JSONResponse(
+            content=response_body,
+            headers=_worker_headers(worker_port, domain, response_body),
+        )
 
     return app
