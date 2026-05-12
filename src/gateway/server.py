@@ -618,6 +618,46 @@ _BLOCKED_CHAT_ALIASES: frozenset[str] = frozenset({
 })
 
 
+# Per-alias default stop sequences for workers whose loaded chat template
+# leaks the multi-turn prompt format (Vicuna ``USER:``/``ASSISTANT:``,
+# Mistral inst tokens) past the assistant's reply. The worker keeps
+# generating past the natural end-of-turn until max_tokens hits, with the
+# extra tokens being a fabricated user turn that pollutes the UI.
+#
+# These defaults are merged with the caller's own ``stop`` (if any); user
+# values are preserved and our defaults are appended. Empty list / no key
+# = no injection.
+_STOP_TOKEN_DEFAULTS: dict[str, tuple[str, ...]] = {
+    # Pixtral 12B MLX 4-bit on Mac Studio :9325 — observed leaking
+    # ``\nUSER:`` / ``USER:`` in prod chat completions.
+    "ailiance-pixtral": ("\nUSER:", "USER:", "</s>", "[INST]"),
+}
+
+
+def _inject_stop_tokens(body: dict, alias: str) -> None:
+    """Merge :data:`_STOP_TOKEN_DEFAULTS` for ``alias`` into ``body['stop']``.
+
+    Preserves the caller's explicit stop tokens (their values come first)
+    and appends our defaults that aren't already present. Mutates the
+    body in place. No-ops when no defaults are registered.
+    """
+    defaults = _STOP_TOKEN_DEFAULTS.get(alias)
+    if not defaults:
+        return
+    user_stop = body.get("stop")
+    # OpenAI spec: ``stop`` is either a string or a list of strings.
+    if isinstance(user_stop, str):
+        merged = [user_stop]
+    elif isinstance(user_stop, list):
+        merged = [s for s in user_stop if isinstance(s, str)]
+    else:
+        merged = []
+    for tok in defaults:
+        if tok not in merged:
+            merged.append(tok)
+    body["stop"] = merged
+
+
 def _normalize_message_dict(msg: dict) -> None:
     """Apply reasoning→content promotion + tag stripping to one message dict.
 
@@ -1306,6 +1346,9 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         body = req.model_dump(exclude_none=True)
         # extra_body is gateway-only metadata — strip before forwarding.
         body.pop("extra_body", None)
+        # Inject per-alias stop tokens for workers whose chat template
+        # leaks past end-of-turn (e.g. Pixtral fabricating ``USER:`` turns).
+        _inject_stop_tokens(body, req.model)
 
         # Forward rewrites: per-alias takes precedence over per-port. Lets a
         # single backend port host multiple ailiance-* aliases each rewritten
