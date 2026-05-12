@@ -12,11 +12,19 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import base64
+
 import httpx
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 from prometheus_client import CollectorRegistry, Counter, Histogram, generate_latest
 
+from src.gateway.file_extract import (
+    ExtractError,
+    ExtractResult,
+    MAX_BYTES as FILE_MAX_BYTES,
+    extract as extract_file,
+)
 from src.gateway.observability import track_chat
 from src.orchestrator.chain_orchestrator import ChainOrchestrator
 from src.orchestrator.chain_policy import ChainPolicy
@@ -1072,6 +1080,60 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 }
                 for mid in ids
             ],
+        }
+
+    @app.post("/v1/files/extract")
+    async def extract_endpoint(
+        file: UploadFile | None = File(default=None),
+        filename: str | None = Form(default=None),
+        mime: str | None = Form(default=None),
+    ) -> dict:
+        """Extract markdown text from a PDF / docx / xlsx / pptx / html / txt file.
+
+        Two upload modes:
+
+        * **multipart/form-data** with a ``file`` field (preferred for
+          browser uploads). ``filename`` and ``mime`` are taken from the
+          ``UploadFile`` itself but can be overridden via the optional
+          form fields when the browser fails to set them.
+        * No body is accepted other than multipart in this version; a
+          JSON-with-base64 mode can be added later if a client needs it.
+
+        Returns ``{"markdown": "...", "format": "pdf", "metadata": {...}}``.
+        Errors translate to HTTP 400 with a structured detail.
+        """
+        if file is None:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "type": "invalid_request_error",
+                    "code": "missing_file",
+                    "message": "Expected multipart upload with a 'file' field.",
+                },
+            )
+        data = await file.read()
+        await file.close()
+        eff_filename = filename or file.filename
+        eff_mime = mime or file.content_type
+        try:
+            result: ExtractResult = extract_file(
+                data, filename=eff_filename, mime=eff_mime
+            )
+        except ExtractError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "type": "invalid_request_error",
+                    "code": exc.code,
+                    "message": exc.message,
+                },
+            ) from exc
+        return {
+            "markdown": result.markdown,
+            "format": result.format,
+            "metadata": result.metadata,
+            "filename": eff_filename,
+            "max_bytes": FILE_MAX_BYTES,
         }
 
     @app.post("/v1/route")
