@@ -7,7 +7,7 @@
 #                 prompt + stderr feedback, up to ``max_retries`` times.
 #   - mixture:    fan-out + judge aggregator. v0.3.1 — falls back to
 #                 direct in v0.3.0.
-#   - sequential: planner + solver chain. v0.4 — falls back to direct.
+#   - sequential: planner + solver + aggregator chain (v0.4).
 #
 # Tools reference validator names exposed by the iact-bench registry
 # (see configs/domain_validators.yaml in the iact-bench submodule).
@@ -52,7 +52,19 @@ policies:
 
   # Math: exact-match grading, no chain needed.
   math-gsm8k:       { policy: direct }
-  math-reasoning:   { policy: direct }
+  # Multi-step reasoning → sequential planner/solver/aggregator (v0.4).
+  math-reasoning:   { policy: sequential,
+                      planner: ailiance-reasoning-r1,
+                      solver: ailiance-coder-pro,
+                      aggregator: ailiance-mistral,
+                      max_steps: 5 }
+
+  # Agentic orchestration prompts benefit from explicit decomposition.
+  llm-orch-seq:     { policy: sequential,
+                      planner: ailiance-mistral,
+                      solver: ailiance-coder-pro,
+                      aggregator: ailiance-mistral,
+                      max_steps: 5 }
 
   # Translation: BLEU metric, no chain.
   multilingual-eu:  { policy: direct }
