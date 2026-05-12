@@ -24,18 +24,20 @@ def test_gateway_models_list():
     ids = set(m["id"] for m in models)
     # Core production workers + the bare "ailiance" auto-router alias.
     # Asserted as subset so adding a new alias does not break the test.
+    # ``ailiance-embed`` is intentionally absent: bge-m3 is an embedding
+    # model and /v1/models advertises chat-capable aliases only.
     expected_core = {
         "ailiance",
         "ailiance-mistral-medium",
         "ailiance-mistral",
-        "ailiance-eurollm",
         "ailiance-gemma",
         "ailiance-qwen",
-        # Tower Ollama wiring (2026-05-11) — mascarade fine-tunes + embed
+        # Tower Ollama wiring (2026-05-11) — mascarade fine-tunes
         "ailiance-kicad",
-        "ailiance-embed",
     }
     assert expected_core.issubset(ids)
+    # And the embed surface stays off the chat listing.
+    assert "ailiance-embed" not in ids
 
 
 def test_gateway_force_map_has_all_workers():
@@ -50,10 +52,11 @@ def test_gateway_force_map_has_all_workers():
     expected_core = {
         "ailiance-mistral-medium",
         "ailiance-mistral",
-        "ailiance-eurollm",
         "ailiance-gemma",
         "ailiance-qwen",
         "ailiance-kicad",
+        # ailiance-embed is in MODEL_FORCE_MAP (route still resolves) but
+        # rejected at /v1/chat/completions via _BLOCKED_CHAT_ALIASES.
         "ailiance-embed",
     }
     assert expected_core.issubset(set(MODEL_FORCE_MAP))

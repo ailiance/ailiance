@@ -597,6 +597,63 @@ def _gate_port(classified_port: int | None) -> int:
     return classified_port or HEALTH_FALLBACK_PORT  # all dead — let it fail loud
 
 
+# Strip the *whole* reasoning block. The chain-of-thought is internal and
+# shouldn't appear in the final user-visible answer. Two passes:
+#   1) Greedy-but-non-overlapping removal of complete blocks.
+#   2) Cleanup of orphan opening/closing tags from truncated streams.
+_THINK_BLOCK_RE = re.compile(
+    r"\[THINK\].*?\[/THINK\]|<think>.*?</think>|<reasoning>.*?</reasoning>",
+    re.IGNORECASE | re.DOTALL,
+)
+_THINK_ORPHAN_RE = re.compile(
+    r"\[/?THINK\]|</?think>|</?reasoning>", re.IGNORECASE
+)
+
+# Aliases registered in routing tables but NOT chat-capable. They are kept
+# for /v1/models/details (introspection) but rejected at /v1/chat/completions
+# with a 400 instead of leaking the underlying worker's "does not support
+# chat" error body.
+_BLOCKED_CHAT_ALIASES: frozenset[str] = frozenset({
+    "ailiance-embed",  # bge-m3 — embedding model, no /v1/embeddings endpoint yet
+})
+
+
+def _normalize_response_body(body: dict) -> dict:
+    """Normalize worker chat-completion responses for OpenAI-spec clients.
+
+    Two worker quirks are smoothed over here:
+
+    1. MLX ``mlx_lm.server`` (>= 0.31.3) splits reasoning-model output into
+       ``message.reasoning`` and leaves ``message.content`` empty. The OpenAI
+       client in the Playground reads ``content`` only, so the user sees a
+       blank reply. We copy ``reasoning`` into ``content`` when content is
+       missing or empty.
+    2. Some reasoning models (Ministral-3 Reasoning, R1 distills) emit
+       ``[THINK]…[/THINK]`` or ``<think>…</think>`` literal tags inside
+       ``content``. We strip the bare tags (keeping the inner text) so the
+       UI doesn't render markup.
+    """
+    if not isinstance(body, dict):
+        return body
+    choices = body.get("choices")
+    if not isinstance(choices, list):
+        return body
+    for choice in choices:
+        msg = choice.get("message") if isinstance(choice, dict) else None
+        if not isinstance(msg, dict):
+            continue
+        content = msg.get("content")
+        reasoning = msg.get("reasoning")
+        if (not content) and isinstance(reasoning, str) and reasoning.strip():
+            msg["content"] = reasoning
+            content = reasoning
+        if isinstance(content, str) and ("THINK" in content.upper() or "<think" in content.lower()):
+            stripped = _THINK_BLOCK_RE.sub("", content)
+            stripped = _THINK_ORPHAN_RE.sub("", stripped)
+            msg["content"] = stripped.strip()
+    return body
+
+
 def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
     app = FastAPI(title="ailiance-gateway")
     reg = CollectorRegistry()
@@ -764,7 +821,9 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 {"id": "ailiance-power", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-components-review", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-coder", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-embed", "object": "model", "owned_by": "ailiance"},
+                # ailiance-embed (bge-m3) is an embedding model, not chat —
+                # intentionally omitted from /v1/models (no /v1/embeddings
+                # endpoint yet). See _BLOCKED_CHAT_ALIASES below.
                 # Devstral 24B 4-bit MLX + 5 LoRAs on Studio :9316-9321
                 {"id": "ailiance-devstral-base", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-python", "object": "model", "owned_by": "ailiance"},
@@ -881,6 +940,18 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
     async def chat_completions(req: ChatCompletionRequest):
         _trace_started_at = time.perf_counter()
         _trace_req_body = req.model_dump(exclude_none=True)
+        if req.model in _BLOCKED_CHAT_ALIASES:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "type": "invalid_request_error",
+                    "message": (
+                        f"Model '{req.model}' is an embedding model and does "
+                        "not support chat completions. Use a chat-capable "
+                        "alias (e.g. 'ailiance' for auto-routing)."
+                    ),
+                },
+            )
         forced_port = MODEL_FORCE_MAP.get(req.model)
         active_router = app.state.router
         if forced_port:
@@ -1247,6 +1318,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                     "message": "Worker returned an empty or invalid response",
                 },
             ) from None
+        response_body = _normalize_response_body(response_body)
         track_chat(
             model_alias=req.model,
             domain=domain,
