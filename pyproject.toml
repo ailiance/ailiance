@@ -29,6 +29,13 @@ dependencies = [
     "python-pptx>=1.0",  # .pptx
     "beautifulsoup4>=4.12",  # HTML / fallback
     "python-multipart>=0.0.9",  # FastAPI multipart upload parser
+    # OCR — image-only PDFs and direct image uploads via Tesseract.
+    # System deps required on the host: tesseract-ocr + tesseract-ocr-fra
+    # + tesseract-ocr-eng + poppler-utils. Python wrappers are pure
+    # Python and cheap.
+    "pytesseract>=0.3.10",
+    "pillow>=10.0",
+    "pdf2image>=1.17",
 ]
 
 [project.optional-dependencies]
