@@ -415,6 +415,64 @@ class TestTour8InferenceDefaults:
 # ---------------------------------------------------------------------------
 
 
+class TestTourAInventory:
+    """Verify every response carries alias / base_model / LoRA info
+    (PR #92 + #93). Without this surface, callers can't tell what
+    actually served them — especially through the auto-router."""
+
+    def test_explicit_alias_with_lora(self, client: httpx.Client):
+        resp = client.post(
+            f"{GATEWAY}/v1/chat/completions",
+            json={
+                "model": "ailiance-kicad",
+                "messages": [{"role": "user", "content": "hi"}],
+                "max_tokens": 5,
+            },
+        )
+        assert resp.status_code == 200
+        assert resp.headers.get("x-ailiance-alias") == "ailiance-kicad"
+        assert resp.headers.get("x-ailiance-lora") == "mascarade-kicad"
+        body = resp.json()
+        assert body.get("ailiance", {}).get("alias") == "ailiance-kicad"
+        assert body["ailiance"]["lora"] == ["mascarade-kicad"]
+
+    def test_explicit_alias_no_lora(self, client: httpx.Client):
+        resp = client.post(
+            f"{GATEWAY}/v1/chat/completions",
+            json={
+                "model": "ailiance-pixtral",
+                "messages": [{"role": "user", "content": "hi"}],
+                "max_tokens": 5,
+            },
+        )
+        assert resp.status_code == 200
+        assert resp.headers.get("x-ailiance-alias") == "ailiance-pixtral"
+        # No LoRA → header omitted entirely.
+        assert "x-ailiance-lora" not in resp.headers
+        body = resp.json()
+        assert body["ailiance"]["lora"] == []
+
+    def test_auto_router_resolves_to_served_alias(self, client: httpx.Client):
+        # KiCad prompt should classify to kicad domain → mascarade alias.
+        resp = client.post(
+            f"{GATEWAY}/v1/chat/completions",
+            json={
+                "model": "ailiance",
+                "messages": [
+                    {"role": "user", "content": "Help me design a KiCad PCB schematic."}
+                ],
+                "max_tokens": 5,
+            },
+        )
+        assert resp.status_code == 200
+        alias = resp.headers.get("x-ailiance-alias")
+        # Either it resolved to ailiance-kicad (classifier picked kicad)
+        # OR it stayed at ailiance (classifier picked an unmapped domain).
+        # In both cases we get a value; quality of resolution is tested
+        # in unit tests.
+        assert alias is not None and alias.startswith("ailiance")
+
+
 class TestTour9CockpitBundle:
     def test_homepage_serves(self, client: httpx.Client):
         resp = client.get(f"{COCKPIT}/")

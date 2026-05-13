@@ -440,6 +440,7 @@ def known_aliases() -> frozenset[str]:
 # below only enumerates the non-trivial cases.
 _DOMAIN_TO_ALIAS_EXPLICIT: dict[str, str] = {
     # Reasoning / specialised
+    "reasoning": "ailiance-reasoning-r1",
     "math-reasoning": "ailiance-apertus-math-reasoning",
     "math-gsm8k": "ailiance-apertus-math-gsm8k",
     "math": "ailiance-apertus-math",
