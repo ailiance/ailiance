@@ -54,6 +54,10 @@ class InferenceDefaults:
     # OpenAI-compatible llama.cpp and mlx_lm.server both honour the
     # ``chat_template_kwargs`` field at the top level of the body.
     chat_template_kwargs: dict[str, Any] | None = None
+    # System prompt prepended to messages[] only if the caller hasn't
+    # already supplied one. Used to suppress model-specific output
+    # quirks (e.g. Pixtral regurgitating Python dicts on short prompts).
+    system_prompt: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -94,6 +98,16 @@ _INFERENCE_DEFAULTS: dict[str, InferenceDefaults] = {
         # Worker leaks Vicuna template past end-of-turn. Folded in
         # from former _STOP_TOKEN_DEFAULTS (PR #82).
         stop=("\nUSER:", "USER:", "</s>", "[INST]"),
+        # Short-prompt quirk: Pixtral regurgitates a Python dict
+        # (``{'type': 'text', 'text': 'A cat.'}``) when given a one-
+        # word prompt like ``What animal?``. A terse system prompt
+        # locks the output format to plain text.
+        system_prompt=(
+            "You are a vision-language assistant. "
+            "Reply in plain natural-language text only. "
+            "Do not wrap your answer in JSON, a Python dict, "
+            "or any structured representation."
+        ),
     ),
     # ----- Qwen3.5 family — disable thinking by default -----
     # ``feedback_qwen3_thinking_mode``: short-output workloads need
@@ -224,3 +238,29 @@ def apply_inference_defaults(body: dict[str, Any], alias: str) -> bool:
 def registered_aliases() -> frozenset[str]:
     """Read-only view of the keys that have defaults. Used by tests."""
     return frozenset(_INFERENCE_DEFAULTS.keys())
+
+
+def default_system_prompt(alias: str) -> str | None:
+    """Return the registered default system prompt for ``alias``, if any.
+
+    Separate from :func:`apply_inference_defaults` because the caller
+    needs to prepend a real :class:`ChatMessage` to ``messages[]``
+    *before* the body is serialised — body-level mutation can't insert
+    a new message.
+    """
+    defaults = _INFERENCE_DEFAULTS.get(alias)
+    return defaults.system_prompt if defaults else None
+
+
+def messages_already_have_system(messages) -> bool:
+    """True iff ``messages`` already contains a ``role=='system'`` entry.
+
+    Handles both pydantic :class:`ChatMessage` and raw dicts so the
+    helper can be called from the request handler (pydantic) or unit
+    tests (dicts).
+    """
+    for msg in messages or []:
+        role = msg.get("role") if isinstance(msg, dict) else getattr(msg, "role", None)
+        if role == "system":
+            return True
+    return False

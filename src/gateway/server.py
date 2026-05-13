@@ -26,7 +26,11 @@ from src.gateway.file_extract import (
     MAX_BYTES as FILE_MAX_BYTES,
     extract as extract_file,
 )
-from src.gateway.inference_defaults import apply_inference_defaults
+from src.gateway.inference_defaults import (
+    apply_inference_defaults,
+    default_system_prompt,
+    messages_already_have_system,
+)
 from src.gateway.inline_files import (
     image_store,
     rewrite_image_urls,
@@ -37,7 +41,7 @@ from src.orchestrator.chain_orchestrator import ChainOrchestrator
 from src.orchestrator.chain_policy import ChainPolicy
 from src.orchestrator.validators import StubValidator, make_validator
 from src.router.domain_map import ALL_DOMAINS, get_worker_for_domain
-from src.worker.schemas import ChatCompletionRequest
+from src.worker.schemas import ChatCompletionRequest, ChatMessage
 
 log = logging.getLogger(__name__)
 
@@ -1286,6 +1290,16 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         if req.model == "ailiance" and _request_has_images(req):
             req.model = _CANONICAL_VISION_ALIAS
             _multimodal_routed = True
+
+        # Per-alias default system prompt: only prepended if the caller
+        # hasn't already supplied a ``system`` message. Used today to
+        # suppress Pixtral's short-prompt quirk where it regurgitates a
+        # Python dict instead of plain text. Insertion happens after
+        # multimodal auto-route so the prompt matches the alias the
+        # worker actually serves.
+        _sys_default = default_system_prompt(req.model)
+        if _sys_default and not messages_already_have_system(req.messages):
+            req.messages.insert(0, ChatMessage(role="system", content=_sys_default))
 
         forced_port = MODEL_FORCE_MAP.get(req.model)
         active_router = app.state.router
