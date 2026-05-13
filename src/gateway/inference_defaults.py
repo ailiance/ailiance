@@ -67,6 +67,13 @@ class InferenceDefaults:
 _REASONING_MAX = 2048
 _REASONING_TEMP = 0.3  # R1 / Ministral reasoning empirically tighter at low temp
 
+# Mistral Medium 3.5 128B MLX-Q8 on Studio :9301 has been observed to
+# enter a degenerate single-token loop on certain prompt shapes when
+# the caller omits sampling knobs. Belt-and-suspenders defaults: a
+# mild repetition_penalty + bounded max_tokens + the official Mistral
+# chat-template stop tokens. Validated 2026-05-13 (worker healthy
+# under these defaults via direct + gateway curl).
+
 _INFERENCE_DEFAULTS: dict[str, InferenceDefaults] = {
     # ----- Reasoning models — need budget for the thinking phase -----
     "ailiance-reasoning-r1": InferenceDefaults(
@@ -119,12 +126,18 @@ _INFERENCE_DEFAULTS: dict[str, InferenceDefaults] = {
     "ailiance-qwen36": InferenceDefaults(
         chat_template_kwargs={"enable_thinking": False},
     ),
-    # ----- Flagship text — moderate temp for general use -----
+    # ----- Flagship text — moderate temp + decode-loop defenses -----
     "ailiance-mistral-medium": InferenceDefaults(
         temperature=0.5,
+        max_tokens=2048,
+        repetition_penalty=1.05,
+        stop=("</s>", "[INST]", "[/INST]"),
     ),
     "ailiance-mistral": InferenceDefaults(
         temperature=0.5,
+        max_tokens=2048,
+        repetition_penalty=1.05,
+        stop=("</s>", "[INST]", "[/INST]"),
     ),
     # ----- Devstral code variants — deterministic for code -----
     "ailiance-devstral-base": InferenceDefaults(
