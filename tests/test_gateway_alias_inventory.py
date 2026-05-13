@@ -10,6 +10,7 @@ from src.gateway.alias_inventory import (
     get_alias_inventory,
     inventory_or_unknown,
     known_aliases,
+    resolve_effective_alias,
     to_dict,
     to_headers,
 )
@@ -157,6 +158,48 @@ def client():
     from src.gateway.server import make_gateway_app
 
     return TestClient(make_gateway_app(skip_router_load=True))
+
+
+class TestResolveEffectiveAlias:
+    def test_cascade_wins(self):
+        assert (
+            resolve_effective_alias(
+                "ailiance", cascade_alias="ailiance-reasoning-r1", domain="python"
+            )
+            == "ailiance-reasoning-r1"
+        )
+
+    def test_explicit_alias_passthrough(self):
+        assert resolve_effective_alias("ailiance-pixtral") == "ailiance-pixtral"
+
+    def test_auto_router_mascarade_kicad(self):
+        # Mascarade domain → ailiance-<domain> auto-derived.
+        assert resolve_effective_alias("ailiance", domain="kicad") == "ailiance-kicad"
+
+    def test_auto_router_mascarade_spice(self):
+        assert resolve_effective_alias("ailiance", domain="spice") == "ailiance-spice"
+
+    def test_auto_router_explicit_map_math_reasoning(self):
+        assert (
+            resolve_effective_alias("ailiance", domain="math-reasoning")
+            == "ailiance-apertus-math-reasoning"
+        )
+
+    def test_auto_router_python_domain(self):
+        # Code domains go to Devstral hot-swap aliases.
+        assert resolve_effective_alias("ailiance", domain="python") == "ailiance-python"
+
+    def test_auto_router_general_falls_to_flagship(self):
+        assert (
+            resolve_effective_alias("ailiance", domain="general")
+            == "ailiance-mistral-medium"
+        )
+
+    def test_auto_router_unknown_domain_returns_ailiance(self):
+        assert resolve_effective_alias("ailiance", domain="no-such-domain") == "ailiance"
+
+    def test_auto_router_no_domain(self):
+        assert resolve_effective_alias("ailiance") == "ailiance"
 
 
 class TestResponseStamping:
