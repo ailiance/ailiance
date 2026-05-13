@@ -53,3 +53,10 @@ packages = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 norecursedirs = ["vendored", ".venv", "node_modules"]
+# E2E tests hit production (gateway.ailiance.fr, www.ailiance.fr) and
+# should not run as part of the default suite. Invoke explicitly with
+# ``pytest -m e2e`` after a deploy.
+addopts = "-m 'not e2e'"
+markers = [
+    "e2e: end-to-end test against production endpoints (gateway.ailiance.fr, www.ailiance.fr)",
+]
