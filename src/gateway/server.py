@@ -20,6 +20,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from prometheus_client import CollectorRegistry, Counter, Histogram, generate_latest
 
+from src.gateway.alias_inventory import (
+    inventory_or_unknown,
+    to_dict as inventory_to_dict,
+    to_headers as inventory_to_headers,
+)
 from src.gateway.file_extract import (
     ExtractError,
     ExtractResult,
@@ -279,6 +284,7 @@ def _worker_headers(
     domain: str,
     response_body: dict | None = None,
     chain_policy: str | None = None,
+    effective_alias: str | None = None,
 ) -> dict[str, str]:
     """Build the X-Ailiance-* headers exposing routing decisions.
 
@@ -321,6 +327,12 @@ def _worker_headers(
         upstream = response_body.get("model")
         if upstream:
             headers["X-Ailiance-Upstream-Model"] = str(upstream)
+    if effective_alias:
+        # Logical alias + base_model + LoRA stack — what the user asked
+        # for, in terms the catalog uses. Distinct from the filesystem
+        # path / model id the worker reports.
+        inv = inventory_or_unknown(effective_alias)
+        headers.update(inventory_to_headers(inv))
     return headers
 
 
@@ -1531,6 +1543,9 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 started_at=_trace_started_at,
                 chain_id=chain_result.chain_id,
             )
+            chain_alias = cascade_alias or req.model
+            chain_inv = inventory_or_unknown(chain_alias)
+            response["ailiance"] = inventory_to_dict(chain_inv)
             return JSONResponse(
                 content=response,
                 headers=_worker_headers(
@@ -1538,6 +1553,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                     domain,
                     response,
                     chain_policy=chain_result.policy.value,
+                    effective_alias=chain_alias,
                 ),
             )
 
@@ -1623,7 +1639,10 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                     relay(),
                     status_code=worker_resp.status_code,
                     media_type=worker_resp.headers.get("content-type", "text/event-stream"),
-                    headers=_worker_headers(worker_port, domain),
+                    headers=_worker_headers(
+                        worker_port, domain,
+                        effective_alias=cascade_alias or req.model,
+                    ),
                 )
 
             resp = await http_client.post(
@@ -1667,8 +1686,16 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 },
             ) from None
         response_body = _normalize_response_body(response_body)
+        # Resolve the effective alias for observability: cascade overrides
+        # win > FC force-route > caller's req.model > 'ailiance' fallback.
+        effective_alias = cascade_alias or req.model
+        # Stamp the inventory dict on the JSON body so SDKs that hide
+        # response headers (most OpenAI clients do) still see the
+        # alias / base_model / LoRA stack that served them.
+        inv = inventory_or_unknown(effective_alias)
+        response_body["ailiance"] = inventory_to_dict(inv)
         track_chat(
-            model_alias=req.model,
+            model_alias=effective_alias,
             domain=domain,
             kind="direct",
             request_body=_trace_req_body,
@@ -1678,7 +1705,10 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         )
         return JSONResponse(
             content=response_body,
-            headers=_worker_headers(worker_port, domain, response_body),
+            headers=_worker_headers(
+                worker_port, domain, response_body,
+                effective_alias=effective_alias,
+            ),
         )
 
     return app
