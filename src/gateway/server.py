@@ -15,7 +15,7 @@ from pathlib import Path
 import base64
 
 import httpx
-from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from prometheus_client import CollectorRegistry, Counter, Histogram, generate_latest
@@ -31,6 +31,11 @@ from src.gateway.file_extract import (
     ExtractResult,
     MAX_BYTES as FILE_MAX_BYTES,
     extract as extract_file,
+)
+from src.gateway.tenant_isolation import (
+    derive_tenant_id,
+    inject_tenant_prefix,
+    isolation_enabled,
 )
 from src.gateway.inference_defaults import (
     apply_inference_defaults,
@@ -1250,9 +1255,18 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         }
 
     @app.post("/v1/chat/completions")
-    async def chat_completions(req: ChatCompletionRequest):
+    async def chat_completions(req: ChatCompletionRequest, request: Request):
         _trace_started_at = time.perf_counter()
         _trace_req_body = req.model_dump(exclude_none=True)
+        # Per-tenant KV-cache isolation: prepend a short session marker
+        # so two callers with different identities never share cache
+        # entries on the worker. Toggled off via AILIANCE_TENANT_ISOLATION=0.
+        if isolation_enabled():
+            tenant_id = derive_tenant_id(
+                dict(request.headers),
+                request.client.host if request.client else None,
+            )
+            req.messages = inject_tenant_prefix(req.messages, tenant_id)
         if req.model in _BLOCKED_CHAT_ALIASES:
             raise HTTPException(
                 status_code=400,
