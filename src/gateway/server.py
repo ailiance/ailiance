@@ -16,6 +16,7 @@ import base64
 
 import httpx
 from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from prometheus_client import CollectorRegistry, Counter, Histogram, generate_latest
 
@@ -843,8 +844,45 @@ def _normalize_response_body(body: dict) -> dict:
     return body
 
 
+_DEFAULT_CORS_ORIGINS = (
+    "https://www.ailiance.fr",
+    "https://preview.ailiance.fr",
+    "https://ailiance.fr",
+    # Local development for the cockpit-public vite dev server.
+    "http://localhost:5173",
+    "http://localhost:4173",
+    "http://127.0.0.1:5173",
+)
+
+
+def _cors_origins() -> list[str]:
+    """Resolve the allow-list for cross-origin requests.
+
+    Override via ``AILIANCE_CORS_ORIGINS`` (comma-separated). The
+    default list covers the production cockpit (www.ailiance.fr), its
+    preview deployment, the apex, and the two vite dev ports.
+    """
+    raw = os.environ.get("AILIANCE_CORS_ORIGINS")
+    if raw:
+        return [o.strip() for o in raw.split(",") if o.strip()]
+    return list(_DEFAULT_CORS_ORIGINS)
+
+
 def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
     app = FastAPI(title="ailiance-gateway")
+    # CORS for the browser-side Playground: cockpit-public (deployed on
+    # www.ailiance.fr) calls gateway.ailiance.fr from a different
+    # origin. Browsers send a preflight OPTIONS for any multipart POST
+    # — without CORSMiddleware that preflight returns 405 and the
+    # browser aborts the real request ("Load failed" in DevTools).
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins(),
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["*"],
+        allow_credentials=False,
+        max_age=86400,
+    )
     reg = CollectorRegistry()
     requests_total = Counter(
         "ailiance_gw_requests_total",
