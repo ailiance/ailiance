@@ -22,6 +22,7 @@ from prometheus_client import CollectorRegistry, Counter, Histogram, generate_la
 
 from src.gateway.alias_inventory import (
     inventory_or_unknown,
+    resolve_effective_alias,
     to_dict as inventory_to_dict,
     to_headers as inventory_to_headers,
 )
@@ -1543,7 +1544,9 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 started_at=_trace_started_at,
                 chain_id=chain_result.chain_id,
             )
-            chain_alias = cascade_alias or req.model
+            chain_alias = resolve_effective_alias(
+                req.model, cascade_alias=cascade_alias, domain=domain,
+            )
             chain_inv = inventory_or_unknown(chain_alias)
             response["ailiance"] = inventory_to_dict(chain_inv)
             return JSONResponse(
@@ -1641,7 +1644,9 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                     media_type=worker_resp.headers.get("content-type", "text/event-stream"),
                     headers=_worker_headers(
                         worker_port, domain,
-                        effective_alias=cascade_alias or req.model,
+                        effective_alias=resolve_effective_alias(
+                            req.model, cascade_alias=cascade_alias, domain=domain,
+                        ),
                     ),
                 )
 
@@ -1688,7 +1693,12 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         response_body = _normalize_response_body(response_body)
         # Resolve the effective alias for observability: cascade overrides
         # win > FC force-route > caller's req.model > 'ailiance' fallback.
-        effective_alias = cascade_alias or req.model
+        # For req.model == "ailiance" the resolver lifts to the actually
+        # served alias using the classifier's domain (e.g. domain="kicad"
+        # → ailiance-kicad).
+        effective_alias = resolve_effective_alias(
+            req.model, cascade_alias=cascade_alias, domain=domain,
+        )
         # Stamp the inventory dict on the JSON body so SDKs that hide
         # response headers (most OpenAI clients do) still see the
         # alias / base_model / LoRA stack that served them.
