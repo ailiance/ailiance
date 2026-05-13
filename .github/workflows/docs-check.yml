@@ -1,0 +1,22 @@
+name: docs-check
+
+on:
+  pull_request:
+    paths:
+      - "docs/eu-ai-act-transparency.md"
+      - "output/**/meta.json"
+      - "scripts/check_router_doc_alignment.py"
+      - ".github/workflows/docs-check.yml"
+  push:
+    branches: [main]
+
+jobs:
+  router-doc-alignment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Check router meta.json matches transparency doc section 3.1
+        run: python scripts/check_router_doc_alignment.py
