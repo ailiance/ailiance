@@ -129,18 +129,19 @@ AILIANCE is a multi-model routing system that dispatches user queries to one of 
 
 ## 3. Router / Embedding Model
 
-### 3.1 Current: all-MiniLM-L6-v2 (bootstrap)
+### 3.1 Current (production): all-MiniLM-L6-v2
 
 | Field | Value |
 |-------|-------|
 | **Provider** | Microsoft Research |
-| **Country** | USA 🇺🇸 (temporary — to be replaced) |
-| **Parameters** | 33M |
+| **Country** | USA 🇺🇸 |
+| **Parameters** | 22.7M |
 | **Embedding dim** | 384 |
 | **License** | Apache 2.0 |
-| **Purpose** | Bootstrap router — to be replaced by Jina v3 |
+| **Purpose** | Domain classifier encoder (production since router-v5) |
+| **Bench rationale** | Retained after comparative evaluation with Jina v3 — see [`docs/transparency/router-training-data.md`](transparency/router-training-data.md) (KEEP MiniLM decision) |
 
-### 3.2 Target: Jina Embeddings v3
+### 3.2 Evaluated alternative (rejected): Jina Embeddings v3
 
 | Field | Value |
 |-------|-------|
@@ -150,7 +151,8 @@ AILIANCE is a multi-model routing system that dispatches user queries to one of 
 | **Embedding dim** | 1024 |
 | **License** | Apache 2.0 |
 | **HuggingFace** | `jinaai/jina-embeddings-v3` |
-| **Status** | Validated, pending router retraining |
+| **Status** | Evaluated as router-v6 candidate, **rejected** |
+| **Bench result** | top-1 87.4% (vs 87.6% MiniLM), encode 9.7 ms/prompt (vs 1.6 ms), Δ separation 0.15 (vs 0.34). Did not meet migration rule (+3 pp top-1 required). |
 
 ---
 

@@ -9,7 +9,7 @@ Two coupled corrections to `src/router/domain_map.py`:
 
 ### 1. 10 hardware domains now route to Tower-Ollama Mascarade LoRA
 
-The Jina v3 classifier already labels prompts with high confidence
+The MiniLM-L6-v2 classifier already labels prompts with high confidence
 (top-1 typically >0.99) for the 10 mascarade specialties below. Before
 this patch they all routed to `APERTUS_PORT` (Studio Mistral-Medium
 128B Q8, ~3 tok/s). Now they route to `MASCARADE_PORT = 8004` —
