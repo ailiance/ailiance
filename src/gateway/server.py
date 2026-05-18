@@ -75,6 +75,13 @@ _DEFAULT_WORKER_URLS = {
     #   autossh -M 0 -N -L 0.0.0.0:8004:localhost:11434 \
     #       clems@100.78.6.122
     8004: "http://localhost:8004",
+    # Studio MLX :9340 — 10 qwen3-4b-mascarade hardware experts, each LoRA
+    # merged into Qwen3-4B-Instruct-2507 and served as MLX bf16 (no Q4
+    # quantization loss vs the Tower Ollama path). via autossh tunnel
+    # electron-server:9340 → studio:9340. Set up the tunnel with:
+    #   autossh -M 0 -N -L 0.0.0.0:9340:localhost:9340 \
+    #       clems@100.116.92.12
+    9340: "http://localhost:9340",
 }
 
 
@@ -269,6 +276,7 @@ WORKER_CONTEXT_WINDOWS: dict[int, int] = {
     8002: 196608,   # llama-server Qwen3-Next-80B-A3B Q4_K_M (--ctx-size 196608)
     8003: 131072,   # llama-server Granite-4.1-30B Q4_K_M (n_ctx_train 131072)
     8004: 32768,    # Tower Ollama: Qwen3 4B Q4 mascarade fine-tunes (32k default)
+    9340: 32768,    # Studio MLX bf16 qwen3-4b-mascarade experts (conservative cap)
     8502: 32768,    # macm1 mlx_lm.server multi-model (Ministral/Gemma/Qwen 32k)
     9301: 256000,   # Studio Mistral-Medium-3.5-128B-MLX-Q8
     9303: 131072,   # Studio EuroLLM-22B-Instruct-2512
@@ -373,19 +381,24 @@ MODEL_FORCE_MAP = {
     "ailiance-rust-emb": 9330,
     "ailiance-html": 9330,
     "ailiance-ml-training": 9330,
-    # Tower Ollama :11434 via tunnel :8004 — 11 domain-specialized
-    # mascarade fine-tunes (Qwen3 4B Q4_K_M base, compiled as Ollama
-    # Modelfile from KXKM-AI .safetensors LoRAs since 2026-04-12).
-    "ailiance-kicad": 8004,
-    "ailiance-spice": 8004,
-    "ailiance-stm32": 8004,
-    "ailiance-emc": 8004,
-    "ailiance-embedded": 8004,
-    "ailiance-platformio": 8004,
-    "ailiance-freecad": 8004,
-    "ailiance-dsp": 8004,
-    "ailiance-iot": 8004,
-    "ailiance-power": 8004,
+    # Studio MLX :9340 — 10 qwen3-4b-mascarade hardware experts. Each LoRA
+    # (trained 2026-05-11, Qwen3-4B-Instruct-2507 base) was merged and
+    # converted to MLX bf16, replacing the Tower Ollama Q4_K_M path so the
+    # fine-tuned behaviour is served without quantization loss.
+    "ailiance-kicad": 9340,
+    # spice is excluded from MASCARADE_DOMAINS (auto-router) by PR #55 on
+    # bench grounds, but the explicit alias still migrates to Studio: the
+    # 2026-05-11 retrain benches well on spice-sim (Phase 7 composite 0.65).
+    "ailiance-spice": 9340,
+    "ailiance-stm32": 9340,
+    "ailiance-emc": 9340,
+    "ailiance-embedded": 9340,
+    "ailiance-platformio": 9340,
+    "ailiance-freecad": 9340,
+    "ailiance-dsp": 9340,
+    "ailiance-iot": 9340,
+    "ailiance-power": 9340,
+    # Still on Tower Ollama :8004 — not part of the Qwen3-4B mascarade set.
     "ailiance-components-review": 8004,
     "ailiance-coder": 8004,  # mascarade-coder-v2 (Qwen2 1.5B Q4)
     "ailiance-embed": 8004,  # bge-m3 F16 — multilingual embedding
