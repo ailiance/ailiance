@@ -25,7 +25,7 @@ Workers (3 EU/CH base models):
 - **Devstral-Small-2-24B-MLX-4bit** (`:9302`) — Mistral AI — code generation (16 LoRA domains)
 - **EuroLLM-22B-Instruct-2512** (`:9303`) — utter-project — multilingual EU (4 LoRA domains)
 
-Router: **all-MiniLM-L6-v2** (384d, 22M) + MLP head (256 hidden) → 32 domains, sigmoid multi-label, top-k=4, threshold=0.50. Active checkpoint `output/router-v6/` — **87.7% top-1 / 98.7% top-3** on validation. Auto-device (MPS/CUDA/CPU). L1 LRU cache (exact match) + L2 cosine ≥ 0.95 cache (paraphrase) + auto-prewarm on boot. Length-aware smart truncation: short → full encode, medium → 128-tok left-truncate, long (> 1000 chars) → head 256 + tail 256.
+Router: **all-MiniLM-L6-v2** (384d, 22M) + MLP head (256 hidden) → 47 domains, sigmoid multi-label, top-k=4, threshold=0.50. Active checkpoint = the `output/router-prod/` stable symlink (currently `router-v7-multimodel`; the earlier router-v6 head scored 87.7% top-1 / 98.7% top-3 on its validation split). Auto-device (MPS/CUDA/CPU). L1 LRU cache (exact match) + L2 cosine ≥ 0.95 cache (paraphrase) + auto-prewarm on boot. Length-aware smart truncation: short → full encode, medium → 128-tok left-truncate, long (> 1000 chars) → head 256 + tail 256.
 
 ⚠️ **Quarantined adapters**: EuroLLM `chat-fr` and `traduction-tech` produce `"user user user…"` loops (training chat-template leakage). The worker silently falls back to base EuroLLM for those domains. See `MLXWorkerRuntime.QUARANTINED_DOMAINS` in `src/worker/runtime.py`. Re-train pending.
 
@@ -36,7 +36,7 @@ ailiance/
 ├── configs/                     # apertus.yaml, devstral.yaml, eurollm.yaml, gateway.yaml
 ├── src/
 │   ├── gateway/                 # FastAPI :9300, dispatch, Prometheus, env-driven worker URLs
-│   ├── router/                  # MiniLM + MLP classifier (32 domains, smart truncation, caches)
+│   ├── router/                  # MiniLM + MLP classifier (47 domains, smart truncation, caches)
 │   ├── worker/                  # 1 model / process, BF16, shared memory pool, QUARANTINED_DOMAINS guard
 │   └── mlx_models/              # Apertus MLX impl + xielu activation
 ├── scripts/                     # ~50 scripts (scrape, build, train, eval, router pipeline)
@@ -100,7 +100,8 @@ bash scripts/start.sh
 # - Gateway runs as systemd unit `ailiance-gateway.service` on electron-server
 #   with AILIANCE_WORKERS_JSON env (Tailscale URLs to Studio MLX workers)
 # - Workers run as nohup uvicorn on Studio (PIDs in /tmp/ailiance-*.log)
-# - Router weights deployed via rsync (output/router-vN/ is git-ignored)
+# - Router weights deployed via `git pull` then repoint the
+#   `output/router-prod` symlink (output/router-vN/ is git-ignored)
 
 # Logs
 tail -f /tmp/ailiance-eurollm.log    # studio
@@ -172,7 +173,7 @@ Worker URLs are supplied to the gateway via `AILIANCE_WORKERS_JSON` env var (set
 
 ### ✅ Récents (résolus 2026-05-05/06)
 
-- ✅ **Router divergence résolue** : `classifier.py` aligné sur MiniLM 384d + 32 domaines (matches `gateway.yaml`).
+- ✅ **Router divergence résolue** : `classifier.py` aligné sur MiniLM 384d + 47 domaines (matches `gateway.yaml`).
 - ✅ **Router v6 trained** — top-1 65.5% → 87.7% (+22 pts), top-3 85.3% → 98.7%. 9 967 rows curated, niche-augmented, greetings-grounded.
 - ✅ **Smart truncation length-aware** — short (full), medium (left-trunc 128), long (head 256 + tail 256).
 - ✅ **L1 LRU + L2 cosine cache + auto-prewarm** — p95 spike éliminé, L1 hit ~0.01 ms.
@@ -203,7 +204,7 @@ Worker URLs are supplied to the gateway via `AILIANCE_WORKERS_JSON` env var (set
 
 - **48K vs 81K examples** : commit `f2c9cee` annonce "20 domains HF-traced (48K examples)" — la mesure brute donne ~81K lignes train sur 24 domaines. Les 48K désignent vraisemblablement le sous-ensemble curé/dédupliqué. À confirmer.
 - **Repo GitHub** : `ailiance/ailiance` (privé) — poussé le 2026-05-04. Mirror local sur studio + electron-server + macM1.
-- **Router weights `output/router-vN/` git-ignored** — déploiement par rsync (`rsync -avz output/router-v6/ electron-server:/home/electron/ailiance/output/router-v6/`) puis `sudo systemctl restart ailiance-gateway`.
+- **Router weights `output/router-vN/` git-ignored** — déploiement par `git pull` sur electron-server (les poids publiés viennent d'un commit/release tracé, jamais d'un rsync local→remote), puis on repointe le symlink `output/router-prod` vers la nouvelle version et `sudo systemctl restart ailiance-gateway`.
 - **kxkm-ai** : RTX 4090 24 GB, joignable via electron-server bastion (`ssh kxkm@10.2.0.237`). Actuellement sert llama-server Qwen3-Next-80B + ComfyUI + SearXNG + OpenWebUI (stack chat avec web-search tool). Pas utilisé par ailiance à ce jour.
 
 ## Sister project

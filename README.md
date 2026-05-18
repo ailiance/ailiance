@@ -40,7 +40,7 @@ flowchart TB
 
     subgraph electron["electron-server (Ubuntu, no GPU)"]
         cockpit["kiki-cockpit<br/>(Docker)"]
-        gateway["ailiance-gateway :9300<br/>FastAPI · MiniLM router-v6<br/>L1+L2 cache · /metrics"]
+        gateway["ailiance-gateway :9300<br/>FastAPI · MiniLM router-prod<br/>L1+L2 cache · /metrics"]
         cockpit --> gateway
     end
 
@@ -88,7 +88,7 @@ sequenceDiagram
     participant C as Cloudflare Tunnel
     participant K as kiki-cockpit (Docker)
     participant G as gateway :9300
-    participant R as router-v6 (MiniLM+MLP)
+    participant R as router-prod (MiniLM+MLP)
     participant W as Worker (MLX / llama.cpp)
 
     U->>C: POST /api/public/chat<br/>{model_id, messages}
@@ -200,18 +200,21 @@ Note: kxkm-ai is a **distinct machine** from `kx6tm-23` (Proxmox PVE, AMD ES1000
 
 LoRA adapters: Apertus (20 domains — electronics, EMC, DSP, SPICE, KiCad, STM32, IoT, embedded, MISRA-C, AUTOSAR, IEC norms…), Devstral (16 — Python, Rust, TypeScript, C++, shell, SQL, web, Docker, devops, llm-ops, ml-training…), EuroLLM (4 — chat-fr, traduction-tech, redaction-multilingue, localisation-doc). Gemma 3 and Qwen3-Next serve as base-model workers (no adapter).
 
-## Routing — `router-v6`
+## Routing — `router-prod`
+
+The active checkpoint lives behind the stable `output/router-prod`
+symlink (today it points at `router-v7-multimodel`); `gateway.yaml`
+loads that path so a retrain only repoints the symlink.
 
 | Property | Value |
 |---|---|
 | Encoder | `sentence-transformers/all-MiniLM-L6-v2` (384d, 22 M params) |
-| Head | 384 → 256 → 32 MLP (sigmoid multi-label, threshold 0.50) |
-| Domains | 32 |
-| Top-1 / Top-3 (validation) | **87.7 %** / **98 %** |
+| Head | 384 → 256 → 47 MLP (sigmoid multi-label, threshold 0.50) |
+| Domains | 47 (`output/router-prod/meta.json`) |
+| Top-1 / Top-3 (router-v6 corpus) | **87.7 %** / **98 %** |
 | Δ vs router-v5 | +22 pts top-1, +13 pts top-3 |
 | Encoder cache | L1 LRU 1024 (~0.01 ms hit) + L2 cosine ≥ 0.95 (~0.2 ms hit) + auto-prewarm at boot |
 | Cold compute | ~9 ms on Studio MPS · ~17 ms on electron-server CPU |
-| Training corpus | 9 967 rows across 32 domains (`data/router-clean/`), niche-augmented + greetings-grounded, AI-Act-traceable |
 
 Confusion top-10 and per-domain stats: [`docs/transparency/confusion-top10.md`](docs/transparency/confusion-top10.md).
 
@@ -234,11 +237,11 @@ flowchart LR
         direction LR
         ENC["Encoder<br/>384d"]
         H1["Linear 384→256<br/>+ GELU"]
-        H2["Linear 256→32<br/>+ Sigmoid"]
+        H2["Linear 256→47<br/>+ Sigmoid"]
         ENC --> H1 --> H2
     end
 
-    H2 --> SCORES["32 domain scores<br/>∈ [0, 1]"]
+    H2 --> SCORES["47 domain scores<br/>∈ [0, 1]"]
     SCORES --> THR{"threshold 0.50<br/>top-k = 4"}
     THR --> PICK["domain → worker port<br/>(MODEL_FORCE_MAP)"]
 
@@ -437,7 +440,7 @@ flowchart LR
     LORA --> WORKER1["Apertus + 20 LoRA"]
     LORA --> WORKER2["Devstral + 16 LoRA"]
     LORA --> WORKER3["EuroLLM + 4 LoRA"]
-    TRAIN --> ACTIVE["output/router-v6/<br/>active checkpoint<br/>87.7 % top-1"]
+    TRAIN --> ACTIVE["output/router-prod/<br/>active checkpoint<br/>(stable symlink)"]
 
     classDef src fill:#fef3c7,stroke:#92400e
     classDef out fill:#d1fae5,stroke:#065f46
