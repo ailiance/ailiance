@@ -1,11 +1,11 @@
 # src/router/classifier.py
-"""Jina v3 + MLP domain classifier.
+"""MiniLM-L6 + MLP domain classifier.
 
-Encodes user query with Jina Embeddings v3 (1024d),
-classifies into one of 40 domains via 2-layer MLP.
+Encodes user query with sentence-transformers/all-MiniLM-L6-v2 (384d),
+classifies into one of 47 domains via 2-layer MLP.
 
 Includes a per-process L1 LRU cache keyed on sha256(user_msg) so
-repeated prompts skip the ~50-100ms Jina embedding compute.
+repeated prompts skip the ~2-15ms MiniLM embedding compute.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import threading
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -76,17 +77,17 @@ DEFAULT_WARMUP_PROMPTS: list[str] = [
 
 @dataclass(frozen=True)
 class RouterConfig:
-    embedding_model: str = "jinaai/jina-embeddings-v3"
-    embedding_dim: int = 1024
-    hidden_dim: int = 512
-    num_domains: int = 40
-    threshold: float = 0.12
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embedding_dim: int = 384
+    hidden_dim: int = 256
+    num_domains: int = 47
+    threshold: float = 0.50
     max_active: int = 4
     # Encoder device: "mps" on Apple Silicon, "cuda" on NVIDIA, "cpu" fallback.
     # Auto-resolved at load time when set to "auto".
     encoder_device: str = "auto"
     # Cap input length to keep encoding fast — routing decisions stabilize
-    # well before the full 8192 tokens that Jina v3 supports.
+    # well before the 256-token window that MiniLM-L6 supports.
     max_seq_length: int = 128
     # L2 semantic cache: cosine threshold for embedding-similarity hit.
     # Catches paraphrases ("coucou" / "salut" / "hello"). Set to 0 to disable.
@@ -124,7 +125,7 @@ def _build_mlp(cfg: RouterConfig) -> "tnn.Module":
 
 
 class DomainRouter:
-    """Encodes text with Jina v3, classifies with MLP head.
+    """Encodes text with MiniLM-L6, classifies with MLP head.
 
     The route() method is wrapped by a per-instance LRU cache keyed on
     sha256(query). Cache is per-process; reload the router instance to
@@ -141,14 +142,18 @@ class DomainRouter:
         # so the cosine similarity stays on GPU.
         self._l2_embs = None  # torch.Tensor [N, D] or None
         self._l2_routes: list[tuple[tuple[str, float], ...]] = []
+        # route() runs in a worker thread (asyncio.to_thread) on the
+        # gateway hot path, so concurrent calls can race on the L2 ring.
+        # This lock guards every read and write of _l2_embs/_l2_routes.
+        self._l2_lock = threading.Lock()
         self._load(weights_dir)
         # Bind a fresh lru_cache per-instance so reloading flushes it.
         self._cached_route_by_hash = lru_cache(maxsize=_CACHE_MAXSIZE)(
             self._route_by_hash
         )
-        # Warm caches at construction time. Eliminates the ~250 ms p95 spike
-        # observed on first call to Jina v3 (LoRA-task lazy init). Cheap on
-        # any encoder; ~150-300 ms one-time cost paid at boot, not per-query.
+        # Warm caches at construction time. Eliminates the p95 spike
+        # observed on the first encode call (MiniLM-L6 lazy init). Cheap on
+        # any encoder; one-time cost paid at boot, not per-query.
         try:
             self.prewarm()
         except Exception:
@@ -229,16 +234,15 @@ class DomainRouter:
 
             # L2 semantic cache lookup BEFORE the MLP — saves the MLP forward
             # AND the unnecessary CPU transfer when a near-duplicate hits.
-            if (
-                self._cfg.l2_cache_threshold > 0
-                and self._l2_embs is not None
-                and self._l2_embs.shape[0] > 0
-            ):
-                sim = torch.matmul(self._l2_embs, emb)
-                best = torch.argmax(sim).item()
-                if sim[best].item() >= self._cfg.l2_cache_threshold:
-                    _ROUTER_L2_HITS.inc()
-                    return list(self._l2_routes[best])
+            # Locked: the ring may be mutated concurrently by _l2_push.
+            if self._cfg.l2_cache_threshold > 0:
+                with self._l2_lock:
+                    if self._l2_embs is not None and self._l2_embs.shape[0] > 0:
+                        sim = torch.matmul(self._l2_embs, emb)
+                        best = torch.argmax(sim).item()
+                        if sim[best].item() >= self._cfg.l2_cache_threshold:
+                            _ROUTER_L2_HITS.inc()
+                            return list(self._l2_routes[best])
 
             # MLP is co-located with the encoder; final scores moved to CPU
             # only for argsort/index ops below.
@@ -265,17 +269,18 @@ class DomainRouter:
         import torch
 
         e = emb.unsqueeze(0)
-        if self._l2_embs is None:
-            self._l2_embs = e
-            self._l2_routes = [route]
-            return
-        if self._l2_embs.shape[0] < self._cfg.l2_cache_size:
-            self._l2_embs = torch.cat([self._l2_embs, e], dim=0)
-            self._l2_routes.append(route)
-        else:
-            # Ring buffer: roll and overwrite oldest slot.
-            self._l2_embs = torch.cat([self._l2_embs[1:], e], dim=0)
-            self._l2_routes = self._l2_routes[1:] + [route]
+        with self._l2_lock:
+            if self._l2_embs is None:
+                self._l2_embs = e
+                self._l2_routes = [route]
+                return
+            if self._l2_embs.shape[0] < self._cfg.l2_cache_size:
+                self._l2_embs = torch.cat([self._l2_embs, e], dim=0)
+                self._l2_routes.append(route)
+            else:
+                # Ring buffer: roll and overwrite oldest slot.
+                self._l2_embs = torch.cat([self._l2_embs[1:], e], dim=0)
+                self._l2_routes = self._l2_routes[1:] + [route]
 
     def _route_by_hash(self, _query_hash: str, query: str) -> tuple[tuple[str, float], ...]:
         """Cached helper — keyed on the sha256 hash to bound memory.
@@ -313,7 +318,7 @@ class DomainRouter:
         """Populate the L1+L2 caches by routing each prompt once.
 
         With prompts=None, uses DEFAULT_WARMUP_PROMPTS to kill the cold-call
-        p95 spike (Jina v3 LoRA-task lazy init costs ~250 ms on first call).
+        p95 spike (MiniLM-L6 lazy init costs extra on the first call).
         Pass an explicit list to extend or replace.
 
         Returns the number of prompts processed.

@@ -1328,15 +1328,23 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         if _sys_default and not messages_already_have_system(req.messages):
             req.messages.insert(0, ChatMessage(role="system", content=_sys_default))
 
+        # Extract the last user message once; reused for routing, cascade
+        # complexity scoring, and the orchestrator path below. _last_user_text
+        # walks all messages and reflattens content, so caching it avoids
+        # O(n) reparses on the hot path.
+        user_msg = _last_user_text(req)
+
         forced_port = MODEL_FORCE_MAP.get(req.model)
         active_router = app.state.router
         if forced_port:
             domain = ""
             worker_port = _gate_port(forced_port)
         elif active_router is not None:
-            user_msg = _last_user_text(req)
             t0 = time.perf_counter()
-            selections = active_router.route(user_msg)
+            # Encode runs on CPU (no GPU on the prod host) and holds the GIL
+            # during tokenization — run it in a worker thread so concurrent
+            # stream relays keep progressing.
+            selections = await asyncio.to_thread(active_router.route, user_msg)
             route_latency.observe(time.perf_counter() - t0)
             domain = selections[0][0] if selections else "python"
             # Fallback to Gemma (9304): reachable + fast for unmapped domains.
@@ -1359,8 +1367,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         # ------------------------------------------------------------------
         cascade_alias: str | None = None
         if not forced_port and domain:
-            user_msg_for_cascade = _last_user_text(req)
-            cascade_alias = _cascade_pick(domain, user_msg_for_cascade)
+            cascade_alias = _cascade_pick(domain, user_msg)
             if cascade_alias:
                 cascade_port = MODEL_FORCE_MAP.get(cascade_alias)
                 if cascade_port is not None:
@@ -1474,7 +1481,6 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                     },
                 )
 
-            user_msg = _last_user_text(req)
             include_audit = bool(extra.get("include_audit", False))
             # extra_body.max_retries is documented in the API contract;
             # forward it through so callers can override the per-domain
