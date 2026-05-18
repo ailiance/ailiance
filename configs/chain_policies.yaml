@@ -1,8 +1,10 @@
 # ailiance router v0.3 / v0.4 — domain → chain policy map.
 #
-# Keys MUST match the 32 labels the trained classifier emits — see
-# `output/router-v6/meta.json` "domains" array. Any deviation falls
-# through to `_default` (direct dispatch, no validation). Run
+# Keys MUST be a subset of the labels the trained classifier emits —
+# see the `output/router-prod/meta.json` "domains" array (47 domains
+# today). This file binds a chain policy to 32 of those labels; any
+# classifier label not listed here falls through to `_default`
+# (direct dispatch, no validation). Run
 # `tests/router/test_meta_chain_policies_in_sync.py` to lock that
 # invariant in CI.
 #
@@ -16,16 +18,17 @@
 #   - sequential: planner + solver + aggregator chain (v0.4).
 #
 # Tools reference validator names registered in
-# vendored/iact-bench/configs/domain_validators.yaml. Only 14 of the 32
-# domains have a deterministic sandbox validator today; the rest are
-# `direct` until iact-bench adds them (tracked there as `judge-only`).
+# vendored/iact-bench/configs/domain_validators.yaml. Only 14 of the
+# 32 mapped domains have a deterministic sandbox validator today; the
+# rest are `direct` until iact-bench adds them (tracked there as
+# `judge-only`).
 #
 # 2026-05-12 rewrite: previous version used iact-bench domain_metrics
 # names (`spice-sim`, `emc-dsp-power`, `math-gsm8k`, `math-reasoning`,
 # `llm-orch-seq`, `security-fenrir`, `docker-devops`, `multilingual-eu`)
 # which the classifier never emits, so every routed request fell
-# through `_default` and never engaged any chain. Realigned to the 32
-# router-v6 labels of record while preserving the v0.4 sequential
+# through `_default` and never engaged any chain. Realigned to the
+# router-prod labels of record while preserving the v0.4 sequential
 # policy entries against their classifier-emitted names (`reasoning`,
 # `llm-orch`).
 
@@ -62,7 +65,7 @@ policies:
   # ------------------------------------------------------------------
   # Sequential — planner + solver + aggregator chain (v0.4).
   # PR #75 originally keyed these under `math-reasoning` / `llm-orch-seq`
-  # which the router-v6 classifier never emits; the classifier-emitted
+  # which the router-prod classifier never emits; the classifier-emitted
   # names are `reasoning` (replaced math-reasoning) and `llm-orch`.
   # ------------------------------------------------------------------
   reasoning:        { policy: sequential,
