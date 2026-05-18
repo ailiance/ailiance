@@ -8,7 +8,7 @@ EuroLLM       (:9303) — multilingual EU
 Gemma         (:9304) — quick / fallback / generalist short
 DeepSeek-R1   (:9323) — reasoning (Studio MLX 32B 4-bit local; replaces
                         Qwen3-Next :8002 kxkm-ai tunnel, unreliable)
-Mascarade     (:8004) — domain LoRA specialists via Tower Ollama tunnel
+Mascarade     (:9340) — domain LoRA specialists, MLX bf16 on Studio
 eu-kiki       (:8502) — Gemma-4 E4B + ailiance curriculum LoRA on macm1
 
 Studio MLX worker ports declared but not yet wired into DOMAIN_TO_WORKER
@@ -25,7 +25,10 @@ DEVSTRAL_PORT = 9302  # DEAD — do not route to this port
 EUROLLM_PORT = 9303
 GEMMA_PORT = 9304
 QWEN_PORT = 8002  # Qwen3-Next 80B (kxkm-ai tunnel) — unreliable, see below
-MASCARADE_PORT = 8004
+# Studio MLX :9340 — the 10 qwen3-4b-mascarade experts merged into
+# Qwen3-4B-Instruct-2507 and served as MLX bf16. Replaces the Tower
+# Ollama :8004 Q4_K_M path: same fine-tunes, no quantization loss.
+MASCARADE_PORT = 9340
 # macm1 mlx_lm.server (alias `ailiance-gemma4`): Gemma-4 E4B + eu-kiki
 # ailiance curriculum LoRA. Bench ailiance/ailiance-bench Phase 6
 # (commit 46801af 2026-05-11) confirms this is the P1 generation champion:
@@ -75,14 +78,13 @@ GEMMA_DOMAINS = frozenset({
     "general", "quick", "summarize", "classification", "tldr",
 })
 
-# Mascarade LoRA specialists (Qwen3 4B Q4_K_M base) on Tower Ollama,
-# reachable via autossh tunnel localhost:8004 -> tower:11434.
-# Each domain has a 1:1 mapping to a mascarade-<domain>:latest LoRA.
-# Priority: MASCARADE > APERTUS for these 10 labels (override below).
-# Rationale: ~20x throughput advantage (Tower 4B Q4 ~80 tok/s vs Studio
-# Mistral-Medium 128B ~3 tok/s) AND domain-fine-tuned quality wins on
-# narrow technical tasks. Apertus stays the fallback when Tower is down
-# (server.py retry path) or when confidence is below threshold.
+# Mascarade LoRA specialists: each domain LoRA merged into
+# Qwen3-4B-Instruct-2507 and served as MLX bf16 on the Mac Studio
+# (:9340), reached via autossh tunnel localhost:9340. Replaces the
+# former Tower Ollama Q4_K_M path — same fine-tunes, no quantization.
+# Priority: MASCARADE > APERTUS for these labels (override below).
+# Apertus stays the fallback when the Studio worker is down (server.py
+# retry path) or when classifier confidence is below threshold.
 MASCARADE_DOMAINS = frozenset({
     "kicad", "stm32", "emc", "embedded",
     "platformio", "freecad", "dsp", "iot", "power",
@@ -205,8 +207,8 @@ def get_worker_for_domain_with_confidence(
 ) -> int | None:
     """Resolve domain → worker port with confidence-gated Mascarade routing.
 
-    For domains in MASCARADE_DOMAINS, route to Tower Ollama (:8004) only
-    when classifier confidence is >= mascarade_min_score. Below threshold
+    For domains in MASCARADE_DOMAINS, route to the Studio MLX worker
+    (:9340) only when confidence is >= mascarade_min_score. Below threshold
     we fall back to APERTUS (Mistral-Medium 128B on Studio), which is more
     forgiving on ambiguous prompts at the cost of ~20x lower throughput.
 
