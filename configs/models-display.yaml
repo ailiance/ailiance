@@ -244,6 +244,43 @@ models:
       docs/datasheets (EU-multilingual ready).
     headline: "567M · F16 · Tower Ollama · multilingual embed"
 
+  ailiance-mixtral-8x22b:
+    display_name: "Mixtral 8x22B Instruct"
+    base_model: "mistralai/Mixtral-8x22B-Instruct-v0.1 (MLX 4-bit)"
+    domain: "general / multilingual / reasoning"
+    description: >-
+      Mixtral 8x22B MoE Instruct (39B active params) — high-quality
+      multilingual reasoning, EU-friendly Apache 2.0 license.
+      Studio MLX 4-bit via mlx_lm.server :9329.
+    headline: "8x22B MoE · 4-bit MLX · Studio · ~80GB VRAM"
+
+  ailiance-gemma4-mascarade:
+    display_name: "Gemma 4 E4B + mascarade LoRA"
+    base_model: "Google Gemma 4 E4B Instruction-Tuned (MLX 4-bit)"
+    domain: "mascarade / fr-electronics"
+    description: >-
+      Gemma 4 E4B + mascarade LoRA — French electronics tutor finetune.
+      Studio multi-LoRA server :9335 with hot-swap.
+    headline: "4B · 4-bit MLX · Studio multi-LoRA · mascarade"
+
+  ailiance-gemma4-aggro:
+    display_name: "Gemma 4 E4B + aggro LoRA"
+    base_model: "Google Gemma 4 E4B Instruction-Tuned (MLX 4-bit)"
+    domain: "experimental / aggro-test"
+    description: >-
+      Gemma 4 E4B + aggro-test LoRA — experimental aggressive-tone
+      variant. Studio multi-LoRA server :9335.
+    headline: "4B · 4-bit MLX · Studio multi-LoRA · aggro-test"
+
+  ailiance-gemma4-kicad9plus:
+    display_name: "Gemma 4 E4B + kicad9plus LoRA"
+    base_model: "Google Gemma 4 E4B Instruction-Tuned (MLX 4-bit)"
+    domain: "kicad / pcb / hardware"
+    description: >-
+      Gemma 4 E4B + kicad9plus LoRA — KiCad 9+ specialist finetune
+      (schematic, footprints, scripting). Studio multi-LoRA server :9335.
+    headline: "4B · 4-bit MLX · Studio multi-LoRA · kicad9plus"
+
   # ------------------------------------------------------------------
   # Studio M3 Ultra catalog (post-reboot 2026-05-12)
   # ------------------------------------------------------------------

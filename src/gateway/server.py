@@ -422,10 +422,15 @@ MODEL_FORCE_MAP = {
     "ailiance-pixtral": 9325,  # Pixtral-12B 4-bit (vision-language)
     "ailiance-mistral-small": 9326,  # Mistral-Small-3.1-24B-Instruct 4-bit
     "ailiance-coder-pro": 9327,  # Qwen3-Coder-30B-A3B-Instruct 4-bit
-    # Mixtral-8x22B-Instruct-v0.1 MLX 4-bit on Studio (~80GB). Worker
-    # not yet running 2026-05-12: DL terminé, à relancer manuellement
-    # une fois Qwen3-235B settled.
+    # Mixtral-8x22B-Instruct MLX 4-bit on Studio (mlx_lm.server :9329).
+    # `ailiance-mixtral` kept for prod main-line consumers; `-8x22b` is the
+    # explicit name introduced in feat/mixtral-and-gemma4-multilora.
     "ailiance-mixtral": 9329,
+    "ailiance-mixtral-8x22b": 9329,
+    # Gemma-4-E4B multi-LoRA custom server on Studio :9335 (mascarade + aggro + kicad9plus variants).
+    "ailiance-gemma4-mascarade": 9335,
+    "ailiance-gemma4-aggro": 9335,
+    "ailiance-gemma4-kicad9plus": 9335,
 }
 
 # Per-port forward overrides for non-ailiance backends. The gateway rewrites
@@ -510,10 +515,20 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     "ailiance-coder-pro": {
         "model": "/Users/clems/KIKI-Mac_tunner/models/Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
     },
-    # Mixtral-8x22B 4-bit MLX on Studio :9329. Worker not yet running.
+    # Mixtral-8x22B-Instruct MLX 4-bit on Studio :9329 — mlx_lm.server
+    # expects on-disk path. Both alias names share the same rewrite.
     "ailiance-mixtral": {
         "model": "/Users/clems/KIKI-Mac_tunner/models/Mixtral-8x22B-Instruct-MLX-4bit",
     },
+    "ailiance-mixtral-8x22b": {
+        "model": "/Users/clems/KIKI-Mac_tunner/models/Mixtral-8x22B-Instruct-MLX-4bit",
+    },
+    # Studio multi-LoRA Gemma-4-E4B custom server :9335. Each alias rewrites
+    # `model` body field to the adapter_name the custom server expects.
+    # ailiance-gemma4 stays on macM1:8502 + studio:9334 HA mirror (single-LoRA eukiki).
+    "ailiance-gemma4-mascarade": {"model": "gemma4-mascarade"},
+    "ailiance-gemma4-aggro": {"model": "gemma4-aggro"},
+    "ailiance-gemma4-kicad9plus": {"model": "gemma4-kicad9plus"},
 }
 
 
@@ -1112,8 +1127,13 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 {"id": "ailiance-pixtral", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-mistral-small", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-coder-pro", "object": "model", "owned_by": "ailiance"},
-                # Studio Mixtral-8x22B 4-bit MLX :9329 (worker offline 2026-05-12)
+                # Studio Mixtral-8x22B 4-bit MLX :9329 — both aliases exposed.
                 {"id": "ailiance-mixtral", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-mixtral-8x22b", "object": "model", "owned_by": "ailiance"},
+                # Gemma-4-E4B multi-LoRA on Studio :9335
+                {"id": "ailiance-gemma4-mascarade", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-gemma4-aggro", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-gemma4-kicad9plus", "object": "model", "owned_by": "ailiance"},
             ],
         }
 
@@ -1160,6 +1180,11 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             "ailiance-components-review",
             "ailiance-coder",
             "ailiance-embed",
+            "ailiance-mixtral",
+            "ailiance-mixtral-8x22b",
+            "ailiance-gemma4-mascarade",
+            "ailiance-gemma4-aggro",
+            "ailiance-gemma4-kicad9plus",
         ]
         return {
             "object": "list",
