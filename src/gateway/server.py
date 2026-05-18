@@ -82,6 +82,23 @@ _DEFAULT_WORKER_URLS = {
     #   autossh -M 0 -N -L 0.0.0.0:9340:localhost:9340 \
     #       clems@100.116.92.12
     9340: "http://localhost:9340",
+    # Studio M3 Ultra (512 GB) — MLX backends. All bind 127.0.0.1 on the
+    # Studio host and are reached from electron-server via autossh tunnels
+    # (one tunnel per port, see systemd `*-tunnel.service`). Defaults stay
+    # localhost so a single-host setup just works; multi-host deployments
+    # override the full map via AILIANCE_WORKERS_JSON to point each port
+    # at the studio Tailscale address.
+    9316: "http://localhost:9316",  # Devstral-Small-2-24B base
+    9322: "http://localhost:9322",  # Apertus-70B multi-LoRA custom server
+    9323: "http://localhost:9323",  # DeepSeek-R1-Distill-Qwen-32B 4-bit
+    9324: "http://localhost:9324",  # Llama-3.3-70B-Instruct 4-bit
+    9325: "http://localhost:9325",  # Pixtral-12B 4-bit (vision)
+    9326: "http://localhost:9326",  # Mistral-Small-3.1-24B-Instruct 4-bit
+    9327: "http://localhost:9327",  # Qwen3-Coder-30B-A3B-Instruct 4-bit
+    9328: "http://localhost:9328",  # Qwen3-235B-A22B-Instruct MoE 4-bit
+    9329: "http://localhost:9329",  # Mixtral-8x22B-Instruct 4-bit
+    9330: "http://localhost:9330",  # Devstral multi-LoRA hot-swap server
+    9335: "http://localhost:9335",  # Gemma-4-E4B multi-LoRA custom server
 }
 
 
@@ -468,6 +485,36 @@ def _compute_public_aliases() -> list[str]:
 
 
 ALL_PUBLIC_ALIASES: list[str] = _compute_public_aliases()
+
+
+def _warn_force_map_worker_drift() -> None:
+    """Surface MODEL_FORCE_MAP ports missing from WORKER_URLS at startup.
+
+    Each such port routes silently through ``_gate_port`` to the Gemma
+    health fallback, hiding misconfiguration behind a (working but wrong)
+    response. The 2026-05-11 incident logged in ``_load_worker_urls``
+    already covers the AILIANCE_WORKERS_JSON env var case; this one
+    catches the *source-level* drift: a new alias landing in
+    MODEL_FORCE_MAP without its port being added to ``_DEFAULT_WORKER_URLS``.
+    """
+    force_ports = {p for p in MODEL_FORCE_MAP.values() if p is not None}
+    missing = force_ports - set(WORKER_URLS)
+    if not missing:
+        return
+    affected = sorted(
+        a for a, p in MODEL_FORCE_MAP.items() if p in missing
+    )
+    log.warning(
+        "MODEL_FORCE_MAP references %d port(s) absent from WORKER_URLS: "
+        "%s — aliases %s will silently fall back to Gemma 9304. Add the "
+        "ports to _DEFAULT_WORKER_URLS or to AILIANCE_WORKERS_JSON.",
+        len(missing),
+        sorted(missing),
+        affected,
+    )
+
+
+_warn_force_map_worker_drift()
 
 
 # Per-port forward overrides for non-ailiance backends. The gateway rewrites
