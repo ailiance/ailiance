@@ -7,16 +7,54 @@ from typing import Any
 from pydantic import BaseModel, Field, field_validator
 
 
-def _flatten_content(value: Any) -> str | None:
-    """Accept OpenAI native content blocks (list[{type, text}]) and flatten to text.
+_MULTIMODAL_BLOCK_TYPES: frozenset[str] = frozenset(
+    {
+        # vision / audio
+        "image_url",
+        "image",
+        "input_image",
+        "audio_url",
+        "audio",
+        "input_audio",
+        # documents — the gateway extracts these inline at /v1/chat/completions
+        # (input_file → text block carrying the markdown).
+        "input_file",
+        "file",
+    }
+)
 
-    OpenAI clients (Cline/Dirac, Anthropic-via-OpenAI, etc.) often send messages with
-    `content` as a list of typed blocks instead of a plain string. We coerce to string
-    so the worker tokenizer's chat template can apply uniformly.
+
+def _content_has_multimodal_block(value: Any) -> bool:
+    """True if a content list contains a non-text part (image/audio/etc.)."""
+    if not isinstance(value, list):
+        return False
+    return any(
+        isinstance(b, dict) and b.get("type") in _MULTIMODAL_BLOCK_TYPES
+        for b in value
+    )
+
+
+def _flatten_content(value: Any) -> Any:
+    """Coerce OpenAI native content blocks to a worker-friendly value.
+
+    Two cases:
+
+    * Text-only multipart content (``[{"type":"text","text":"..."}, ...]``)
+      from OpenAI clients (Cline/Dirac, Anthropic-via-OpenAI, …) is
+      flattened to a plain string so the tokenizer's chat template
+      applies uniformly across text-only workers.
+    * Multimodal content (any block with type in
+      ``_MULTIMODAL_BLOCK_TYPES``) is preserved as a list so vision
+      workers (Pixtral) receive the raw image parts. The gateway is
+      responsible for routing to a vision-capable worker — text-only
+      workers will receive the list unchanged and may error; that is
+      the correct behaviour (no silent data loss).
     """
     if value is None or isinstance(value, str):
         return value
     if isinstance(value, list):
+        if _content_has_multimodal_block(value):
+            return value
         parts: list[str] = []
         for block in value:
             if isinstance(block, str):
@@ -31,7 +69,9 @@ def _flatten_content(value: Any) -> str | None:
 
 class ChatMessage(BaseModel, extra="ignore"):
     role: str
-    content: str | None = None
+    # Either a flat string (text-only) or a list of OpenAI content
+    # blocks (multimodal — preserved for vision workers).
+    content: str | list[dict[str, Any]] | None = None
     # Allow assistant tool_calls in conversation history (Dirac sends these
     # back when continuing a tool-use loop). Free-form list of dicts so we
     # don't enforce OpenAI's exact ToolCall shape on input.
@@ -41,7 +81,7 @@ class ChatMessage(BaseModel, extra="ignore"):
 
     @field_validator("content", mode="before")
     @classmethod
-    def _coerce_content(cls, value: Any) -> str | None:
+    def _coerce_content(cls, value: Any) -> Any:
         return _flatten_content(value)
 
 

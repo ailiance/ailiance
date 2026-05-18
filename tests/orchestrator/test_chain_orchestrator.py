@@ -636,3 +636,173 @@ async def test_mixture_audit_records_all_workers_and_judge(tmp_path: Path) -> No
     judge_steps = [s for s in result.steps if s.kind == "reflector"]
     assert len(llm_steps) == 3
     assert len(judge_steps) == 1
+
+
+# ---------------- SEQUENTIAL v0.4 tests -----------------------------------
+
+
+def _make_seq_llm(
+    per_model_outputs: dict[str, list[str]],
+) -> tuple[Callable[..., Awaitable[str]], list[tuple[str, str]]]:
+    """LLM stub that returns sequential outputs per model.
+
+    For each model, returns ``per_model_outputs[model][i]`` on the i-th
+    call to that model. Records (model, last_user_msg) per call.
+    """
+    log_: list[tuple[str, str]] = []
+    idx: dict[str, int] = {}
+
+    async def call(messages: list[dict[str, Any]], model: str) -> str:
+        last_user = next(
+            (m["content"] for m in reversed(messages) if m["role"] == "user"),
+            "",
+        )
+        log_.append((model, last_user))
+        if model not in per_model_outputs:
+            raise KeyError(f"no scripted output for {model}")
+        i = idx.get(model, 0)
+        outputs = per_model_outputs[model]
+        idx[model] = i + 1
+        if i >= len(outputs):
+            return outputs[-1]
+        return outputs[i]
+
+    return call, log_
+
+
+@pytest.mark.asyncio
+async def test_sequential_planner_solver_aggregator(tmp_path: Path) -> None:
+    """SEQUENTIAL runs planner → N solver hops → aggregator."""
+    llm, log_ = _make_seq_llm({
+        "planner-x": ['["step one", "step two", "step three"]'],
+        "solver-x": ["r1", "r2", "r3"],
+        "agg-x": ["FINAL ANSWER"],
+    })
+    orch = ChainOrchestrator(
+        policies_path=POLICIES_PATH,
+        reflector_path=REFLECTOR_PATH,
+        validator=StubValidator(),
+        llm_call=llm,
+        audit_dir=tmp_path,
+    )
+    orch._policies["test-seq"] = {
+        "policy": "sequential",
+        "planner": "planner-x",
+        "solver": "solver-x",
+        "aggregator": "agg-x",
+        "max_steps": 5,
+    }
+    result = await orch.execute("solve X", domain="test-seq", model="ailiance")
+
+    assert result.policy == ChainPolicy.SEQUENTIAL
+    assert result.status == "ok"
+    assert result.final_output == "FINAL ANSWER"
+    # 1 planner + 3 solver + 1 aggregator = 5 steps
+    assert len(result.steps) == 5
+    models_called = [m for m, _ in log_]
+    assert models_called == [
+        "planner-x", "solver-x", "solver-x", "solver-x", "agg-x",
+    ]
+    assert result.metadata["n_steps_planned"] == 3
+    assert result.metadata["n_steps_done"] == 3
+    assert result.metadata["sub_tasks"] == ["step one", "step two", "step three"]
+
+
+@pytest.mark.asyncio
+async def test_sequential_respects_max_steps(tmp_path: Path) -> None:
+    """Planner returning > max_steps tasks is truncated."""
+    llm, log_ = _make_seq_llm({
+        "p": ['["a","b","c","d","e","f","g"]'],
+        "s": ["x"] * 10,
+        "a": ["done"],
+    })
+    orch = ChainOrchestrator(
+        policies_path=POLICIES_PATH,
+        reflector_path=REFLECTOR_PATH,
+        validator=StubValidator(),
+        llm_call=llm,
+        audit_dir=tmp_path,
+    )
+    orch._policies["test-seq-cap"] = {
+        "policy": "sequential",
+        "planner": "p",
+        "solver": "s",
+        "aggregator": "a",
+        "max_steps": 3,
+    }
+    result = await orch.execute("X", domain="test-seq-cap", model="ailiance")
+
+    assert result.metadata["n_steps_planned"] == 3
+    # 1 planner + 3 solver + 1 aggregator
+    assert len(result.steps) == 5
+
+
+@pytest.mark.asyncio
+async def test_sequential_planner_unparseable_falls_back_to_lines(tmp_path: Path) -> None:
+    """Planner output without JSON list is split on newlines."""
+    llm, _ = _make_seq_llm({
+        "p": ["1. first thing\n2. second thing\n3. third"],
+        "s": ["r"] * 10,
+        "a": ["agg"],
+    })
+    orch = ChainOrchestrator(
+        policies_path=POLICIES_PATH,
+        reflector_path=REFLECTOR_PATH,
+        validator=StubValidator(),
+        llm_call=llm,
+        audit_dir=tmp_path,
+    )
+    orch._policies["t-noparse"] = {
+        "policy": "sequential",
+        "planner": "p",
+        "solver": "s",
+        "aggregator": "a",
+        "max_steps": 5,
+    }
+    result = await orch.execute("Q", domain="t-noparse", model="x")
+    assert result.metadata["n_steps_planned"] == 3
+    assert result.final_output == "agg"
+
+
+@pytest.mark.asyncio
+async def test_sequential_missing_planner_falls_back_to_direct(tmp_path: Path) -> None:
+    """SEQUENTIAL with no planner key degrades to DIRECT."""
+    llm, _ = _make_seq_llm({"ailiance": ["direct out"]})
+    orch = ChainOrchestrator(
+        policies_path=POLICIES_PATH,
+        reflector_path=REFLECTOR_PATH,
+        validator=StubValidator(),
+        llm_call=llm,
+        audit_dir=tmp_path,
+    )
+    orch._policies["t-broken"] = {"policy": "sequential", "solver": "s"}
+    result = await orch.execute("Q", domain="t-broken", model="ailiance")
+    assert result.policy == ChainPolicy.DIRECT
+    assert result.final_output == "direct out"
+
+
+@pytest.mark.asyncio
+async def test_sequential_aggregator_defaults_to_solver(tmp_path: Path) -> None:
+    """When aggregator key absent, solver is reused for synthesis."""
+    llm, log_ = _make_seq_llm({
+        "p": ['["one","two"]'],
+        "s": ["s1", "s2", "synthesis"],
+    })
+    orch = ChainOrchestrator(
+        policies_path=POLICIES_PATH,
+        reflector_path=REFLECTOR_PATH,
+        validator=StubValidator(),
+        llm_call=llm,
+        audit_dir=tmp_path,
+    )
+    orch._policies["t-noagg"] = {
+        "policy": "sequential",
+        "planner": "p",
+        "solver": "s",
+        "max_steps": 5,
+    }
+    result = await orch.execute("Q", domain="t-noagg", model="ailiance")
+    assert result.metadata["aggregator"] == "s"
+    assert result.final_output == "synthesis"
+    # Planner + 2 solver + 1 aggregator (also solver)
+    assert len([m for m, _ in log_ if m == "s"]) == 3

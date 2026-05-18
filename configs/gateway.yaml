@@ -1,32 +1,158 @@
 # configs/gateway.yaml
+#
+# Only `router:` is consumed at runtime (server.py:473). The `workers:`
+# block below is descriptive documentation — the live worker URLs come
+# from `_DEFAULT_WORKER_URLS` in src/gateway/server.py, optionally
+# overridden by the `AILIANCE_WORKERS_JSON` env var per host.
+
 router:
-  weights_dir: output/router-v6
+  # `router-prod` is a stable symlink maintained in production; it points
+  # at the currently-deployed checkpoint (today: router-v6, which is
+  # byte-identical to router-v7-multimodel). The active model is
+  # all-MiniLM-L6-v2 (384d embeddings, 256-wide MLP head, 47 domains).
+  # Repoint the symlink — not this path — on retrain.
+  weights_dir: output/router-prod
   embedding_model: sentence-transformers/all-MiniLM-L6-v2
   embedding_dim: 384
   hidden_dim: 256
-  num_domains: 32
+  num_domains: 47
   threshold: 0.50
   max_active: 4
 
+# ----------------------------------------------------------------------
+# Workers — current parc (2026-05-12, post-Studio-reboot)
+# ----------------------------------------------------------------------
+# Production gateway listens on electron-server :9300. Each entry below
+# is the localhost binding the gateway expects, which is either a
+# direct service on electron-server (none today) or an autossh tunnel
+# terminating on electron-server (most cases). See systemd units
+# `*-tunnel.service` for the tunnel definitions.
 workers:
-  mistral-medium:
+
+  # --- Studio M3 Ultra (512 GB) — MLX backends, no native FC ---------
+  mistral-medium:           # ailiance-mistral-medium / ailiance-mistral / ailiance-apertus
     url: http://localhost:9301
     port: 9301
-  eurollm:
+    backend: mlx_lm.server
+    model: Mistral-Medium-3.5-128B-MLX-Q8
+    host: studio
+    native_fc: false
+
+  eurollm:                  # ailiance-eurollm (4 EUROLLM_DOMAINS)
     url: http://localhost:9303
     port: 9303
-  gemma:
-    url: http://localhost:9304
-    port: 9304
-  qwen-next-80b:
-    url: http://localhost:8002
-    port: 8002
-  granite-30b:
-    url: http://localhost:8003
-    port: 8003
-  macm1-mlx:
+    backend: mlx_lm.server
+    model: EuroLLM-22B-Instruct-2512
+    host: studio
+    native_fc: false
+
+  qwen36-bf16:              # ailiance-qwen36 (deeper specialist vs ailiance-qwen)
+    url: http://localhost:9305
+    port: 9305
+    backend: mlx_lm.server
+    model: Qwen3.6-35B-A3B-MLX-BF16
+    host: studio
+    native_fc: false
+
+  deepseek-r1-32b:          # `reasoning` domain (replaces qwen-next-80b tunnel)
+    url: http://localhost:9323
+    port: 9323
+    backend: mlx_lm.server
+    model: DeepSeek-R1-Distill-Qwen-32B-MLX-4bit
+    host: studio
+    native_fc: false
+
+  llama-70b:                # ailiance-llama
+    url: http://localhost:9324
+    port: 9324
+    backend: mlx_lm.server
+    model: Llama-3.3-70B-Instruct-MLX-4bit
+    host: studio
+    native_fc: false
+
+  pixtral-12b:              # multimodal — not yet wired into router
+    url: http://localhost:9325
+    port: 9325
+    backend: mlx_lm.server
+    model: Pixtral-12B-MLX-4bit
+    host: studio
+    native_fc: false
+
+  mistral-small-24b:        # ailiance-mistral-small
+    url: http://localhost:9326
+    port: 9326
+    backend: mlx_lm.server
+    model: Mistral-Small-3.1-24B-Instruct-MLX-4bit
+    host: studio
+    native_fc: false
+
+  qwen-coder-pro:           # ailiance-coder-pro (Studio code-specialist)
+    url: http://localhost:9327
+    port: 9327
+    backend: mlx_lm.server
+    model: Qwen3-Coder-30B-A3B-Instruct-MLX-4bit
+    host: studio
+    native_fc: false
+
+  devstral-multi-lora:      # ailiance-{python,cpp,rust-emb,html,ml-training}
+    url: http://localhost:9330
+    port: 9330
+    backend: mlx_lm.server (Devstral base + 5 LoRA hot-swap)
+    model: Devstral-Small-2-24B-MLX-4bit
+    host: studio
+    native_fc: false
+
+  # --- macm1 (32 GB) — multi-model MLX ------------------------------
+  macm1-mlx:                # ailiance-gemma4 / ailiance-gemma2 / ailiance-ministral* / kicad-dsl + kicad-pcb (eu-kiki)
     url: http://localhost:8502
     port: 8502
-  tower-ollama:
+    backend: mlx_lm.server
+    models:
+      - gemma-4-E4B-it-MLX-4bit (alias ailiance-gemma4)
+      - gemma-4-E2B-it-MLX-4bit
+      - gemma-3-4b-it-4bit (alias ailiance-gemma2)
+      - Ministral-3-14B-Instruct-2512-4bit (alias ailiance-ministral)
+      - Ministral-3-14B-Reasoning-2512-4bit (alias ailiance-ministral-reasoning)
+      - granite-4.1-30b-4bit (alias ailiance-granite, smaller variant)
+      - Qwen3.5-9B-MLX-4bit (alias ailiance-qwen)
+      - Qwen2.5-Coder-3B-Instruct-4bit
+      - Llama-3.2-3B-Instruct-mlx-4Bit
+    host: macm1
+    native_fc: false
+
+  # --- Tower (Quadro P2000 5 GB + 31 GB RAM) ------------------------
+  gemma:                    # ailiance-gemma — quick / fallback (GEMMA_DOMAINS)
+    url: http://localhost:9304
+    port: 9304
+    backend: llama.cpp
+    model: Gemma-3-4B-IT-Q4
+    host: tower
+    native_fc: false
+
+  tower-ollama:             # 9 mascarade-* LoRA specialists (MASCARADE_DOMAINS)
     url: http://localhost:8004
     port: 8004
+    backend: Ollama (autossh tunnel electron-server:8004 -> tower:11434)
+    models:
+      - mascarade-kicad / -stm32 / -emc / -embedded / -platformio
+      - mascarade-freecad / -dsp / -iot / -power
+      - bge-m3 (embedding)
+    host: tower
+    native_fc: false
+
+  # --- kxkm-ai (RTX 4090 24 GB) — the ONLY native-FC backend --------
+  qwen-next-80b:            # ailiance-qwen / fc-force-route target
+    url: http://localhost:8002
+    port: 8002
+    backend: vLLM (autossh tunnel electron-server:8002 -> kxkm-ai:18888)
+    model: Qwen3-Next-80B-A3B-MoE Q4_K_M
+    host: kxkm-ai
+    native_fc: true         # ★ required for tools[] requests, see FC_CAPABLE_PORTS in server.py
+
+  granite-30b:              # ailiance-granite
+    url: http://localhost:8003
+    port: 8003
+    backend: llama.cpp (autossh tunnel electron-server:8003 -> kxkm-ai:18889)
+    model: Granite-4.1-30B-Q4_K_M
+    host: kxkm-ai
+    native_fc: false

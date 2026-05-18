@@ -3,22 +3,56 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
+import re
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 
+import base64
+
 import httpx
-from fastapi import FastAPI, HTTPException, Response
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, StreamingResponse
 from prometheus_client import CollectorRegistry, Counter, Histogram, generate_latest
 
+from src.gateway.alias_inventory import (
+    inventory_or_unknown,
+    resolve_effective_alias,
+    to_dict as inventory_to_dict,
+    to_headers as inventory_to_headers,
+)
+from src.gateway.file_extract import (
+    ExtractError,
+    ExtractResult,
+    MAX_BYTES as FILE_MAX_BYTES,
+    extract as extract_file,
+)
+from src.gateway.tenant_isolation import (
+    derive_tenant_id,
+    inject_tenant_prefix,
+    isolation_enabled,
+)
+from src.gateway.inference_defaults import (
+    apply_inference_defaults,
+    default_system_prompt,
+    messages_already_have_system,
+)
+from src.gateway.inline_files import (
+    image_store,
+    rewrite_image_urls,
+    rewrite_input_files,
+)
+from src.gateway.observability import track_chat
 from src.orchestrator.chain_orchestrator import ChainOrchestrator
 from src.orchestrator.chain_policy import ChainPolicy
 from src.orchestrator.validators import StubValidator, make_validator
 from src.router.domain_map import ALL_DOMAINS, get_worker_for_domain
-from src.worker.schemas import ChatCompletionRequest
+from src.worker.schemas import ChatCompletionRequest, ChatMessage
 
 log = logging.getLogger(__name__)
 
@@ -41,6 +75,13 @@ _DEFAULT_WORKER_URLS = {
     #   autossh -M 0 -N -L 0.0.0.0:8004:localhost:11434 \
     #       clems@100.78.6.122
     8004: "http://localhost:8004",
+    # Studio MLX :9340 — 10 qwen3-4b-mascarade hardware experts, each LoRA
+    # merged into Qwen3-4B-Instruct-2507 and served as MLX bf16 (no Q4
+    # quantization loss vs the Tower Ollama path). via autossh tunnel
+    # electron-server:9340 → studio:9340. Set up the tunnel with:
+    #   autossh -M 0 -N -L 0.0.0.0:9340:localhost:9340 \
+    #       clems@100.116.92.12
+    9340: "http://localhost:9340",
 }
 
 
@@ -89,13 +130,243 @@ def _load_worker_urls() -> dict[int, str]:
 
 WORKER_URLS = _load_worker_urls()
 
+
+# Per-worker FIFO concurrency control — serialize requests to the same MLX
+# worker to bound KV cache memory budget per worker. Studio M3 Ultra workers
+# (Mistral-Medium 128B, Mixtral 8x22B, Qwen3-235B MoE, etc.) carry KV cache
+# costs of tens of GB at 32k context; concurrent requests to a single worker
+# can OOM the box. Toggle via GATEWAY_FIFO_ENABLED=false to disable.
+_worker_locks: dict[str, asyncio.Lock] = {}
+_worker_locks_meta_lock: asyncio.Lock | None = None
+
+
+def _fifo_enabled() -> bool:
+    return os.environ.get("GATEWAY_FIFO_ENABLED", "true").lower() not in (
+        "0", "false", "no", "off",
+    )
+
+
+async def _acquire_worker_lock(worker_url: str) -> asyncio.Lock:
+    """Return (creating if needed) the per-worker-URL asyncio.Lock.
+
+    The meta-lock guards concurrent first-time creation. Subsequent lookups
+    are dict reads (atomic in CPython) so the meta-lock is only contended on
+    cold paths.
+    """
+    global _worker_locks_meta_lock
+    if _worker_locks_meta_lock is None:
+        _worker_locks_meta_lock = asyncio.Lock()
+    async with _worker_locks_meta_lock:
+        lock = _worker_locks.get(worker_url)
+        if lock is None:
+            lock = asyncio.Lock()
+            _worker_locks[worker_url] = lock
+        return lock
+
+
+@asynccontextmanager
+async def _worker_fifo(worker_url: str):
+    """Async context manager that serializes requests per worker URL.
+
+    No-op when GATEWAY_FIFO_ENABLED is false. Held for the full duration
+    of the forwarded request, including streaming relay, so a streaming
+    client cannot starve a follow-up request on the same worker.
+    """
+    if not _fifo_enabled():
+        yield
+        return
+    lock = await _acquire_worker_lock(worker_url)
+    async with lock:
+        yield
+
+
+# ---------------------------------------------------------------------------
+# Cascade complexity-based selection (v0.4)
+# ---------------------------------------------------------------------------
+#
+# Heuristic: when the auto-router classifies a prompt, optionally rewrite the
+# target alias based on prompt complexity. Short / non-reasoning prompts get
+# a fast small model; long / reasoning-heavy prompts get a flagship cascade.
+# Disabled by default (env AILIANCE_CASCADE_ENABLED=1 to opt in) so legacy
+# behaviour is preserved for production until the bench validates the
+# heuristic on real traffic. Forced aliases (ailiance-mistral, …) are NEVER
+# cascaded — they remain caller-chosen.
+
+_REASONING_MARKERS = re.compile(
+    r"\b(why|step by step|explain|prove|reason|analyze|compare|derive|"
+    r"pourquoi|raison|étape|expliquer|démontrer|analyser|comparer)\b",
+    re.IGNORECASE,
+)
+_CODE_MARKERS = re.compile(
+    r"```|def\s+\w|class\s+\w|function\s+\w|import\s+\w",
+)
+
+
+def _complexity_estimate(prompt: str) -> str:
+    """Return one of ``simple`` / ``medium`` / ``complex`` for a prompt.
+
+    Pure heuristic — word count + lexical markers. Keep cheap so it runs
+    on every request without measurable latency.
+    """
+    if not prompt:
+        return "simple"
+    n_words = len(prompt.split())
+    has_reasoning = bool(_REASONING_MARKERS.search(prompt))
+    has_code = bool(_CODE_MARKERS.search(prompt))
+    if n_words < 15 and not has_reasoning and not has_code:
+        return "simple"
+    if n_words > 100 or has_reasoning:
+        return "complex"
+    return "medium"
+
+
+# Cascade table: (complexity, domain) → alias override.
+# A ``None`` (or absent key) means "no override". Domain ``_default`` applies
+# when the classifier domain is not explicitly listed.
+_CASCADE_OVERRIDES: dict[str, dict[str, str]] = {
+    "simple": {
+        # Tiny prompts → cheapest reachable worker: Tower Gemma 3 4B.
+        "_default": "ailiance-gemma",
+        "chat-fr": "ailiance-gemma",
+        "math-gsm8k": "ailiance-gemma",
+    },
+    "complex": {
+        # Reasoning-heavy → flagship cascade.
+        "_default": "ailiance-mistral-medium",
+        "chat-fr": "ailiance-mistral-medium",
+        "math-reasoning": "ailiance-reasoning-r1",
+        "llm-orch": "ailiance-mistral-medium",
+    },
+    # ``medium`` falls through to the router's pick.
+}
+
+
+def _cascade_pick(domain: str, prompt: str) -> str | None:
+    """Return an alias override based on complexity, or None to keep default."""
+    if os.environ.get("AILIANCE_CASCADE_ENABLED", "0") != "1":
+        return None
+    bucket = _complexity_estimate(prompt)
+    table = _CASCADE_OVERRIDES.get(bucket) or {}
+    return table.get(domain) or table.get("_default")
+
+
+# Workers whose backend supports OpenAI native function calling (tool_calls
+# JSON array in responses). Today only the kxkm-ai vLLM Qwen 32B native-FC
+# worker on port 8002 qualifies; all MLX backends (Mistral-Medium-128B :9301,
+# EuroLLM :9303, Gemma macm1 :8502, Studio MLX :9305/9323-9327) and llama.cpp
+# servers (Gemma :9304, Granite :8003, Qwen-80B via :8002 tunnel when running
+# llama-server rather than vLLM) either lack FC support entirely or emit
+# hallucinated XML shapes that downstream parsers cannot dispatch. When a
+# request carries tools[], FC_FORCE_ROUTE_PORT below pins the dispatch to
+# this port regardless of which alias the caller picked. This override
+# composes with the cascade above: if cascade picks a non-FC alias and
+# tools[] is present, the force-route still wins.
+FC_CAPABLE_PORTS: frozenset[int] = frozenset({8002})
+FC_FORCE_ROUTE_PORT: int = 8002
+
+# Effective context window each worker actually accepts. Source of truth: the
+# launch flags of the worker process (llama.cpp --ctx-size, mlx_lm.server
+# --max-tokens, Ollama Modelfile parameter num_ctx). Upstream Dirac defaults
+# OpenAI-compatible clients to a 128k contextWindow when the model is not in
+# its known-model table, which under-counts every backend in the parc and
+# triggers the auto-condense / truncate path well before the real ceiling.
+# CLI clients read this header off the response and override info.contextWindow
+# accordingly. Numbers verified 2026-05-12 from live ps + worker launch args.
+WORKER_CONTEXT_WINDOWS: dict[int, int] = {
+    8002: 196608,   # llama-server Qwen3-Next-80B-A3B Q4_K_M (--ctx-size 196608)
+    8003: 131072,   # llama-server Granite-4.1-30B Q4_K_M (n_ctx_train 131072)
+    8004: 32768,    # Tower Ollama: Qwen3 4B Q4 mascarade fine-tunes (32k default)
+    9340: 32768,    # Studio MLX bf16 qwen3-4b-mascarade experts (conservative cap)
+    8502: 32768,    # macm1 mlx_lm.server multi-model (Ministral/Gemma/Qwen 32k)
+    9301: 256000,   # Studio Mistral-Medium-3.5-128B-MLX-Q8
+    9303: 131072,   # Studio EuroLLM-22B-Instruct-2512
+    9304: 131072,   # Tower llama.cpp Gemma 3 4B IT
+    9305: 131072,   # Studio Qwen3.6-35B-A3B-MLX-BF16
+    9323: 131072,   # Studio DeepSeek-R1-Distill-Qwen-32B-MLX-4bit
+    9324: 131072,   # Studio Llama-3.3-70B-Instruct-MLX-4bit
+    9325: 131072,   # Studio Pixtral-12B-MLX-4bit (multimodal)
+    9326: 32768,    # Studio Mistral-Small-3.1-24B-Instruct-MLX-4bit
+    9327: 262144,   # Studio Qwen3-Coder-30B-A3B-Instruct-MLX-4bit (long ctx)
+    9328: 131072,   # Studio Qwen3-235B-A22B-MLX-4bit (when running)
+    9329: 65536,    # Studio Mixtral-8x22B-Instruct-MLX-4bit
+    9330: 131072,   # Studio Devstral multi-LoRA base
+}
+
+
+def _worker_headers(
+    worker_port: int,
+    domain: str,
+    response_body: dict | None = None,
+    chain_policy: str | None = None,
+    effective_alias: str | None = None,
+) -> dict[str, str]:
+    """Build the X-Ailiance-* headers exposing routing decisions.
+
+    Lets CLI / cockpit / debugging tooling see which worker actually
+    served the request without parsing the OpenAI-compatible body.
+
+    - X-Ailiance-Worker-Port: the port the request landed on (after
+      cascade override + FC force-route + chain dispatch).
+    - X-Ailiance-Domain:      classifier top-1 domain, empty when the
+      caller picked a forced alias (no router pass).
+    - X-Ailiance-Backend:     upstream `system_fingerprint` from the
+      worker (llama.cpp build hash, mlx version, fp_ollama, etc.).
+      Only populated on non-streaming responses (streaming body is
+      consumed lazily; emitting a header before reading it would
+      either block or guess).
+    - X-Ailiance-Upstream-Model: the model_id the worker reports
+      (e.g. mascarade-kicad:latest, eu-kiki-gemma, /Users/...MLX-Q8).
+      Distinct from the alias the caller asked for.
+    - X-Ailiance-Chain:       chain policy that was engaged
+      (direct / mixture / sequential / deliberate / validate), or
+      empty if no chain orchestrator ran.
+    """
+    headers = {
+        "X-Ailiance-Worker-Port": str(worker_port),
+        "X-Ailiance-Domain": domain or "",
+        "X-Ailiance-Chain": chain_policy or "",
+    }
+    ctx_window = WORKER_CONTEXT_WINDOWS.get(worker_port)
+    if ctx_window:
+        # Lets the CLI override its default modelInfo.contextWindow (128k
+        # for unknown OpenAI-compatible backends) with the real ceiling
+        # of the worker that served the response. Affects when the
+        # auto-condense path triggers in subsequent turns of the same
+        # task.
+        headers["X-Ailiance-Context-Window"] = str(ctx_window)
+    if response_body:
+        fp = response_body.get("system_fingerprint")
+        if fp:
+            headers["X-Ailiance-Backend"] = str(fp)
+        upstream = response_body.get("model")
+        if upstream:
+            headers["X-Ailiance-Upstream-Model"] = str(upstream)
+    if effective_alias:
+        # Logical alias + base_model + LoRA stack — what the user asked
+        # for, in terms the catalog uses. Distinct from the filesystem
+        # path / model id the worker reports.
+        inv = inventory_or_unknown(effective_alias)
+        headers.update(inventory_to_headers(inv))
+    return headers
+
+
+def _fc_force_route_enabled() -> bool:
+    """Toggle for the tools[] -> qwen-32b-awq force-route.
+
+    Default ON. Set GATEWAY_FC_FORCE_ROUTE=false to allow tools[] requests to
+    follow normal routing (useful for testing FC support on new workers).
+    """
+    return os.environ.get("GATEWAY_FC_FORCE_ROUTE", "true").lower() not in (
+        "0", "false", "no", "off",
+    )
+
+
 MODEL_FORCE_MAP = {
     "ailiance-mistral-medium": 9301,  # Mistral Medium 3.5 128B Q8 (studio:9301, renamed from ailiance-apertus 2026-05-11)
     "ailiance-mistral": 9301,  # alias for ailiance-mistral-medium (same backend)
     "ailiance-apertus": 9301,  # legacy alias preserved for backwards compatibility — routes to Mistral-Medium
     "ailiance-devstral": 8502,  # legacy alias — macm1 worker now serves Gemma 4
     "ailiance-gemma4": 8502,  # Gemma 4 E4B + ailiance curriculum LoRA (macm1)
-    "ailiance-eurollm": 9303,
     "ailiance-gemma": 9304,  # Gemma 3 4B IT on tower
     "ailiance-qwen": 8002,  # llama-server on kxkm-ai (RTX 4090) via autossh tunnel
     "ailiance-granite": 8003,  # Granite 4.1 30B Q4_K_M GGUF on kxkm-ai
@@ -105,24 +376,29 @@ MODEL_FORCE_MAP = {
     "ailiance-gemma2": 8502,  # Gemma-4-E2B-it MLX 4-bit on macM1 (lighter than E4B)
     # Devstral-Small-2-24B-MLX-4bit on Studio (:9316 base, :9317-9321 LoRA variants).
     "ailiance-devstral-base": 9316,
-    "ailiance-python": 9317,
-    "ailiance-cpp": 9318,
-    "ailiance-rust-emb": 9319,
-    "ailiance-html": 9320,
-    "ailiance-ml-training": 9321,
-    # Tower Ollama :11434 via tunnel :8004 — 11 domain-specialized
-    # mascarade fine-tunes (Qwen3 4B Q4_K_M base, compiled as Ollama
-    # Modelfile from KXKM-AI .safetensors LoRAs since 2026-04-12).
-    "ailiance-kicad": 8004,
-    "ailiance-spice": 8004,
-    "ailiance-stm32": 8004,
-    "ailiance-emc": 8004,
-    "ailiance-embedded": 8004,
-    "ailiance-platformio": 8004,
-    "ailiance-freecad": 8004,
-    "ailiance-dsp": 8004,
-    "ailiance-iot": 8004,
-    "ailiance-power": 8004,
+    "ailiance-python": 9330,
+    "ailiance-cpp": 9330,
+    "ailiance-rust-emb": 9330,
+    "ailiance-html": 9330,
+    "ailiance-ml-training": 9330,
+    # Studio MLX :9340 — 10 qwen3-4b-mascarade hardware experts. Each LoRA
+    # (trained 2026-05-11, Qwen3-4B-Instruct-2507 base) was merged and
+    # converted to MLX bf16, replacing the Tower Ollama Q4_K_M path so the
+    # fine-tuned behaviour is served without quantization loss.
+    "ailiance-kicad": 9340,
+    # spice is excluded from MASCARADE_DOMAINS (auto-router) by PR #55 on
+    # bench grounds, but the explicit alias still migrates to Studio: the
+    # 2026-05-11 retrain benches well on spice-sim (Phase 7 composite 0.65).
+    "ailiance-spice": 9340,
+    "ailiance-stm32": 9340,
+    "ailiance-emc": 9340,
+    "ailiance-embedded": 9340,
+    "ailiance-platformio": 9340,
+    "ailiance-freecad": 9340,
+    "ailiance-dsp": 9340,
+    "ailiance-iot": 9340,
+    "ailiance-power": 9340,
+    # Still on Tower Ollama :8004 — not part of the Qwen3-4B mascarade set.
     "ailiance-components-review": 8004,
     "ailiance-coder": 8004,  # mascarade-coder-v2 (Qwen2 1.5B Q4)
     "ailiance-embed": 8004,  # bge-m3 F16 — multilingual embedding
@@ -137,6 +413,9 @@ MODEL_FORCE_MAP = {
     "ailiance-apertus-spice-sim": 9322,
     "ailiance-apertus-emc-dsp-power": 9322,
     "ailiance-apertus-embedded": 9322,
+    # Studio flagship 2026-05-12 — Qwen3-235B-A22B-Instruct MoE 4-bit.
+    "ailiance-flagship": 9328,
+    "ailiance-qwen-235b": 9328,
     # Studio S3 additions 2026-05-12 — 5 MLX 4-bit workers on dedicated ports.
     "ailiance-reasoning-r1": 9323,  # DeepSeek-R1-Distill-Qwen-32B 4-bit
     "ailiance-llama": 9324,  # Llama-3.3-70B-Instruct 4-bit
@@ -144,6 +423,9 @@ MODEL_FORCE_MAP = {
     "ailiance-mistral-small": 9326,  # Mistral-Small-3.1-24B-Instruct 4-bit
     "ailiance-coder-pro": 9327,  # Qwen3-Coder-30B-A3B-Instruct 4-bit
     # Mixtral-8x22B-Instruct MLX 4-bit on Studio (mlx_lm.server :9329).
+    # `ailiance-mixtral` kept for prod main-line consumers; `-8x22b` is the
+    # explicit name introduced in feat/mixtral-and-gemma4-multilora.
+    "ailiance-mixtral": 9329,
     "ailiance-mixtral-8x22b": 9329,
     # Gemma-4-E4B multi-LoRA custom server on Studio :9335 (mascarade + aggro + kicad9plus variants).
     "ailiance-gemma4-mascarade": 9335,
@@ -192,11 +474,11 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     # Devstral-Small-2-24B MLX 4-bit on Studio. Server resolves model field
     # as on-disk path or HF repo id; pass the path the server has loaded.
     "ailiance-devstral-base": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
-    "ailiance-python": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
-    "ailiance-cpp": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
-    "ailiance-rust-emb": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
-    "ailiance-html": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
-    "ailiance-ml-training": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
+    "ailiance-python": {"model": "devstral-python"},
+    "ailiance-cpp": {"model": "devstral-cpp"},
+    "ailiance-rust-emb": {"model": "devstral-rust-embedded"},
+    "ailiance-html": {"model": "devstral-html-css"},
+    "ailiance-ml-training": {"model": "devstral-ml-training"},
     # Studio multi-LoRA Apertus 70B custom server :9322. One base model in
     # VRAM, adapters swap per request via mlx_lm.tuner.utils.load_adapters
     # under an asyncio.Lock. Each alias rewrites the `model` body field to
@@ -210,6 +492,13 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     "ailiance-apertus-spice-sim": {"model": "apertus-spice-sim"},
     "ailiance-apertus-emc-dsp-power": {"model": "apertus-emc-dsp-power-curriculum"},
     "ailiance-apertus-embedded": {"model": "apertus-embedded"},
+    # Studio flagship 2026-05-12 — Qwen3-235B-A22B-Instruct MoE 4-bit (~120GB VRAM).
+    "ailiance-flagship": {
+        "model": "/Users/clems/KIKI-Mac_tunner/models/Qwen3-235B-A22B-Instruct-MLX-4bit",
+    },
+    "ailiance-qwen-235b": {
+        "model": "/Users/clems/KIKI-Mac_tunner/models/Qwen3-235B-A22B-Instruct-MLX-4bit",
+    },
     # Studio S3 additions 2026-05-12 — mlx_lm.server expects on-disk path.
     "ailiance-reasoning-r1": {
         "model": "/Users/clems/KIKI-Mac_tunner/models/DeepSeek-R1-Distill-Qwen-32B-MLX-4bit",
@@ -226,7 +515,11 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     "ailiance-coder-pro": {
         "model": "/Users/clems/KIKI-Mac_tunner/models/Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
     },
-    # Mixtral-8x22B-Instruct MLX 4-bit on Studio :9329 — mlx_lm.server expects on-disk path.
+    # Mixtral-8x22B-Instruct MLX 4-bit on Studio :9329 — mlx_lm.server
+    # expects on-disk path. Both alias names share the same rewrite.
+    "ailiance-mixtral": {
+        "model": "/Users/clems/KIKI-Mac_tunner/models/Mixtral-8x22B-Instruct-MLX-4bit",
+    },
     "ailiance-mixtral-8x22b": {
         "model": "/Users/clems/KIKI-Mac_tunner/models/Mixtral-8x22B-Instruct-MLX-4bit",
     },
@@ -244,10 +537,18 @@ WORKER_FORWARD_OVERRIDES: dict[int, dict[str, str]] = {
         "model": "qwen-32b-awq",  # the alias llama-server expects
         "auth_env": "AILIANCE_QWEN_KEY",
     },
+    # kxkm-ai llama.cpp :18889 served via tunnel :8003.
+    8003: {
+        "model": "granite-30b",
+    },
     # mlx_lm.server resolves an unknown `model` field as a HF repo and tries to
     # download it; rewrite to the on-disk path the server already has loaded.
     9301: {
         "model": "/Users/clems/KIKI-Mac_tunner/models/Mistral-Medium-3.5-128B-MLX-Q8",
+    },
+    # Tower llama.cpp :9304 served via Tailscale, model loaded with --alias eu-kiki-gemma.
+    9304: {
+        "model": "eu-kiki-gemma",
     },
     8502: {
         "model": "lmstudio-community/gemma-4-E4B-it-MLX-4bit",  # base model id loaded with curriculum LoRA adapter
@@ -361,8 +662,277 @@ def _gate_port(classified_port: int | None) -> int:
     return classified_port or HEALTH_FALLBACK_PORT  # all dead — let it fail loud
 
 
+# Strip the *whole* reasoning block. The chain-of-thought is internal and
+# shouldn't appear in the final user-visible answer. Two passes:
+#   1) Greedy-but-non-overlapping removal of complete blocks.
+#   2) Cleanup of orphan opening/closing tags from truncated streams.
+_THINK_BLOCK_RE = re.compile(
+    r"\[THINK\].*?\[/THINK\]|<think>.*?</think>|<reasoning>.*?</reasoning>",
+    re.IGNORECASE | re.DOTALL,
+)
+_THINK_ORPHAN_RE = re.compile(
+    r"\[/?THINK\]|</?think>|</?reasoning>", re.IGNORECASE
+)
+
+# Aliases registered in routing tables but NOT chat-capable. They are kept
+# for /v1/models/details (introspection) but rejected at /v1/chat/completions
+# with a 400 instead of leaking the underlying worker's "does not support
+# chat" error body.
+_BLOCKED_CHAT_ALIASES: frozenset[str] = frozenset({
+    "ailiance-embed",  # bge-m3 — embedding model, no /v1/embeddings endpoint yet
+})
+
+
+# Aliases backed by a vision-capable worker. Used by the multimodal
+# auto-route override: when the request body carries any ``image_url``
+# content and the caller is on the auto-router (``model == "ailiance"``),
+# we transparently re-route to the canonical vision alias. Aliases the
+# caller explicitly set are honoured verbatim — we never override an
+# explicit non-vision choice.
+_VISION_ALIASES: frozenset[str] = frozenset({"ailiance-pixtral"})
+_CANONICAL_VISION_ALIAS = "ailiance-pixtral"
+
+
+def _request_has_images(req) -> bool:
+    """Return True iff any message in ``req`` carries an image part.
+
+    The OpenAI multimodal spec sends mixed content as
+    ``messages[].content = [{"type":"text", ...}, {"type":"image_url", ...}, ...]``.
+    Plain text requests use a string for ``content`` and we shortcut.
+    """
+    for msg in getattr(req, "messages", []) or []:
+        content = getattr(msg, "content", None)
+        if isinstance(content, list):
+            for part in content:
+                t = part.get("type") if isinstance(part, dict) else None
+                if t in ("image_url", "image", "input_image"):
+                    return True
+    return False
+
+
+def _request_has_input_files(req) -> bool:
+    """Return True iff any message in ``req`` carries an ``input_file`` part."""
+    for msg in getattr(req, "messages", []) or []:
+        content = getattr(msg, "content", None)
+        if isinstance(content, list):
+            for part in content:
+                if isinstance(part, dict) and part.get("type") == "input_file":
+                    return True
+    return False
+
+
+def _content_to_text(content: Any) -> str:
+    """Flatten a ChatMessage.content value to a routing-friendly string.
+
+    After the inline file/image rewrites, ``content`` may legitimately
+    be a list of OpenAI blocks (text + image_url + input_file →
+    rewritten text). Components downstream that expect a plain string
+    (the classifier, complexity heuristics, cascade pick) need the
+    concatenated text. We pull ``text`` from text blocks and drop the
+    rest — non-text blocks (image_url) don't carry routing signal.
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                t = block.get("text")
+                if isinstance(t, str):
+                    parts.append(t)
+        return "\n".join(parts)
+    return ""
+
+
+def _last_user_text(req) -> str:
+    """Return the last user message's text content, flat string only."""
+    for msg in reversed(getattr(req, "messages", []) or []):
+        if getattr(msg, "role", None) == "user":
+            return _content_to_text(getattr(msg, "content", None))
+    return ""
+
+
+def _public_base_url() -> str:
+    """Public base URL the gateway is reachable at — for staged image URLs.
+
+    Set via ``AILIANCE_PUBLIC_BASE_URL`` (e.g. ``https://gateway.ailiance.fr``).
+    Falls back to ``http://localhost:9300`` for local dev / tests; that
+    fallback is only useful when both gateway and worker run on the
+    same host.
+    """
+    return os.environ.get("AILIANCE_PUBLIC_BASE_URL", "http://localhost:9300")
+
+
+def _normalize_message_dict(msg: dict) -> None:
+    """Apply reasoning→content promotion + tag stripping to one message dict.
+
+    Mutates ``msg`` in place. Shared by the non-streaming response
+    normalizer and the SSE stream normalizer (which operates on each
+    chunk's ``delta``).
+    """
+    content = msg.get("content")
+    reasoning = msg.get("reasoning")
+    if (not content) and isinstance(reasoning, str) and reasoning.strip():
+        msg["content"] = reasoning
+        content = reasoning
+    if isinstance(content, str) and ("THINK" in content.upper() or "<think" in content.lower()):
+        stripped = _THINK_BLOCK_RE.sub("", content)
+        stripped = _THINK_ORPHAN_RE.sub("", stripped)
+        msg["content"] = stripped.strip()
+
+
+async def _normalize_sse_stream(raw_stream):
+    """Pipe and normalize an OpenAI-compatible SSE chat-completion stream.
+
+    Buffers the byte stream until each ``data: …\\n\\n`` event is
+    complete, then parses the JSON payload, applies
+    :func:`_normalize_message_dict` to each ``choice.delta``, and yields
+    the rewritten event back as ``bytes``. Non-JSON events (``data:
+    [DONE]``, comments, keep-alives) and parse failures are passed
+    through unchanged so we never break a working client over a bad
+    rewrite.
+
+    Limitations
+    -----------
+    Cross-event stripping of ``[THINK]…[/THINK]`` blocks is *not*
+    performed — only blocks that fit inside a single SSE event are
+    removed. Most workers emit the whole opening tag in one chunk and
+    the closing tag arrives a few chunks later; in that intermediate
+    window, tokens between the two tags will reach the client. The
+    follow-up sweep to add a per-stream ``in_think`` state machine is
+    tracked separately.
+    """
+    buf = ""
+    async for raw in raw_stream:
+        if isinstance(raw, bytes):
+            try:
+                raw = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                # Non-UTF8 bytes (e.g. binary): drop normalization,
+                # passthrough so the client gets *something*.
+                yield raw if isinstance(raw, bytes) else raw.encode("utf-8")
+                continue
+        buf += raw
+        while "\n\n" in buf:
+            event, _, buf = buf.partition("\n\n")
+            yield _rewrite_sse_event(event) + b"\n\n"
+    # Flush any trailing fragment (no terminating \n\n) untouched.
+    if buf:
+        yield buf.encode("utf-8")
+
+
+def _rewrite_sse_event(event: str) -> bytes:
+    """Rewrite a single SSE event, normalizing ``delta`` if it's chat JSON.
+
+    Falls back to a byte-for-byte passthrough on any parse failure.
+    """
+    # SSE events may contain comment lines (':...') and multiple field
+    # lines. We rewrite only ``data: <json>`` payloads.
+    lines = event.split("\n")
+    rewrote_any = False
+    for i, line in enumerate(lines):
+        if not line.startswith("data:"):
+            continue
+        payload = line[5:].lstrip()
+        if not payload or payload == "[DONE]":
+            continue
+        try:
+            obj = json.loads(payload)
+        except (ValueError, TypeError):
+            continue
+        choices = obj.get("choices") if isinstance(obj, dict) else None
+        if not isinstance(choices, list):
+            continue
+        mutated = False
+        for choice in choices:
+            delta = choice.get("delta") if isinstance(choice, dict) else None
+            if isinstance(delta, dict):
+                before = (delta.get("content"), delta.get("reasoning"))
+                _normalize_message_dict(delta)
+                if (delta.get("content"), delta.get("reasoning")) != before:
+                    mutated = True
+            # Some workers emit a terminal frame with `message` instead
+            # of `delta`. Normalize that too.
+            msg = choice.get("message") if isinstance(choice, dict) else None
+            if isinstance(msg, dict):
+                before = (msg.get("content"), msg.get("reasoning"))
+                _normalize_message_dict(msg)
+                if (msg.get("content"), msg.get("reasoning")) != before:
+                    mutated = True
+        if mutated:
+            lines[i] = "data: " + json.dumps(obj, ensure_ascii=False)
+            rewrote_any = True
+    if rewrote_any:
+        return "\n".join(lines).encode("utf-8")
+    return event.encode("utf-8")
+
+
+def _normalize_response_body(body: dict) -> dict:
+    """Normalize worker chat-completion responses for OpenAI-spec clients.
+
+    Two worker quirks are smoothed over here:
+
+    1. MLX ``mlx_lm.server`` (>= 0.31.3) splits reasoning-model output into
+       ``message.reasoning`` and leaves ``message.content`` empty. The OpenAI
+       client in the Playground reads ``content`` only, so the user sees a
+       blank reply. We copy ``reasoning`` into ``content`` when content is
+       missing or empty.
+    2. Some reasoning models (Ministral-3 Reasoning, R1 distills) emit
+       ``[THINK]…[/THINK]`` or ``<think>…</think>`` literal tags inside
+       ``content``. We strip the bare tags (keeping the inner text) so the
+       UI doesn't render markup.
+    """
+    if not isinstance(body, dict):
+        return body
+    choices = body.get("choices")
+    if not isinstance(choices, list):
+        return body
+    for choice in choices:
+        msg = choice.get("message") if isinstance(choice, dict) else None
+        if isinstance(msg, dict):
+            _normalize_message_dict(msg)
+    return body
+
+
+_DEFAULT_CORS_ORIGINS = (
+    "https://www.ailiance.fr",
+    "https://preview.ailiance.fr",
+    "https://ailiance.fr",
+    # Local development for the cockpit-public vite dev server.
+    "http://localhost:5173",
+    "http://localhost:4173",
+    "http://127.0.0.1:5173",
+)
+
+
+def _cors_origins() -> list[str]:
+    """Resolve the allow-list for cross-origin requests.
+
+    Override via ``AILIANCE_CORS_ORIGINS`` (comma-separated). The
+    default list covers the production cockpit (www.ailiance.fr), its
+    preview deployment, the apex, and the two vite dev ports.
+    """
+    raw = os.environ.get("AILIANCE_CORS_ORIGINS")
+    if raw:
+        return [o.strip() for o in raw.split(",") if o.strip()]
+    return list(_DEFAULT_CORS_ORIGINS)
+
+
 def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
     app = FastAPI(title="ailiance-gateway")
+    # CORS for the browser-side Playground: cockpit-public (deployed on
+    # www.ailiance.fr) calls gateway.ailiance.fr from a different
+    # origin. Browsers send a preflight OPTIONS for any multipart POST
+    # — without CORSMiddleware that preflight returns 405 and the
+    # browser aborts the real request ("Load failed" in DevTools).
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins(),
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["*"],
+        allow_credentials=False,
+        max_age=86400,
+    )
     reg = CollectorRegistry()
     requests_total = Counter(
         "ailiance_gw_requests_total",
@@ -508,7 +1078,6 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 {"id": "ailiance-mistral-medium", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-mistral", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-gemma4", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-eurollm", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-gemma", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-qwen", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-granite", "object": "model", "owned_by": "ailiance"},
@@ -529,7 +1098,9 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 {"id": "ailiance-power", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-components-review", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-coder", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-embed", "object": "model", "owned_by": "ailiance"},
+                # ailiance-embed (bge-m3) is an embedding model, not chat —
+                # intentionally omitted from /v1/models (no /v1/embeddings
+                # endpoint yet). See _BLOCKED_CHAT_ALIASES below.
                 # Devstral 24B 4-bit MLX + 5 LoRAs on Studio :9316-9321
                 {"id": "ailiance-devstral-base", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-python", "object": "model", "owned_by": "ailiance"},
@@ -547,13 +1118,17 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 {"id": "ailiance-apertus-spice-sim", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-apertus-emc-dsp-power", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-apertus-embedded", "object": "model", "owned_by": "ailiance"},
+                # Studio flagship 2026-05-12 — Qwen3-235B-A22B MoE 4-bit
+                {"id": "ailiance-flagship", "object": "model", "owned_by": "ailiance"},
+                {"id": "ailiance-qwen-235b", "object": "model", "owned_by": "ailiance"},
                 # Studio S3 additions 2026-05-12 — DeepSeek + Llama + Pixtral + Mistral-Small + Qwen3-Coder
                 {"id": "ailiance-reasoning-r1", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-llama", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-pixtral", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-mistral-small", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-coder-pro", "object": "model", "owned_by": "ailiance"},
-                # Mixtral-8x22B-Instruct 4-bit MLX on Studio :9329
+                # Studio Mixtral-8x22B 4-bit MLX :9329 — both aliases exposed.
+                {"id": "ailiance-mixtral", "object": "model", "owned_by": "ailiance"},
                 {"id": "ailiance-mixtral-8x22b", "object": "model", "owned_by": "ailiance"},
                 # Gemma-4-E4B multi-LoRA on Studio :9335
                 {"id": "ailiance-gemma4-mascarade", "object": "model", "owned_by": "ailiance"},
@@ -585,7 +1160,6 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             "ailiance-mistral-medium",
             "ailiance-mistral",
             "ailiance-gemma4",
-            "ailiance-eurollm",
             "ailiance-gemma",
             "ailiance-qwen",
             "ailiance-granite",
@@ -606,6 +1180,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             "ailiance-components-review",
             "ailiance-coder",
             "ailiance-embed",
+            "ailiance-mixtral",
             "ailiance-mixtral-8x22b",
             "ailiance-gemma4-mascarade",
             "ailiance-gemma4-aggro",
@@ -623,6 +1198,75 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 for mid in ids
             ],
         }
+
+    @app.post("/v1/files/extract")
+    async def extract_endpoint(
+        file: UploadFile | None = File(default=None),
+        filename: str | None = Form(default=None),
+        mime: str | None = Form(default=None),
+    ) -> dict:
+        """Extract markdown text from a PDF / docx / xlsx / pptx / html / txt file.
+
+        Two upload modes:
+
+        * **multipart/form-data** with a ``file`` field (preferred for
+          browser uploads). ``filename`` and ``mime`` are taken from the
+          ``UploadFile`` itself but can be overridden via the optional
+          form fields when the browser fails to set them.
+        * No body is accepted other than multipart in this version; a
+          JSON-with-base64 mode can be added later if a client needs it.
+
+        Returns ``{"markdown": "...", "format": "pdf", "metadata": {...}}``.
+        Errors translate to HTTP 400 with a structured detail.
+        """
+        if file is None:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "type": "invalid_request_error",
+                    "code": "missing_file",
+                    "message": "Expected multipart upload with a 'file' field.",
+                },
+            )
+        data = await file.read()
+        await file.close()
+        eff_filename = filename or file.filename
+        eff_mime = mime or file.content_type
+        try:
+            result: ExtractResult = extract_file(
+                data, filename=eff_filename, mime=eff_mime
+            )
+        except ExtractError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "type": "invalid_request_error",
+                    "code": exc.code,
+                    "message": exc.message,
+                },
+            ) from exc
+        return {
+            "markdown": result.markdown,
+            "format": result.format,
+            "metadata": result.metadata,
+            "filename": eff_filename,
+            "max_bytes": FILE_MAX_BYTES,
+        }
+
+    @app.get("/v1/_staged/{key}")
+    def get_staged(key: str) -> Response:
+        """Serve a staged image so vision workers can fetch it over HTTP.
+
+        Used by the data-URL rewrite: when a caller embeds
+        ``image_url.url = "data:image/png;base64,…"`` the gateway stages
+        the bytes here and rewrites the URL to ``…/v1/_staged/<key>``.
+        Worker downloads as a normal HTTP image. TTL is enforced inside
+        :class:`_ImageStore`; expired keys return 404.
+        """
+        entry = image_store.get(key)
+        if entry is None:
+            raise HTTPException(status_code=404, detail="staged image not found or expired")
+        return Response(content=entry.data, media_type=entry.mime or "application/octet-stream")
 
     @app.post("/v1/route")
     def route_only(payload: dict) -> dict:
@@ -649,18 +1293,96 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         }
 
     @app.post("/v1/chat/completions")
-    async def chat_completions(req: ChatCompletionRequest):
+    async def chat_completions(req: ChatCompletionRequest, request: Request):
+        _trace_started_at = time.perf_counter()
+        _trace_req_body = req.model_dump(exclude_none=True)
+        # Per-tenant KV-cache isolation: prepend a short session marker
+        # so two callers with different identities never share cache
+        # entries on the worker. Toggled off via AILIANCE_TENANT_ISOLATION=0.
+        if isolation_enabled():
+            tenant_id = derive_tenant_id(
+                dict(request.headers),
+                request.client.host if request.client else None,
+            )
+            req.messages = inject_tenant_prefix(req.messages, tenant_id)
+        if req.model in _BLOCKED_CHAT_ALIASES:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "type": "invalid_request_error",
+                    "message": (
+                        f"Model '{req.model}' is an embedding model and does "
+                        "not support chat completions. Use a chat-capable "
+                        "alias (e.g. 'ailiance' for auto-routing)."
+                    ),
+                },
+            )
+
+        # Inline file extraction: replace any input_file blocks in
+        # messages[].content with text blocks carrying the extracted
+        # markdown. Lets callers attach PDF/DOCX/etc. directly inside
+        # /v1/chat/completions without a separate /v1/files/extract
+        # round-trip.
+        if _request_has_input_files(req):
+            try:
+                await rewrite_input_files(req.messages, http_client)
+            except ExtractError as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "type": "invalid_request_error",
+                        "code": exc.code,
+                        "message": exc.message,
+                    },
+                ) from exc
+
+        # Image data-URL staging: MLX vision workers (Pixtral on
+        # :9325) reject ``data:image/*;base64,…`` URLs silently. We
+        # decode any such URL, stash the bytes in a short-lived in-
+        # memory store, and rewrite the URL to a public endpoint
+        # this gateway serves. Worker fetches the image as a normal
+        # HTTP URL and actually sees it.
+        if _request_has_images(req):
+            rewrite_image_urls(req.messages, _public_base_url())
+
+        # Multimodal auto-route: when the caller is on the auto-router
+        # alias and the request body carries an image (or any non-text
+        # block), transparently redirect to the canonical vision alias.
+        # An explicit non-vision choice from the caller is respected —
+        # they'll get whatever error the worker raises, never a silent
+        # rewrite that hides their intent.
+        _multimodal_routed = False
+        if req.model == "ailiance" and _request_has_images(req):
+            req.model = _CANONICAL_VISION_ALIAS
+            _multimodal_routed = True
+
+        # Per-alias default system prompt: only prepended if the caller
+        # hasn't already supplied a ``system`` message. Used today to
+        # suppress Pixtral's short-prompt quirk where it regurgitates a
+        # Python dict instead of plain text. Insertion happens after
+        # multimodal auto-route so the prompt matches the alias the
+        # worker actually serves.
+        _sys_default = default_system_prompt(req.model)
+        if _sys_default and not messages_already_have_system(req.messages):
+            req.messages.insert(0, ChatMessage(role="system", content=_sys_default))
+
+        # Extract the last user message once; reused for routing, cascade
+        # complexity scoring, and the orchestrator path below. _last_user_text
+        # walks all messages and reflattens content, so caching it avoids
+        # O(n) reparses on the hot path.
+        user_msg = _last_user_text(req)
+
         forced_port = MODEL_FORCE_MAP.get(req.model)
         active_router = app.state.router
         if forced_port:
             domain = ""
             worker_port = _gate_port(forced_port)
         elif active_router is not None:
-            user_msg = next(
-                (m.content for m in reversed(req.messages) if m.role == "user"), ""
-            )
             t0 = time.perf_counter()
-            selections = active_router.route(user_msg)
+            # Encode runs on CPU (no GPU on the prod host) and holds the GIL
+            # during tokenization — run it in a worker thread so concurrent
+            # stream relays keep progressing.
+            selections = await asyncio.to_thread(active_router.route, user_msg)
             route_latency.observe(time.perf_counter() - t0)
             domain = selections[0][0] if selections else "python"
             # Fallback to Gemma (9304): reachable + fast for unmapped domains.
@@ -673,6 +1395,51 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             # No router loaded → default to Gemma (fast, reachable).
             domain = "general"
             worker_port = _gate_port(9304)
+
+        # ------------------------------------------------------------------
+        # Cascade complexity-based override (v0.4).
+        # Only applies on the auto-router path (req.model == "ailiance" /
+        # no forced port). When AILIANCE_CASCADE_ENABLED=1, short prompts
+        # are rerouted to a fast small model and reasoning-heavy prompts
+        # are escalated to a flagship. Forced aliases are NEVER cascaded.
+        # ------------------------------------------------------------------
+        cascade_alias: str | None = None
+        if not forced_port and domain:
+            cascade_alias = _cascade_pick(domain, user_msg)
+            if cascade_alias:
+                cascade_port = MODEL_FORCE_MAP.get(cascade_alias)
+                if cascade_port is not None:
+                    worker_port = _gate_port(cascade_port)
+                    log.info(
+                        "cascade: domain=%s complexity-override → %s (port %d)",
+                        domain, cascade_alias, worker_port,
+                    )
+
+        # ------------------------------------------------------------------
+        # Native function-calling force-route. Composes with the cascade
+        # above: if cascade picked a non-FC alias and the caller shipped
+        # tools[], this still wins. The kxkm-ai vLLM Qwen 32B worker on
+        # 8002 is the only backend in the parc that serves tool_calls as a
+        # structured JSON array; MLX and llama.cpp backends either lack FC
+        # or hallucinate XML shapes downstream parsers cannot dispatch
+        # (observed 2026-05-12: ailiance-agent CLI v0.6.0-beta hit a
+        # 5-retry storm because Mistral-Medium-128B received tools[] via
+        # the auto-router and emitted <function=NAME>...</function> blocks
+        # the client could not dispatch). Set GATEWAY_FC_FORCE_ROUTE=false
+        # to disable when testing FC support on a new worker.
+        # ------------------------------------------------------------------
+        if (
+            req.tools
+            and _fc_force_route_enabled()
+            and worker_port not in FC_CAPABLE_PORTS
+        ):
+            log.info(
+                "fc-force-route: model=%s tools=%d redirect %d -> %d",
+                req.model, len(req.tools), worker_port, FC_FORCE_ROUTE_PORT,
+            )
+            forced_port = FC_FORCE_ROUTE_PORT
+            domain = ""
+            worker_port = _gate_port(FC_FORCE_ROUTE_PORT)
 
         # Router v0.3 dispatch resolution. Two ways to engage the chain:
         #   (1) explicit  — extra_body.chain_policy from any request,
@@ -752,10 +1519,6 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                     },
                 )
 
-            user_msg = next(
-                (m.content for m in reversed(req.messages) if m.role == "user"),
-                "",
-            ) or ""
             include_audit = bool(extra.get("include_audit", False))
             # extra_body.max_retries is documented in the API contract;
             # forward it through so callers can override the per-domain
@@ -830,7 +1593,30 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                     }
                     for s in chain_result.steps
                 ]
-            return response
+            track_chat(
+                model_alias=req.model,
+                domain=domain,
+                kind="chain",
+                request_body=_trace_req_body,
+                response_body=response,
+                started_at=_trace_started_at,
+                chain_id=chain_result.chain_id,
+            )
+            chain_alias = resolve_effective_alias(
+                req.model, cascade_alias=cascade_alias, domain=domain,
+            )
+            chain_inv = inventory_or_unknown(chain_alias)
+            response["ailiance"] = inventory_to_dict(chain_inv)
+            return JSONResponse(
+                content=response,
+                headers=_worker_headers(
+                    worker_port,
+                    domain,
+                    response,
+                    chain_policy=chain_result.policy.value,
+                    effective_alias=chain_alias,
+                ),
+            )
 
         # ALIAS_WORKER_URLS: if alias has HA list, pick healthy URL
         # instead of using the single WORKER_URLS[worker_port] entry.
@@ -843,11 +1629,20 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         body = req.model_dump(exclude_none=True)
         # extra_body is gateway-only metadata — strip before forwarding.
         body.pop("extra_body", None)
+        # Apply per-alias inference defaults: max_tokens for reasoning
+        # models, low temp for vision/code workers, enable_thinking=False
+        # for Qwen3.5, stop tokens for Pixtral, etc. Caller wins on every
+        # field; defaults fill gaps only.
+        _defaults_applied = apply_inference_defaults(body, req.model)
 
         # Forward rewrites: per-alias takes precedence over per-port. Lets a
         # single backend port host multiple ailiance-* aliases each rewritten
         # to a distinct upstream model id.
-        override = ALIAS_MODEL_REWRITES.get(req.model) or WORKER_FORWARD_OVERRIDES.get(worker_port)
+        # Cascade: when the v0.4 complexity heuristic remapped this request,
+        # honour the cascade alias's rewrite (e.g. mlx_lm.server :8502 needs
+        # the on-disk path the cascade target loaded).
+        rewrite_key = cascade_alias if cascade_alias else req.model
+        override = ALIAS_MODEL_REWRITES.get(rewrite_key) or WORKER_FORWARD_OVERRIDES.get(worker_port)
         if override:
             if "model" in override:
                 body["model"] = override["model"]
@@ -856,41 +1651,71 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 key = os.environ.get(auth_env, "")
                 if key:
                     headers["Authorization"] = f"Bearer {key}"
+        elif req.model == "ailiance":
+            # Auto-router fallback: when no override matched the chosen worker,
+            # the workers (mlx_lm.server, llama.cpp) don't know what "ailiance"
+            # means and treat it as a HF repo / on-disk path → 404 with
+            # "ailiance/config.json: No such file or directory". Strip the
+            # model field so the worker uses its loaded default model.
+            body.pop("model", None)
 
-        # Streaming path: pipe SSE chunks back to the client without buffering.
-        if body.get("stream"):
-            req_stream = http_client.build_request(
-                "POST",
+        # Per-worker FIFO: serialize requests to this worker URL to bound
+        # KV cache pressure. Lock is held for the entire forward including
+        # streaming relay (see _worker_fifo docstring).
+        fifo_cm = _worker_fifo(worker_url)
+        await fifo_cm.__aenter__()
+        try:
+            # Streaming path: pipe SSE chunks back to the client without buffering.
+            if body.get("stream"):
+                req_stream = http_client.build_request(
+                    "POST",
+                    f"{worker_url}/v1/chat/completions",
+                    json=body,
+                    headers=headers,
+                )
+                worker_resp = await http_client.send(req_stream, stream=True)
+                requests_total.labels(
+                    model=req.model,
+                    status=str(worker_resp.status_code),
+                    path="stream",
+                    auto="0",
+                ).inc()
+
+                # Capture for closure so the lock is released once the
+                # stream is fully consumed (or the client disconnects).
+                _release_cm = fifo_cm
+                fifo_cm = None  # prevent finally-block double-release
+
+                async def relay() -> "object":
+                    try:
+                        async for chunk in _normalize_sse_stream(
+                            worker_resp.aiter_text()
+                        ):
+                            yield chunk
+                    finally:
+                        await worker_resp.aclose()
+                        await _release_cm.__aexit__(None, None, None)
+
+                return StreamingResponse(
+                    relay(),
+                    status_code=worker_resp.status_code,
+                    media_type=worker_resp.headers.get("content-type", "text/event-stream"),
+                    headers=_worker_headers(
+                        worker_port, domain,
+                        effective_alias=resolve_effective_alias(
+                            req.model, cascade_alias=cascade_alias, domain=domain,
+                        ),
+                    ),
+                )
+
+            resp = await http_client.post(
                 f"{worker_url}/v1/chat/completions",
                 json=body,
                 headers=headers,
             )
-            worker_resp = await http_client.send(req_stream, stream=True)
-            requests_total.labels(
-                model=req.model,
-                status=str(worker_resp.status_code),
-                path="stream",
-                auto="0",
-            ).inc()
-
-            async def relay() -> "object":
-                try:
-                    async for chunk in worker_resp.aiter_raw():
-                        yield chunk
-                finally:
-                    await worker_resp.aclose()
-
-            return StreamingResponse(
-                relay(),
-                status_code=worker_resp.status_code,
-                media_type=worker_resp.headers.get("content-type", "text/event-stream"),
-            )
-
-        resp = await http_client.post(
-            f"{worker_url}/v1/chat/completions",
-            json=body,
-            headers=headers,
-        )
+        finally:
+            if fifo_cm is not None:
+                await fifo_cm.__aexit__(None, None, None)
 
         requests_total.labels(
             model=req.model,
@@ -899,11 +1724,20 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             auto="0",
         ).inc()
         try:
-            return resp.json()
+            response_body = resp.json()
         except ValueError:
             log.exception(
                 "Worker %d returned non-JSON body (status=%d, len=%d)",
                 worker_port, resp.status_code, len(resp.content),
+            )
+            track_chat(
+                model_alias=req.model,
+                domain=domain,
+                kind="direct",
+                request_body=_trace_req_body,
+                response_body={},
+                started_at=_trace_started_at,
+                error=f"bad_gateway worker={worker_port} status={resp.status_code}",
             )
             raise HTTPException(
                 status_code=502,
@@ -914,5 +1748,35 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                     "message": "Worker returned an empty or invalid response",
                 },
             ) from None
+        response_body = _normalize_response_body(response_body)
+        # Resolve the effective alias for observability: cascade overrides
+        # win > FC force-route > caller's req.model > 'ailiance' fallback.
+        # For req.model == "ailiance" the resolver lifts to the actually
+        # served alias using the classifier's domain (e.g. domain="kicad"
+        # → ailiance-kicad).
+        effective_alias = resolve_effective_alias(
+            req.model, cascade_alias=cascade_alias, domain=domain,
+        )
+        # Stamp the inventory dict on the JSON body so SDKs that hide
+        # response headers (most OpenAI clients do) still see the
+        # alias / base_model / LoRA stack that served them.
+        inv = inventory_or_unknown(effective_alias)
+        response_body["ailiance"] = inventory_to_dict(inv)
+        track_chat(
+            model_alias=effective_alias,
+            domain=domain,
+            kind="direct",
+            request_body=_trace_req_body,
+            response_body=response_body,
+            started_at=_trace_started_at,
+            upstream_model=response_body.get("model"),
+        )
+        return JSONResponse(
+            content=response_body,
+            headers=_worker_headers(
+                worker_port, domain, response_body,
+                effective_alias=effective_alias,
+            ),
+        )
 
     return app

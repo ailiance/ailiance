@@ -5,6 +5,14 @@ __pycache__/
 dist/
 build/
 .pytest_cache/
-output/
+# Ignore training/eval artifacts in output/ except the metadata of the
+# active router checkpoint — it is the single source of truth that the
+# docs-check CI validates against the EU AI Act transparency doc. The
+# 442 KB router.safetensors stays ignored (derivable from training corpus).
+output/*
+!output/router-v7-multimodel/
+output/router-v7-multimodel/*
+!output/router-v7-multimodel/meta.json
+!output/router-v7-multimodel/label_map.json
 data/
 .env

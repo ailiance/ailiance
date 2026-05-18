@@ -18,6 +18,7 @@ the gateway plug in a real worker proxy at runtime.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import subprocess
@@ -262,13 +263,9 @@ class ChainOrchestrator:
             )
 
         if policy == ChainPolicy.SEQUENTIAL:
-            log.info(
-                "chain policy %s not implemented in v0.3.1 — "
-                "falling back to DIRECT for domain=%s",
-                policy.value,
-                domain,
+            return await self._sequential(
+                prompt, domain=domain, model=model, entry=entry
             )
-            policy = ChainPolicy.DIRECT
 
         # DIRECT path.
         return await self._direct(prompt, domain=domain, model=model)
@@ -309,7 +306,7 @@ class ChainOrchestrator:
             policy=ChainPolicy.DIRECT,
             domain=domain,
         )
-        self._write_audit(result)
+        await self._write_audit(result)
         return result
 
     async def _mixture(
@@ -487,7 +484,235 @@ class ChainOrchestrator:
                 "judge_ok": judge_ok,
             },
         )
-        self._write_audit(result)
+        await self._write_audit(result)
+        return result
+
+    async def _sequential(
+        self,
+        prompt: str,
+        *,
+        domain: str,
+        model: str,
+        entry: dict,
+    ) -> ChainResult:
+        """SEQUENTIAL policy (v0.4).
+
+        Planner decomposes the user request into <= max_steps sub-tasks,
+        Solver executes each sub-task in order (with accumulated context),
+        Aggregator (or Solver if None) synthesizes the final answer.
+
+        Each LLM hop is recorded as a ``ChainStep`` so the audit trail
+        captures planner output, every solver step, and the aggregator.
+        """
+        import json as _json
+        import re as _re
+
+        chain_id = uuid.uuid4().hex
+        steps: list[ChainStep] = []
+
+        planner = entry.get("planner")
+        solver = entry.get("solver")
+        aggregator = entry.get("aggregator") or solver
+        max_steps = int(entry.get("max_steps", 5))
+
+        if not planner or not solver:
+            log.warning(
+                "SEQUENTIAL policy for domain=%s missing planner/solver "
+                "— falling back to DIRECT (model=%s)",
+                domain, model,
+            )
+            return await self._direct(prompt, domain=domain, model=model)
+
+        # 1. Planner — decompose into JSON array of sub-tasks.
+        plan_user_prompt = (
+            "Decompose the user request below into an ordered list of "
+            f"sub-tasks. Return STRICT JSON: a list of at most {max_steps} "
+            "short strings, no prose, no markdown fences.\n\n"
+            f"User request:\n{prompt}\n\n"
+            'Example output: ["step one", "step two"]'
+        )
+        p_started = time.time()
+        p_t0 = time.perf_counter()
+        try:
+            planner_out = await self.llm_call(
+                [{"role": "user", "content": plan_user_prompt}], planner
+            )
+            planner_ok = True
+        except Exception as exc:  # noqa: BLE001
+            log.warning("SEQUENTIAL planner %s failed: %s", planner, exc)
+            planner_out = str(exc)
+            planner_ok = False
+        steps.append(
+            ChainStep(
+                step_idx=0,
+                attempt=1,
+                kind="llm",
+                started_at=p_started,
+                duration_s=time.perf_counter() - p_t0,
+                payload={
+                    "model": planner,
+                    "role": "planner",
+                    "output_head": _truncate(planner_out, _AUDIT_PAYLOAD_HEAD),
+                },
+                success=planner_ok,
+            )
+        )
+
+        if not planner_ok:
+            result = ChainResult(
+                chain_id=chain_id,
+                final_output=planner_out,
+                status="error",
+                steps=steps,
+                policy=ChainPolicy.SEQUENTIAL,
+                domain=domain,
+            )
+            await self._write_audit(result)
+            return result
+
+        # Parse JSON array — robust to wrapping prose / code fences.
+        sub_tasks: list[str] = []
+        match = _re.search(r"\[.*\]", planner_out, _re.DOTALL)
+        if match:
+            try:
+                parsed = _json.loads(match.group(0))
+                if isinstance(parsed, list):
+                    sub_tasks = [str(s).strip() for s in parsed if str(s).strip()]
+            except Exception:  # noqa: BLE001
+                sub_tasks = []
+        if not sub_tasks:
+            # Fallback: split on newlines, strip enumerators.
+            sub_tasks = [
+                _re.sub(r"^[\s\-\*0-9\.\)]+", "", line).strip()
+                for line in planner_out.splitlines()
+                if line.strip()
+            ]
+        sub_tasks = [s for s in sub_tasks if s][:max_steps]
+
+        if not sub_tasks:
+            log.warning(
+                "SEQUENTIAL planner returned no parseable steps for "
+                "domain=%s — falling back to DIRECT",
+                domain,
+            )
+            return await self._direct(prompt, domain=domain, model=model)
+
+        # 2. Solver — execute each sub-task sequentially with accumulated context.
+        accumulated = ""
+        step_idx = 1
+        for i, task in enumerate(sub_tasks, start=1):
+            solver_prompt = (
+                f"Original user request:\n{prompt}\n\n"
+                f"Previous step results:\n{accumulated or '(none)'}\n\n"
+                f"Now execute step {i} of {len(sub_tasks)}:\n{task}\n\n"
+                "Be concise and produce only the output for this step."
+            )
+            s_started = time.time()
+            s_t0 = time.perf_counter()
+            try:
+                step_out = await self.llm_call(
+                    [{"role": "user", "content": solver_prompt}], solver
+                )
+                step_ok = True
+            except Exception as exc:  # noqa: BLE001
+                log.warning(
+                    "SEQUENTIAL solver %s failed on step %d: %s",
+                    solver, i, exc,
+                )
+                step_out = str(exc)
+                step_ok = False
+            steps.append(
+                ChainStep(
+                    step_idx=step_idx,
+                    attempt=1,
+                    kind="llm",
+                    started_at=s_started,
+                    duration_s=time.perf_counter() - s_t0,
+                    payload={
+                        "model": solver,
+                        "role": f"solver-step-{i}",
+                        "task": task[:512],
+                        "output_head": _truncate(step_out, _AUDIT_PAYLOAD_HEAD),
+                    },
+                    success=step_ok,
+                )
+            )
+            step_idx += 1
+            if not step_ok:
+                # Hard-fail one step — return what we have so far.
+                result = ChainResult(
+                    chain_id=chain_id,
+                    final_output=step_out,
+                    status="error",
+                    steps=steps,
+                    policy=ChainPolicy.SEQUENTIAL,
+                    domain=domain,
+                    metadata={
+                        "planner": planner,
+                        "solver": solver,
+                        "aggregator": aggregator,
+                        "n_steps_planned": len(sub_tasks),
+                        "n_steps_done": i - 1,
+                        "failed_step": i,
+                    },
+                )
+                await self._write_audit(result)
+                return result
+            accumulated += f"\nStep {i} ({task}):\n{step_out}\n"
+
+        # 3. Aggregator — synthesize final answer.
+        agg_prompt = (
+            f"Original user request:\n{prompt}\n\n"
+            f"All sub-task results:\n{accumulated}\n\n"
+            "Synthesize a single concise final answer for the user. "
+            "Do not repeat the step labels."
+        )
+        a_started = time.time()
+        a_t0 = time.perf_counter()
+        try:
+            final_out = await self.llm_call(
+                [{"role": "user", "content": agg_prompt}], aggregator
+            )
+            agg_ok = True
+        except Exception as exc:  # noqa: BLE001
+            log.warning(
+                "SEQUENTIAL aggregator %s failed: %s", aggregator, exc
+            )
+            final_out = str(exc)
+            agg_ok = False
+        steps.append(
+            ChainStep(
+                step_idx=step_idx,
+                attempt=1,
+                kind="reflector",  # reuse reflector kind for the synthesis hop
+                started_at=a_started,
+                duration_s=time.perf_counter() - a_t0,
+                payload={
+                    "model": aggregator,
+                    "role": "aggregator",
+                    "output_head": _truncate(final_out, _AUDIT_PAYLOAD_HEAD),
+                },
+                success=agg_ok,
+            )
+        )
+
+        result = ChainResult(
+            chain_id=chain_id,
+            final_output=final_out,
+            status="ok" if agg_ok else "error",
+            steps=steps,
+            policy=ChainPolicy.SEQUENTIAL,
+            domain=domain,
+            metadata={
+                "planner": planner,
+                "solver": solver,
+                "aggregator": aggregator,
+                "n_steps_planned": len(sub_tasks),
+                "n_steps_done": len(sub_tasks),
+                "sub_tasks": sub_tasks,
+            },
+        )
+        await self._write_audit(result)
         return result
 
     async def _validate_only(
@@ -547,7 +772,7 @@ class ChainOrchestrator:
             policy=ChainPolicy.VALIDATE,
             domain=domain,
         )
-        self._write_audit(result)
+        await self._write_audit(result)
         return result
 
     async def deliberate(
@@ -602,7 +827,7 @@ class ChainOrchestrator:
                     policy=ChainPolicy.DELIBERATE,
                     domain=domain,
                 )
-                self._write_audit(result)
+                await self._write_audit(result)
                 return result
 
             llm_kind = "llm" if attempt == 1 else "reflector"
@@ -676,7 +901,7 @@ class ChainOrchestrator:
                     policy=ChainPolicy.DELIBERATE,
                     domain=domain,
                 )
-                self._write_audit(result)
+                await self._write_audit(result)
                 return result
 
             steps.append(
@@ -702,7 +927,7 @@ class ChainOrchestrator:
                     policy=ChainPolicy.DELIBERATE,
                     domain=domain,
                 )
-                self._write_audit(result)
+                await self._write_audit(result)
                 return result
 
             if attempt > max_retries:
@@ -714,7 +939,7 @@ class ChainOrchestrator:
                     policy=ChainPolicy.DELIBERATE,
                     domain=domain,
                 )
-                self._write_audit(result)
+                await self._write_audit(result)
                 return result
 
             # Build reflector prompt for next attempt.
@@ -740,7 +965,7 @@ class ChainOrchestrator:
             policy=ChainPolicy.DELIBERATE,
             domain=domain,
         )
-        self._write_audit(result)
+        await self._write_audit(result)
         return result
 
     # ------------------------------------------------------------------
@@ -778,7 +1003,15 @@ class ChainOrchestrator:
             success=result.exit_code == 0,
         )
 
-    def _write_audit(self, result: ChainResult) -> None:
+    async def _write_audit(self, result: ChainResult) -> None:
+        # Audit writes (mkdir + two file writes) are blocking I/O. Offload
+        # them to a worker thread so the orchestrator coroutine — and every
+        # other coroutine sharing the event loop — keeps progressing.
+        if not self.audit_dir:
+            return
+        await asyncio.to_thread(self._write_audit_sync, result)
+
+    def _write_audit_sync(self, result: ChainResult) -> None:
         if not self.audit_dir:
             return
         chain_dir = self.audit_dir / "chains" / result.chain_id

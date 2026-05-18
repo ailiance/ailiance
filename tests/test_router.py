@@ -5,7 +5,9 @@ import pytest
 def test_domain_map_lookup():
     from src.router.domain_map import DOMAIN_TO_WORKER, get_worker_for_domain
 
-    assert get_worker_for_domain("python") == 9302
+    # `python` (and other DEVSTRAL_DOMAINS) now route to Studio
+    # Qwen3-Coder-30B :9327 — Devstral :9302 was decommissioned 2026-05-10.
+    assert get_worker_for_domain("python") == 9327
     assert get_worker_for_domain("electronics-hw") == 9301
     # chat-fr routes to EuroLLM (:9303) — Studio worker is up since 2026-05-11 08:50
     assert get_worker_for_domain("chat-fr") == 9303
@@ -31,10 +33,10 @@ def test_classifier_config():
     from src.router.classifier import RouterConfig
 
     cfg = RouterConfig()
-    assert cfg.embedding_model == "jinaai/jina-embeddings-v3"
-    assert cfg.embedding_dim == 1024
-    assert cfg.hidden_dim == 512
-    assert cfg.num_domains == 40
+    assert cfg.embedding_model == "sentence-transformers/all-MiniLM-L6-v2"
+    assert cfg.embedding_dim == 384
+    assert cfg.hidden_dim == 256
+    assert cfg.num_domains == 47
 
 
 def test_mascarade_overrides_apertus():
@@ -128,7 +130,7 @@ def test_confidence_gating_falls_back_to_apertus():
     )
     # Non-mascarade domain ignores threshold
     assert (
-        get_worker_for_domain_with_confidence("python", 0.01) == 9302
+        get_worker_for_domain_with_confidence("python", 0.01) == 9327
     )
     # Empty/None safe
     assert get_worker_for_domain_with_confidence(None, 0.99) is None
