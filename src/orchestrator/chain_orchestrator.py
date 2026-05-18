@@ -18,6 +18,7 @@ the gateway plug in a real worker proxy at runtime.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import subprocess
@@ -305,7 +306,7 @@ class ChainOrchestrator:
             policy=ChainPolicy.DIRECT,
             domain=domain,
         )
-        self._write_audit(result)
+        await self._write_audit(result)
         return result
 
     async def _mixture(
@@ -483,7 +484,7 @@ class ChainOrchestrator:
                 "judge_ok": judge_ok,
             },
         )
-        self._write_audit(result)
+        await self._write_audit(result)
         return result
 
     async def _sequential(
@@ -566,7 +567,7 @@ class ChainOrchestrator:
                 policy=ChainPolicy.SEQUENTIAL,
                 domain=domain,
             )
-            self._write_audit(result)
+            await self._write_audit(result)
             return result
 
         # Parse JSON array — robust to wrapping prose / code fences.
@@ -655,7 +656,7 @@ class ChainOrchestrator:
                         "failed_step": i,
                     },
                 )
-                self._write_audit(result)
+                await self._write_audit(result)
                 return result
             accumulated += f"\nStep {i} ({task}):\n{step_out}\n"
 
@@ -711,7 +712,7 @@ class ChainOrchestrator:
                 "sub_tasks": sub_tasks,
             },
         )
-        self._write_audit(result)
+        await self._write_audit(result)
         return result
 
     async def _validate_only(
@@ -771,7 +772,7 @@ class ChainOrchestrator:
             policy=ChainPolicy.VALIDATE,
             domain=domain,
         )
-        self._write_audit(result)
+        await self._write_audit(result)
         return result
 
     async def deliberate(
@@ -826,7 +827,7 @@ class ChainOrchestrator:
                     policy=ChainPolicy.DELIBERATE,
                     domain=domain,
                 )
-                self._write_audit(result)
+                await self._write_audit(result)
                 return result
 
             llm_kind = "llm" if attempt == 1 else "reflector"
@@ -900,7 +901,7 @@ class ChainOrchestrator:
                     policy=ChainPolicy.DELIBERATE,
                     domain=domain,
                 )
-                self._write_audit(result)
+                await self._write_audit(result)
                 return result
 
             steps.append(
@@ -926,7 +927,7 @@ class ChainOrchestrator:
                     policy=ChainPolicy.DELIBERATE,
                     domain=domain,
                 )
-                self._write_audit(result)
+                await self._write_audit(result)
                 return result
 
             if attempt > max_retries:
@@ -938,7 +939,7 @@ class ChainOrchestrator:
                     policy=ChainPolicy.DELIBERATE,
                     domain=domain,
                 )
-                self._write_audit(result)
+                await self._write_audit(result)
                 return result
 
             # Build reflector prompt for next attempt.
@@ -964,7 +965,7 @@ class ChainOrchestrator:
             policy=ChainPolicy.DELIBERATE,
             domain=domain,
         )
-        self._write_audit(result)
+        await self._write_audit(result)
         return result
 
     # ------------------------------------------------------------------
@@ -1002,7 +1003,15 @@ class ChainOrchestrator:
             success=result.exit_code == 0,
         )
 
-    def _write_audit(self, result: ChainResult) -> None:
+    async def _write_audit(self, result: ChainResult) -> None:
+        # Audit writes (mkdir + two file writes) are blocking I/O. Offload
+        # them to a worker thread so the orchestrator coroutine — and every
+        # other coroutine sharing the event loop — keeps progressing.
+        if not self.audit_dir:
+            return
+        await asyncio.to_thread(self._write_audit_sync, result)
+
+    def _write_audit_sync(self, result: ChainResult) -> None:
         if not self.audit_dir:
             return
         chain_dir = self.audit_dir / "chains" / result.chain_id

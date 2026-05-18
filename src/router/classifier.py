@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import threading
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -141,6 +142,10 @@ class DomainRouter:
         # so the cosine similarity stays on GPU.
         self._l2_embs = None  # torch.Tensor [N, D] or None
         self._l2_routes: list[tuple[tuple[str, float], ...]] = []
+        # route() runs in a worker thread (asyncio.to_thread) on the
+        # gateway hot path, so concurrent calls can race on the L2 ring.
+        # This lock guards every read and write of _l2_embs/_l2_routes.
+        self._l2_lock = threading.Lock()
         self._load(weights_dir)
         # Bind a fresh lru_cache per-instance so reloading flushes it.
         self._cached_route_by_hash = lru_cache(maxsize=_CACHE_MAXSIZE)(
@@ -229,16 +234,15 @@ class DomainRouter:
 
             # L2 semantic cache lookup BEFORE the MLP — saves the MLP forward
             # AND the unnecessary CPU transfer when a near-duplicate hits.
-            if (
-                self._cfg.l2_cache_threshold > 0
-                and self._l2_embs is not None
-                and self._l2_embs.shape[0] > 0
-            ):
-                sim = torch.matmul(self._l2_embs, emb)
-                best = torch.argmax(sim).item()
-                if sim[best].item() >= self._cfg.l2_cache_threshold:
-                    _ROUTER_L2_HITS.inc()
-                    return list(self._l2_routes[best])
+            # Locked: the ring may be mutated concurrently by _l2_push.
+            if self._cfg.l2_cache_threshold > 0:
+                with self._l2_lock:
+                    if self._l2_embs is not None and self._l2_embs.shape[0] > 0:
+                        sim = torch.matmul(self._l2_embs, emb)
+                        best = torch.argmax(sim).item()
+                        if sim[best].item() >= self._cfg.l2_cache_threshold:
+                            _ROUTER_L2_HITS.inc()
+                            return list(self._l2_routes[best])
 
             # MLP is co-located with the encoder; final scores moved to CPU
             # only for argsort/index ops below.
@@ -265,17 +269,18 @@ class DomainRouter:
         import torch
 
         e = emb.unsqueeze(0)
-        if self._l2_embs is None:
-            self._l2_embs = e
-            self._l2_routes = [route]
-            return
-        if self._l2_embs.shape[0] < self._cfg.l2_cache_size:
-            self._l2_embs = torch.cat([self._l2_embs, e], dim=0)
-            self._l2_routes.append(route)
-        else:
-            # Ring buffer: roll and overwrite oldest slot.
-            self._l2_embs = torch.cat([self._l2_embs[1:], e], dim=0)
-            self._l2_routes = self._l2_routes[1:] + [route]
+        with self._l2_lock:
+            if self._l2_embs is None:
+                self._l2_embs = e
+                self._l2_routes = [route]
+                return
+            if self._l2_embs.shape[0] < self._cfg.l2_cache_size:
+                self._l2_embs = torch.cat([self._l2_embs, e], dim=0)
+                self._l2_routes.append(route)
+            else:
+                # Ring buffer: roll and overwrite oldest slot.
+                self._l2_embs = torch.cat([self._l2_embs[1:], e], dim=0)
+                self._l2_routes = self._l2_routes[1:] + [route]
 
     def _route_by_hash(self, _query_hash: str, query: str) -> tuple[tuple[str, float], ...]:
         """Cached helper — keyed on the sha256 hash to bound memory.
