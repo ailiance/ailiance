@@ -82,6 +82,23 @@ _DEFAULT_WORKER_URLS = {
     #   autossh -M 0 -N -L 0.0.0.0:9340:localhost:9340 \
     #       clems@100.116.92.12
     9340: "http://localhost:9340",
+    # Studio M3 Ultra (512 GB) — MLX backends. All bind 127.0.0.1 on the
+    # Studio host and are reached from electron-server via autossh tunnels
+    # (one tunnel per port, see systemd `*-tunnel.service`). Defaults stay
+    # localhost so a single-host setup just works; multi-host deployments
+    # override the full map via AILIANCE_WORKERS_JSON to point each port
+    # at the studio Tailscale address.
+    9316: "http://localhost:9316",  # Devstral-Small-2-24B base
+    9322: "http://localhost:9322",  # Apertus-70B multi-LoRA custom server
+    9323: "http://localhost:9323",  # DeepSeek-R1-Distill-Qwen-32B 4-bit
+    9324: "http://localhost:9324",  # Llama-3.3-70B-Instruct 4-bit
+    9325: "http://localhost:9325",  # Pixtral-12B 4-bit (vision)
+    9326: "http://localhost:9326",  # Mistral-Small-3.1-24B-Instruct 4-bit
+    9327: "http://localhost:9327",  # Qwen3-Coder-30B-A3B-Instruct 4-bit
+    9328: "http://localhost:9328",  # Qwen3-235B-A22B-Instruct MoE 4-bit
+    9329: "http://localhost:9329",  # Mixtral-8x22B-Instruct 4-bit
+    9330: "http://localhost:9330",  # Devstral multi-LoRA hot-swap server
+    9335: "http://localhost:9335",  # Gemma-4-E4B multi-LoRA custom server
 }
 
 
@@ -432,6 +449,73 @@ MODEL_FORCE_MAP = {
     "ailiance-gemma4-aggro": 9335,
     "ailiance-gemma4-kicad9plus": 9335,
 }
+
+
+# Aliases derived from MODEL_FORCE_MAP but NOT advertised on the public
+# /v1/models surface. Today only the bare auto-router id ``ailiance`` is
+# *added* (it isn't in MODEL_FORCE_MAP because it's resolved by the
+# classifier rather than a forced port). Use this set to denylist legacy
+# or internal-only forced aliases — `ailiance-devstral` is the legacy
+# pre-rename alias for `ailiance-gemma4`, kept routable for back-compat
+# but intentionally hidden from the catalog.
+_INTERNAL_ALIASES: frozenset[str] = frozenset({
+    "ailiance-devstral",  # legacy alias preserved for backwards compatibility
+})
+
+
+def _compute_public_aliases() -> list[str]:
+    """Return the canonical, ordered list of aliases exposed publicly.
+
+    Single source of truth for ``/v1/models`` and ``/v1/models/details``;
+    before 2026-05-18 the two endpoints maintained independent hand-rolled
+    lists and drifted (22 aliases on /v1/models had no display metadata
+    counterpart). The order is: bare ``ailiance`` auto-router first, then
+    ``MODEL_FORCE_MAP`` keys in their declaration order (Python dicts
+    preserve insertion order since 3.7), minus the ``_INTERNAL_ALIASES``
+    denylist.
+    """
+    ordered: list[str] = ["ailiance"]
+    seen: set[str] = {"ailiance"}
+    for alias in MODEL_FORCE_MAP:
+        if alias in _INTERNAL_ALIASES or alias in seen:
+            continue
+        ordered.append(alias)
+        seen.add(alias)
+    return ordered
+
+
+ALL_PUBLIC_ALIASES: list[str] = _compute_public_aliases()
+
+
+def _warn_force_map_worker_drift() -> None:
+    """Surface MODEL_FORCE_MAP ports missing from WORKER_URLS at startup.
+
+    Each such port routes silently through ``_gate_port`` to the Gemma
+    health fallback, hiding misconfiguration behind a (working but wrong)
+    response. The 2026-05-11 incident logged in ``_load_worker_urls``
+    already covers the AILIANCE_WORKERS_JSON env var case; this one
+    catches the *source-level* drift: a new alias landing in
+    MODEL_FORCE_MAP without its port being added to ``_DEFAULT_WORKER_URLS``.
+    """
+    force_ports = {p for p in MODEL_FORCE_MAP.values() if p is not None}
+    missing = force_ports - set(WORKER_URLS)
+    if not missing:
+        return
+    affected = sorted(
+        a for a, p in MODEL_FORCE_MAP.items() if p in missing
+    )
+    log.warning(
+        "MODEL_FORCE_MAP references %d port(s) absent from WORKER_URLS: "
+        "%s — aliases %s will silently fall back to Gemma 9304. Add the "
+        "ports to _DEFAULT_WORKER_URLS or to AILIANCE_WORKERS_JSON.",
+        len(missing),
+        sorted(missing),
+        affected,
+    )
+
+
+_warn_force_map_worker_drift()
+
 
 # Per-port forward overrides for non-ailiance backends. The gateway rewrites
 # the request body's `model` field and injects an Authorization header before
@@ -1071,69 +1155,21 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
 
     @app.get("/v1/models")
     def list_models():
+        """OpenAI-compatible chat-model catalog.
+
+        Sourced from ``ALL_PUBLIC_ALIASES`` (derived from
+        ``MODEL_FORCE_MAP`` minus ``_INTERNAL_ALIASES``) and further
+        filtered to drop ``_BLOCKED_CHAT_ALIASES`` (embedding-only
+        surfaces have no chat completion semantics). Stays byte-identical
+        to ``/v1/models/details`` minus that one documented embed
+        exclusion — the two used to drift, see E.1 audit 2026-05-18.
+        """
+        ids = [a for a in ALL_PUBLIC_ALIASES if a not in _BLOCKED_CHAT_ALIASES]
         return {
             "object": "list",
             "data": [
-                {"id": "ailiance", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-mistral-medium", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-mistral", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-gemma4", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-gemma", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-qwen", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-granite", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-qwen36", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-ministral", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-ministral-reasoning", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-gemma2", "object": "model", "owned_by": "ailiance"},
-                # Tower Ollama :11434 via tunnel :8004 — mascarade fine-tunes
-                {"id": "ailiance-kicad", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-spice", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-stm32", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-emc", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-embedded", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-platformio", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-freecad", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-dsp", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-iot", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-power", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-components-review", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-coder", "object": "model", "owned_by": "ailiance"},
-                # ailiance-embed (bge-m3) is an embedding model, not chat —
-                # intentionally omitted from /v1/models (no /v1/embeddings
-                # endpoint yet). See _BLOCKED_CHAT_ALIASES below.
-                # Devstral 24B 4-bit MLX + 5 LoRAs on Studio :9316-9321
-                {"id": "ailiance-devstral-base", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-python", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-cpp", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-rust-emb", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-html", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-ml-training", "object": "model", "owned_by": "ailiance"},
-                # Apertus 70B 4-bit MLX multi-LoRA on Studio :9322
-                {"id": "ailiance-apertus-real", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-apertus-electronics-hw", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-apertus-math-reasoning", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-apertus-math-gsm8k", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-apertus-math", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-apertus-security-fenrir", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-apertus-spice-sim", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-apertus-emc-dsp-power", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-apertus-embedded", "object": "model", "owned_by": "ailiance"},
-                # Studio flagship 2026-05-12 — Qwen3-235B-A22B MoE 4-bit
-                {"id": "ailiance-flagship", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-qwen-235b", "object": "model", "owned_by": "ailiance"},
-                # Studio S3 additions 2026-05-12 — DeepSeek + Llama + Pixtral + Mistral-Small + Qwen3-Coder
-                {"id": "ailiance-reasoning-r1", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-llama", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-pixtral", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-mistral-small", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-coder-pro", "object": "model", "owned_by": "ailiance"},
-                # Studio Mixtral-8x22B 4-bit MLX :9329 — both aliases exposed.
-                {"id": "ailiance-mixtral", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-mixtral-8x22b", "object": "model", "owned_by": "ailiance"},
-                # Gemma-4-E4B multi-LoRA on Studio :9335
-                {"id": "ailiance-gemma4-mascarade", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-gemma4-aggro", "object": "model", "owned_by": "ailiance"},
-                {"id": "ailiance-gemma4-kicad9plus", "object": "model", "owned_by": "ailiance"},
+                {"id": mid, "object": "model", "owned_by": "ailiance"}
+                for mid in ids
             ],
         }
 
@@ -1144,6 +1180,11 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         Reads `configs/models-display.yaml` on each call so descriptions
         can be edited without a gateway restart. The minimal /v1/models
         endpoint stays OpenAI-standard for plain clients.
+
+        Shares ``ALL_PUBLIC_ALIASES`` with /v1/models; the only delta is
+        that this surface also lists ``_BLOCKED_CHAT_ALIASES`` (the embed
+        worker) because the metadata catalog is the canonical introspection
+        view, regardless of whether the alias is chat-callable.
         """
         import yaml as _yaml
 
@@ -1154,38 +1195,13 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             log.warning("models-display.yaml parse failed: %s", exc)
             raw = {}
         models = raw.get("models", {}) if isinstance(raw, dict) else {}
-        # Enumerate the same id list as /v1/models so they stay aligned.
-        ids = [
-            "ailiance",
-            "ailiance-mistral-medium",
-            "ailiance-mistral",
-            "ailiance-gemma4",
-            "ailiance-gemma",
-            "ailiance-qwen",
-            "ailiance-granite",
-            "ailiance-qwen36",
-            "ailiance-ministral",
-            "ailiance-ministral-reasoning",
-            "ailiance-gemma2",
-            "ailiance-kicad",
-            "ailiance-spice",
-            "ailiance-stm32",
-            "ailiance-emc",
-            "ailiance-embedded",
-            "ailiance-platformio",
-            "ailiance-freecad",
-            "ailiance-dsp",
-            "ailiance-iot",
-            "ailiance-power",
-            "ailiance-components-review",
-            "ailiance-coder",
-            "ailiance-embed",
-            "ailiance-mixtral",
-            "ailiance-mixtral-8x22b",
-            "ailiance-gemma4-mascarade",
-            "ailiance-gemma4-aggro",
-            "ailiance-gemma4-kicad9plus",
-        ]
+        # Enumerate the same id list as /v1/models, then re-add any
+        # blocked-chat surfaces (embedding workers) so the metadata
+        # catalog is exhaustive even if they're not chat-callable.
+        ids: list[str] = list(ALL_PUBLIC_ALIASES)
+        for blocked in _BLOCKED_CHAT_ALIASES:
+            if blocked not in ids and blocked in MODEL_FORCE_MAP:
+                ids.append(blocked)
         return {
             "object": "list",
             "data": [

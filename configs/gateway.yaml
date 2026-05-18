@@ -102,6 +102,54 @@ workers:
     host: studio
     native_fc: false
 
+  devstral-base:            # ailiance-devstral-base (raw 24B, no LoRA)
+    url: http://localhost:9316
+    port: 9316
+    backend: mlx_lm.server
+    model: Devstral-Small-2-24B-MLX-4bit
+    host: studio
+    native_fc: false
+
+  apertus-70b-multilora:    # ailiance-apertus-* (9 LoRA experts, hot-swap)
+    url: http://localhost:9322
+    port: 9322
+    backend: custom mlx_lm + load_adapters under asyncio.Lock
+    model: Apertus-70B-Instruct-2509-4bit-MLX
+    host: studio
+    native_fc: false
+
+  qwen3-235b-moe:           # ailiance-flagship / ailiance-qwen-235b
+    url: http://localhost:9328
+    port: 9328
+    backend: mlx_lm.server
+    model: Qwen3-235B-A22B-Instruct-MLX-4bit
+    host: studio
+    native_fc: false
+
+  mixtral-8x22b:            # ailiance-mixtral / ailiance-mixtral-8x22b
+    url: http://localhost:9329
+    port: 9329
+    backend: mlx_lm.server
+    model: Mixtral-8x22B-Instruct-MLX-4bit
+    host: studio
+    native_fc: false
+
+  gemma4-multilora:         # ailiance-gemma4-{mascarade,aggro,kicad9plus}
+    url: http://localhost:9335
+    port: 9335
+    backend: custom mlx_lm + Gemma-4-E4B base + 3 LoRA hot-swap
+    model: gemma-4-E4B-it-MLX-4bit
+    host: studio
+    native_fc: false
+
+  mascarade-mlx:            # ailiance-{kicad,spice,stm32,emc,embedded,platformio,freecad,dsp,iot,power}
+    url: http://localhost:9340
+    port: 9340
+    backend: mlx_lm.server (Qwen3-4B base + 10 mascarade LoRA bf16)
+    model: Qwen3-4B-Instruct-2507
+    host: studio
+    native_fc: false
+
   # --- macm1 (32 GB) — multi-model MLX ------------------------------
   macm1-mlx:                # ailiance-gemma4 / ailiance-gemma2 / ailiance-ministral* / kicad-dsl + kicad-pcb (eu-kiki)
     url: http://localhost:8502
