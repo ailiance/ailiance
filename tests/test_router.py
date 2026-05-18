@@ -33,10 +33,10 @@ def test_classifier_config():
     from src.router.classifier import RouterConfig
 
     cfg = RouterConfig()
-    assert cfg.embedding_model == "jinaai/jina-embeddings-v3"
-    assert cfg.embedding_dim == 1024
-    assert cfg.hidden_dim == 512
-    assert cfg.num_domains == 40
+    assert cfg.embedding_model == "sentence-transformers/all-MiniLM-L6-v2"
+    assert cfg.embedding_dim == 384
+    assert cfg.hidden_dim == 256
+    assert cfg.num_domains == 47
 
 
 def test_mascarade_overrides_apertus():

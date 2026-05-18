@@ -6,7 +6,12 @@
 # overridden by the `AILIANCE_WORKERS_JSON` env var per host.
 
 router:
-  weights_dir: output/router-v6
+  # `router-prod` is a stable symlink maintained in production; it points
+  # at the currently-deployed checkpoint (today: router-v6, which is
+  # byte-identical to router-v7-multimodel). The active model is
+  # all-MiniLM-L6-v2 (384d embeddings, 256-wide MLP head, 47 domains).
+  # Repoint the symlink — not this path — on retrain.
+  weights_dir: output/router-prod
   embedding_model: sentence-transformers/all-MiniLM-L6-v2
   embedding_dim: 384
   hidden_dim: 256

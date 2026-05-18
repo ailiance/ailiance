@@ -1,11 +1,11 @@
 # src/router/classifier.py
-"""Jina v3 + MLP domain classifier.
+"""MiniLM-L6 + MLP domain classifier.
 
-Encodes user query with Jina Embeddings v3 (1024d),
-classifies into one of 40 domains via 2-layer MLP.
+Encodes user query with sentence-transformers/all-MiniLM-L6-v2 (384d),
+classifies into one of 47 domains via 2-layer MLP.
 
 Includes a per-process L1 LRU cache keyed on sha256(user_msg) so
-repeated prompts skip the ~50-100ms Jina embedding compute.
+repeated prompts skip the ~2-15ms MiniLM embedding compute.
 """
 
 from __future__ import annotations
@@ -76,17 +76,17 @@ DEFAULT_WARMUP_PROMPTS: list[str] = [
 
 @dataclass(frozen=True)
 class RouterConfig:
-    embedding_model: str = "jinaai/jina-embeddings-v3"
-    embedding_dim: int = 1024
-    hidden_dim: int = 512
-    num_domains: int = 40
-    threshold: float = 0.12
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embedding_dim: int = 384
+    hidden_dim: int = 256
+    num_domains: int = 47
+    threshold: float = 0.50
     max_active: int = 4
     # Encoder device: "mps" on Apple Silicon, "cuda" on NVIDIA, "cpu" fallback.
     # Auto-resolved at load time when set to "auto".
     encoder_device: str = "auto"
     # Cap input length to keep encoding fast — routing decisions stabilize
-    # well before the full 8192 tokens that Jina v3 supports.
+    # well before the 256-token window that MiniLM-L6 supports.
     max_seq_length: int = 128
     # L2 semantic cache: cosine threshold for embedding-similarity hit.
     # Catches paraphrases ("coucou" / "salut" / "hello"). Set to 0 to disable.
@@ -124,7 +124,7 @@ def _build_mlp(cfg: RouterConfig) -> "tnn.Module":
 
 
 class DomainRouter:
-    """Encodes text with Jina v3, classifies with MLP head.
+    """Encodes text with MiniLM-L6, classifies with MLP head.
 
     The route() method is wrapped by a per-instance LRU cache keyed on
     sha256(query). Cache is per-process; reload the router instance to
@@ -146,9 +146,9 @@ class DomainRouter:
         self._cached_route_by_hash = lru_cache(maxsize=_CACHE_MAXSIZE)(
             self._route_by_hash
         )
-        # Warm caches at construction time. Eliminates the ~250 ms p95 spike
-        # observed on first call to Jina v3 (LoRA-task lazy init). Cheap on
-        # any encoder; ~150-300 ms one-time cost paid at boot, not per-query.
+        # Warm caches at construction time. Eliminates the p95 spike
+        # observed on the first encode call (MiniLM-L6 lazy init). Cheap on
+        # any encoder; one-time cost paid at boot, not per-query.
         try:
             self.prewarm()
         except Exception:
@@ -313,7 +313,7 @@ class DomainRouter:
         """Populate the L1+L2 caches by routing each prompt once.
 
         With prompts=None, uses DEFAULT_WARMUP_PROMPTS to kill the cold-call
-        p95 spike (Jina v3 LoRA-task lazy init costs ~250 ms on first call).
+        p95 spike (MiniLM-L6 lazy init costs extra on the first call).
         Pass an explicit list to extend or replace.
 
         Returns the number of prompts processed.
