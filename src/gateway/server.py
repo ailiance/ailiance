@@ -1322,7 +1322,9 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 dict(request.headers),
                 request.client.host if request.client else None,
             )
-            req.messages = inject_tenant_prefix(req.messages, tenant_id)
+            req.messages = inject_tenant_prefix(
+                req.messages, tenant_id, req.model
+            )
         if req.model in _BLOCKED_CHAT_ALIASES:
             raise HTTPException(
                 status_code=400,

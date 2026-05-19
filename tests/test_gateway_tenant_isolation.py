@@ -105,5 +105,53 @@ class IsolationEnabledTests(unittest.TestCase):
         self.assertTrue(isolation_enabled() in (True, False))
 
 
+class InjectTenantPrefixMixtralTests(unittest.TestCase):
+    """Mixtral-8x22B-v0.1's chat template rejects a leading system
+    message — the tenant marker is folded into the first user message
+    for Mixtral aliases instead."""
+
+    def _build(self):
+        return [
+            ChatMessage(role="user", content="hello"),
+            ChatMessage(role="assistant", content="hi"),
+            ChatMessage(role="user", content="more"),
+        ]
+
+    def test_mixtral_folds_marker_into_first_user(self):
+        result = inject_tenant_prefix(
+            self._build(), "abcdef01", "ailiance-mixtral"
+        )
+        self.assertEqual(result[0].role, "user")
+        self.assertIn("abcdef01", result[0].content)
+        self.assertIn("hello", result[0].content)
+        # No extra message inserted, and no system message anywhere.
+        self.assertEqual(len(result), 3)
+        self.assertFalse(any(m.role == "system" for m in result))
+
+    def test_mixtral_8x22b_alias_also_folds(self):
+        result = inject_tenant_prefix(
+            self._build(), "abcdef01", "ailiance-mixtral-8x22b"
+        )
+        self.assertEqual(result[0].role, "user")
+        self.assertIn("abcdef01", result[0].content)
+
+    def test_non_mixtral_alias_still_uses_system_message(self):
+        result = inject_tenant_prefix(
+            self._build(), "abcdef01", "ailiance-llama"
+        )
+        self.assertEqual(result[0].role, "system")
+        self.assertIn("abcdef01", result[0].content or "")
+
+    def test_no_alias_defaults_to_system_message(self):
+        result = inject_tenant_prefix(self._build(), "abcdef01")
+        self.assertEqual(result[0].role, "system")
+
+    def test_mixtral_does_not_mutate_input(self):
+        original = self._build()
+        inject_tenant_prefix(original, "abcdef01", "ailiance-mixtral")
+        self.assertEqual(original[0].role, "user")
+        self.assertEqual(original[0].content, "hello")
+
+
 if __name__ == "__main__":
     unittest.main()

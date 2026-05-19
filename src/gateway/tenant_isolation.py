@@ -54,6 +54,18 @@ _ISOLATION_ENABLED = os.environ.get("AILIANCE_TENANT_ISOLATION", "1") != "0"
 # string has essentially zero impact on output behaviour.
 _PREFIX_TEMPLATE = "[ailiance-session:{tenant}]"
 
+# Chat templates that reject a leading ``system`` message: they require
+# the first message to be ``user`` and raise on anything else. Mixtral-
+# 8x22B-Instruct-v0.1 raises "Conversation roles must alternate user/
+# assistant/..." on a leading system message. For these aliases the
+# tenant marker is folded into the first user message instead; the per-
+# tenant token-prefix divergence that drives cache isolation holds
+# either way.
+_NO_LEADING_SYSTEM_ALIASES = frozenset({
+    "ailiance-mixtral",
+    "ailiance-mixtral-8x22b",
+})
+
 
 def _extract_client_ip(headers: dict, peer_host: Optional[str]) -> str:
     """Pick the most trustworthy client identifier from request data.
@@ -90,16 +102,42 @@ def isolation_enabled() -> bool:
     return _ISOLATION_ENABLED
 
 
-def inject_tenant_prefix(
-    messages: list[ChatMessage], tenant_id: str
+def _fold_marker_into_first_user(
+    messages: list[ChatMessage], marker: str
 ) -> list[ChatMessage]:
-    """Return ``messages`` with a leading session-marker system message.
+    """Prepend ``marker`` to the first user message's text content.
+
+    Used for chat templates that reject a leading system message. If no
+    user message carries plain-string content, fall back to a leading
+    system message — keeps a marker present rather than dropping
+    isolation. The original list is not mutated.
+    """
+    out = list(messages)
+    for i, msg in enumerate(out):
+        if msg.role == "user" and isinstance(msg.content, str):
+            out[i] = msg.model_copy(
+                update={"content": f"{marker}\n{msg.content}"}
+            )
+            return out
+    return [ChatMessage(role="system", content=marker), *out]
+
+
+def inject_tenant_prefix(
+    messages: list[ChatMessage],
+    tenant_id: str,
+    alias: str | None = None,
+) -> list[ChatMessage]:
+    """Return ``messages`` with the per-tenant session marker prepended.
+
+    Default: a leading ``system`` message. For aliases whose chat
+    template rejects a leading system role (``_NO_LEADING_SYSTEM_ALIASES``)
+    the marker is folded into the first user message instead — the
+    token-prefix divergence that drives cache isolation holds either way.
 
     The original list is *not* mutated — we return a new list so the
     caller can keep an unmodified copy for audit logging.
     """
-    marker = ChatMessage(
-        role="system",
-        content=_PREFIX_TEMPLATE.format(tenant=tenant_id),
-    )
-    return [marker, *messages]
+    marker = _PREFIX_TEMPLATE.format(tenant=tenant_id)
+    if alias in _NO_LEADING_SYSTEM_ALIASES:
+        return _fold_marker_into_first_user(messages, marker)
+    return [ChatMessage(role="system", content=marker), *messages]
