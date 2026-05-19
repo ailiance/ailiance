@@ -85,3 +85,21 @@ def test_active_campaign_loaded_port_passes_through():
                            json={"model": alias,
                                  "messages": [{"role": "user", "content": "hi"}]})
     assert resp.status_code != 503
+
+
+def test_models_endpoint_flags_training():
+    app = make_gateway_app(skip_router_load=True)
+    alias, port = _pick_unloaded_alias()
+    app.state.training.state = CampaignState(
+        status="TRAINING", domains=["kicad-dsl"], unloaded_ports=[port])
+    data = TestClient(app).get("/v1/models").json()["data"]
+    statuses = {m["id"]: m.get("status") for m in data}
+    assert statuses[alias] == "training"
+    assert all(s in ("training", "ready") for s in statuses.values())
+    assert "ready" in statuses.values()  # not every model is unloaded
+
+
+def test_models_endpoint_all_ready_when_idle():
+    app = make_gateway_app(skip_router_load=True)
+    data = TestClient(app).get("/v1/models").json()["data"]
+    assert all(m.get("status") == "ready" for m in data)

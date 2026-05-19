@@ -1169,7 +1169,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         return Response(generate_latest(reg), media_type="text/plain; version=0.0.4")
 
     @app.get("/v1/models")
-    def list_models():
+    def list_models(request: Request):
         """OpenAI-compatible chat-model catalog.
 
         Sourced from ``ALL_PUBLIC_ALIASES`` (derived from
@@ -1180,10 +1180,25 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         exclusion — the two used to drift, see E.1 audit 2026-05-18.
         """
         ids = [a for a in ALL_PUBLIC_ALIASES if a not in _BLOCKED_CHAT_ALIASES]
+        training = request.app.state.training
+        unloaded = (
+            set(training.state.unloaded_ports)
+            if training.state.is_active
+            else set()
+        )
         return {
             "object": "list",
             "data": [
-                {"id": mid, "object": "model", "owned_by": "ailiance"}
+                {
+                    "id": mid,
+                    "object": "model",
+                    "owned_by": "ailiance",
+                    "status": (
+                        "training"
+                        if MODEL_FORCE_MAP.get(mid) in unloaded
+                        else "ready"
+                    ),
+                }
                 for mid in ids
             ],
         }
