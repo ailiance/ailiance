@@ -82,6 +82,9 @@ _DEFAULT_WORKER_URLS = {
     #   autossh -M 0 -N -L 0.0.0.0:9340:localhost:9340 \
     #       clems@100.116.92.12
     9340: "http://localhost:9340",
+    # Studio swap server :9350 — one mlx_lm.server, no fixed model; loads
+    # the requested base model on demand. autossh tunnel :9350 → studio.
+    9350: "http://localhost:9350",
     # Studio M3 Ultra (512 GB) — MLX backends. All bind 127.0.0.1 on the
     # Studio host and are reached from electron-server via autossh tunnels
     # (one tunnel per port, see systemd `*-tunnel.service`). Defaults stay
