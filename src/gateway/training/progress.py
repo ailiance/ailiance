@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-_PHASE_RE = re.compile(r"### PHASE (\d)/(\d)")
+_PHASE_RE = re.compile(r"### PHASE (\d+)/(\d+)")
 _ITER_RE = re.compile(r"Iter (\d+):")
 _DONE_RE = re.compile(r"### DOMAIN COMPLETE (\S+) final_val_loss=([0-9.]+)")
 
