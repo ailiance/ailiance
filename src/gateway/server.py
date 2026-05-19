@@ -48,6 +48,9 @@ from src.gateway.inline_files import (
     rewrite_input_files,
 )
 from src.gateway.observability import track_chat
+from src.gateway.training.admin import make_training_router
+from src.gateway.training.orchestrator import TrainingOrchestrator
+from src.gateway.training.studio_ops import StudioOps
 from src.orchestrator.chain_orchestrator import ChainOrchestrator
 from src.orchestrator.chain_policy import ChainPolicy
 from src.orchestrator.validators import StubValidator, make_validator
@@ -1052,6 +1055,9 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
     # touching the closure. Production handler reads from app.state.
     app.state.router = router
 
+    app.state.training = TrainingOrchestrator(StudioOps(), Path("campaign_state.json"))
+    app.include_router(make_training_router())
+
     start_time = time.time()
     http_client = httpx.AsyncClient(timeout=600.0)
 
@@ -1141,6 +1147,10 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         _health_probe_task = _asyncio.create_task(_health_probe_loop(http_client))
         log.info("health probe started (interval=%ss, healthy=%s)",
                  HEALTH_PROBE_INTERVAL_S, sorted(_healthy_ports))
+        try:
+            await app.state.training.reattach()
+        except Exception:  # noqa: BLE001
+            log.exception("training re-attach failed")
 
     @app.get("/health")
     def health():
