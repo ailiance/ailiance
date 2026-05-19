@@ -65,3 +65,30 @@ def test_build_503_body_has_progress():
     assert body["training"]["current_domain"] == "kicad-pcb"
     assert body["training"]["domain_index"] == 2
     assert body["training"]["domains_total"] == 2
+
+
+@pytest.mark.asyncio
+async def test_run_campaign_completes(tmp_path):
+    ops = FakeOps()
+    ops.logs = {
+        "a": "### DOMAIN COMPLETE a final_val_loss=0.40\n",
+        "b": "### DOMAIN COMPLETE b final_val_loss=0.50\n",
+    }
+    orch = TrainingOrchestrator(ops, tmp_path / "s.json")
+    orch.state = CampaignState(status="PREFLIGHT", domains=["a", "b"])
+    await orch._run_campaign()
+    assert orch.state.status == "DONE"
+    assert orch.state.verdicts == {"a": "OK", "b": "OK"}
+    assert ops.reloaded is True
+
+
+@pytest.mark.asyncio
+async def test_abort_stops_the_campaign(tmp_path):
+    ops = FakeOps()
+    orch = TrainingOrchestrator(ops, tmp_path / "s.json")
+    orch.state = CampaignState(status="PREFLIGHT", domains=["a", "b"],
+                               abort_requested=True)
+    await orch._run_campaign()
+    assert orch.state.status == "ABORTED"
+    assert orch.state.domain_index == 0   # no domain was trained
+    assert ops.reloaded is True

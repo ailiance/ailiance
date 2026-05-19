@@ -98,7 +98,13 @@ class StudioOps:
             f"bash {REMOTE_SCRIPT_DIR}/medium35_train_domain.sh spawn "
             f"{shlex.quote(domain)}"
         )
-        return int(res.stdout.strip())
+        out = res.stdout.strip()
+        if not out.isdigit():
+            raise RuntimeError(
+                f"spawn_domain({domain}): expected a PID, got {out!r} "
+                f"(stderr: {res.stderr.strip()!r})"
+            )
+        return int(out)
 
     async def pid_alive(self, pid: int) -> bool:
         res = await self.run(f"kill -0 {pid} 2>/dev/null && echo ALIVE")

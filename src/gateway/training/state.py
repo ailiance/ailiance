@@ -23,6 +23,7 @@ class CampaignState:
     reload_failed: list[int] = field(default_factory=list)
     started_at: str | None = None
     error: str | None = None
+    abort_requested: bool = False
 
     @property
     def current_domain(self) -> str | None:
