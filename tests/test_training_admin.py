@@ -62,3 +62,36 @@ def test_start_with_explicit_domains():
                headers={"X-Admin-Token": "secret"})
     assert r.status_code == 202
     assert orch.started == ["foo", "bar"]
+
+
+def test_log_endpoint_tails_studio_log():
+    log_text = "\n".join(f"Iter {i}: train loss {1.0 - i*0.01:.3f}" for i in range(1, 51))
+
+    class _Ops:
+        async def read_domain_log(self, domain):
+            return log_text
+
+    class _Orch:
+        _ops = _Ops()
+        async def start(self, domains=None): pass
+        async def abort(self): pass
+        def status(self): return {}
+
+    c = _client(_Orch())
+    r = c.get("/admin/training/log/kicad-dsl?tail=5",
+              headers={"X-Admin-Token": "secret"})
+    assert r.status_code == 200
+    lines = r.text.splitlines()
+    assert len(lines) == 5
+    assert lines[-1].startswith("Iter 50")
+    assert r.headers["content-type"].startswith("text/plain")
+
+
+def test_log_endpoint_token_required():
+    class _Orch:
+        _ops = None
+        async def start(self, domains=None): pass
+        async def abort(self): pass
+        def status(self): return {}
+    c = _client(_Orch())
+    assert c.get("/admin/training/log/kicad-dsl").status_code == 401
