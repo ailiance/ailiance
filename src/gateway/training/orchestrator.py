@@ -16,6 +16,8 @@ log = logging.getLogger(__name__)
 
 POST_UNLOAD_MIN_FREE_GB = 320.0
 POLL_INTERVAL_S = 30.0
+MEM_SETTLE_POLL_S = 15.0       # interval between free-memory samples after unload
+MEM_SETTLE_MAX_SAMPLES = 8     # give up to ~2 min for buffers to be reclaimed
 MAX_DOMAIN_SECONDS = 2 * D.HOURS_PER_DOMAIN * 3600  # stuck-PID guard
 SCRIPTS_DIR = str(Path(__file__).resolve().parents[3] / "scripts" / "studio")
 
@@ -153,12 +155,25 @@ class TrainingOrchestrator:
         self._set("UNLOADING")
         self.state.unloaded_ports = await self._ops.unload_workers()
         self._save()
-        free = await self._ops.free_memory_gb()
+        free = await self._settled_free_memory()
         if free < POST_UNLOAD_MIN_FREE_GB:
             raise RuntimeError(
                 f"après déchargement, mémoire libre {free:.0f} GB "
                 f"< {POST_UNLOAD_MIN_FREE_GB:.0f} GB requis"
             )
+
+    async def _settled_free_memory(self) -> float:
+        """Poll free memory until it stops rising. A killed worker's macOS
+        unified-memory buffers take tens of seconds to be reclaimed, so a
+        reading taken immediately after unload undercounts free memory."""
+        free = await self._ops.free_memory_gb()
+        for _ in range(MEM_SETTLE_MAX_SAMPLES):
+            await asyncio.sleep(MEM_SETTLE_POLL_S)
+            nxt = await self._ops.free_memory_gb()
+            if nxt <= free + 2.0:  # stabilised — no meaningful further gain
+                return nxt
+            free = nxt
+        return free
 
     async def _train_domain(self, domain: str, resume_pid: int | None = None) -> None:
         if resume_pid is not None and await self._ops.pid_alive(resume_pid):
