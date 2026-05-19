@@ -1058,7 +1058,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
     # touching the closure. Production handler reads from app.state.
     app.state.router = router
 
-    app.state.training = TrainingOrchestrator(StudioOps(), Path("campaign_state.json"))
+    app.state.training = TrainingOrchestrator(StudioOps(), Path(os.environ.get("AILIANCE_CAMPAIGN_STATE", "campaign_state.json")))
     app.include_router(make_training_router())
 
     start_time = time.time()

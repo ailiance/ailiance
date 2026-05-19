@@ -11,6 +11,10 @@ is an operational action triggered via the admin API — not code.
   Without it the `/admin/training/*` endpoints return 503 (admin disabled).
 - The launchd-label discovery in `scripts/studio/medium35_workers.sh` is
   dynamic — no manual map to fill.
+- `AILIANCE_CAMPAIGN_STATE` should be set to an **absolute** path (e.g.
+  `/home/electron/ailiance/campaign_state.json`) in the gateway's systemd
+  environment, so a gateway restart finds the campaign state regardless of
+  the process working directory. Defaults to a relative `campaign_state.json`.
 
 ## Pre-flight (manual sanity check)
 

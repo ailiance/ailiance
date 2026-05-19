@@ -163,3 +163,27 @@ async def test_progress_sets_iter_total(tmp_path):
     assert orch.state.iter_total == 800
     orch._progress(1, 50)
     assert orch.state.iter_total == 500
+
+
+@pytest.mark.asyncio
+async def test_reattach_from_reloading_skips_to_reload(tmp_path):
+    ops = FakeOps()
+    state_path = tmp_path / "s.json"
+    save_state(state_path, CampaignState(status="RELOADING", domains=["a", "b"],
+                                         domain_index=2, unloaded_ports=[9301]))
+    orch = TrainingOrchestrator(ops, state_path)
+    assert await orch.reattach() is True
+    await orch._task
+    assert ops.spawn_calls == 0  # no domain trained — went straight to reload
+    assert ops.reloaded is True
+    assert orch.state.status == "DONE"
+
+
+@pytest.mark.asyncio
+async def test_gate_records_failed_oom(tmp_path):
+    ops = FakeOps()
+    ops.logs["a"] = "### PHASE 1/3 domain=a seq=512\n### DOMAIN FAILED_OOM a phase=1\n"
+    orch = TrainingOrchestrator(ops, tmp_path / "s.json")
+    orch.state = CampaignState(status="GATING", domains=["a"])
+    await orch._gate_domain("a")
+    assert orch.state.verdicts["a"] == "FAILED_OOM"

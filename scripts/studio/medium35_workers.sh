@@ -5,7 +5,6 @@
 # manually and cannot be restarted automatically (reported RELOAD_FAILED).
 set -uo pipefail
 
-UNLOAD_PORTS=(9301 9303 9324 8500 9323 9327 9325 9328 9329)
 GUI="gui/$(id -u)"
 STATE_DIR="$HOME/.ailiance-training"
 STATE_FILE="$STATE_DIR/unloaded.tsv"
@@ -23,7 +22,7 @@ do_unload() {
   mkdir -p "$STATE_DIR"
   : >"$STATE_FILE"
   local port pid label
-  for port in "${UNLOAD_PORTS[@]}"; do
+  for port in "$@"; do
     pid="$(lsof -ti tcp:"$port" 2>/dev/null | head -1 || true)"
     if [[ -z "$pid" ]]; then
       echo "ALREADY_DOWN $port"
@@ -65,7 +64,7 @@ do_reload() {
 }
 
 case "${1:-}" in
-  unload) do_unload ;;
+  unload) shift; do_unload "$@" ;;
   reload) do_reload ;;
   *) echo "usage: $0 {unload|reload}" >&2; exit 2 ;;
 esac

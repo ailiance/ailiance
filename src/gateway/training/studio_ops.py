@@ -75,8 +75,11 @@ class StudioOps:
             raise RuntimeError(f"scp to Studio failed (exit {proc.returncode})")
 
     async def unload_workers(self) -> list[int]:
-        await self.run(f"bash {REMOTE_SCRIPT_DIR}/medium35_workers.sh unload",
-                       timeout=120.0)
+        ports = " ".join(str(p) for p in UNLOAD_PORTS)
+        await self.run(
+            f"bash {REMOTE_SCRIPT_DIR}/medium35_workers.sh unload {ports}",
+            timeout=120.0,
+        )
         return list(UNLOAD_PORTS)
 
     async def reload_workers(self, ports: list[int]) -> list[int]:
