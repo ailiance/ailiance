@@ -64,3 +64,20 @@ async def test_run_timeout_kills_process():
         with pytest.raises(asyncio.TimeoutError):
             await StudioOps().run("sleep 100", timeout=0.05)
     assert waited["v"] is True
+
+
+@pytest.mark.asyncio
+async def test_reload_workers_uses_long_timeout():
+    captured = {}
+
+    async def fake_run(self, command, timeout=60.0):
+        captured["command"] = command
+        captured["timeout"] = timeout
+        from src.gateway.training.studio_ops import SSHResult
+        return SSHResult(0, "RELOADED 9301\nRELOAD_FAILED 9303\n", "")
+
+    with patch.object(StudioOps, "run", new=fake_run):
+        failed = await StudioOps().reload_workers([9301, 9303])
+    assert captured["timeout"] >= 2400.0
+    assert "reload" in captured["command"]
+    assert failed == [9303]

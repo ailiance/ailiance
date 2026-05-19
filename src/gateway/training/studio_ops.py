@@ -85,7 +85,7 @@ class StudioOps:
     async def reload_workers(self, ports: list[int]) -> list[int]:
         """Reload workers; return the ports that failed the HTTP healthcheck."""
         res = await self.run(
-            f"bash {REMOTE_SCRIPT_DIR}/medium35_workers.sh reload", timeout=300.0
+            f"bash {REMOTE_SCRIPT_DIR}/medium35_workers.sh reload", timeout=2400.0
         )
         failed = []
         for line in res.stdout.splitlines():
