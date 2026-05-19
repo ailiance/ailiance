@@ -48,10 +48,13 @@ One `mlx_lm.server` swap instance on macM1 (32 GB) for medium models
 
 ## Host capacity (measured 2026-05-19)
 
-- **Studio** — 512 GB. ~369 GB genuinely resident: ~208 GB of gateway MLX
-  servers, ~43 GB EuroLLM, and **~77 GB for the kiki/Zacus voice pipeline**
-  (`eu-kiki` :9200 — a non-gateway consumer that must stay). ~92 GB free +
-  ~42 GB reclaimable file cache → ~130 GB headroom before any change.
+- **Studio** — 512 GB. ~369 GB genuinely resident: ~208 GB of standalone
+  `mlx_lm.server` workers, ~43 GB EuroLLM, and **~77 GB for
+  `mascarade_multi_server`** (`mascarade-mlx`, runs in the `eu-kiki` venv —
+  a legacy name; it is NOT a voice pipeline). That process serves `:9340`
+  (the 10 mascarade hardware LoRA experts) and is bound to the wider fleet
+  port layout — gateway-critical, must stay. ~92 GB free + ~42 GB
+  reclaimable file cache → ~130 GB headroom before any change.
 - **macM1** — 32 GB. One swap server, models ≤ ~24 GB.
 - **kxkm-ai** — 62 GB RAM (~47 GB available) + RTX 4090 24 GB VRAM
   (~5 GB free). **NVIDIA/llama.cpp stack — MLX does not run here.** It is
