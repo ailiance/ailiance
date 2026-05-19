@@ -14,7 +14,7 @@ from src.gateway.training.state import CampaignState, load_state, save_state
 
 log = logging.getLogger(__name__)
 
-PREFLIGHT_MIN_FREE_GB = 320.0
+POST_UNLOAD_MIN_FREE_GB = 320.0
 POLL_INTERVAL_S = 30.0
 MAX_DOMAIN_SECONDS = 2 * D.HOURS_PER_DOMAIN * 3600  # stuck-PID guard
 SCRIPTS_DIR = str(Path(__file__).resolve().parents[3] / "scripts" / "studio")
@@ -146,11 +146,6 @@ class TrainingOrchestrator:
         if not await self._ops.venv_ok():
             self._set("FAILED", error="Studio venv invalide (import mlx.core)")
             return False
-        free = await self._ops.free_memory_gb()
-        if free < PREFLIGHT_MIN_FREE_GB:
-            self._set("FAILED",
-                      error=f"mémoire libre {free:.0f} GB < {PREFLIGHT_MIN_FREE_GB:.0f} GB")
-            return False
         await self._ops.deploy_scripts(SCRIPTS_DIR)
         return True
 
@@ -158,6 +153,12 @@ class TrainingOrchestrator:
         self._set("UNLOADING")
         self.state.unloaded_ports = await self._ops.unload_workers()
         self._save()
+        free = await self._ops.free_memory_gb()
+        if free < POST_UNLOAD_MIN_FREE_GB:
+            raise RuntimeError(
+                f"après déchargement, mémoire libre {free:.0f} GB "
+                f"< {POST_UNLOAD_MIN_FREE_GB:.0f} GB requis"
+            )
 
     async def _train_domain(self, domain: str, resume_pid: int | None = None) -> None:
         if resume_pid is not None and await self._ops.pid_alive(resume_pid):

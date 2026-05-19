@@ -44,14 +44,15 @@ class FakeOps:
 
 
 @pytest.mark.asyncio
-async def test_preflight_fails_on_low_memory(tmp_path):
+async def test_campaign_fails_when_unload_frees_too_little(tmp_path):
     ops = FakeOps()
-    ops.free = 100.0
+    ops.free = 100.0  # after unload, still far below the 320 GB requirement
     orch = TrainingOrchestrator(ops, tmp_path / "s.json")
-    ok = await orch._preflight()
-    assert ok is False
+    orch.state = CampaignState(status="PREFLIGHT", domains=["a"])
+    await orch._run_campaign()
     assert orch.state.status == "FAILED"
     assert "320" in orch.state.error
+    assert ops.reloaded is True  # workers reloaded on failure
 
 
 @pytest.mark.asyncio
