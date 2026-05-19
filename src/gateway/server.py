@@ -48,6 +48,12 @@ from src.gateway.inline_files import (
     rewrite_input_files,
 )
 from src.gateway.observability import track_chat
+from src.gateway.training.admin import make_training_router
+from src.gateway.training.orchestrator import TrainingOrchestrator, build_training_503
+from src.gateway.training.studio_ops import (
+    MINIMAL_ROUTABLE_PORTS,
+    StudioOps,
+)
 from src.orchestrator.chain_orchestrator import ChainOrchestrator
 from src.orchestrator.chain_policy import ChainPolicy
 from src.orchestrator.validators import StubValidator, make_validator
@@ -1057,6 +1063,9 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
     # touching the closure. Production handler reads from app.state.
     app.state.router = router
 
+    app.state.training = TrainingOrchestrator(StudioOps(), Path(os.environ.get("AILIANCE_CAMPAIGN_STATE", "campaign_state.json")))
+    app.include_router(make_training_router())
+
     start_time = time.time()
     http_client = httpx.AsyncClient(timeout=600.0)
 
@@ -1146,6 +1155,10 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         _health_probe_task = _asyncio.create_task(_health_probe_loop(http_client))
         log.info("health probe started (interval=%ss, healthy=%s)",
                  HEALTH_PROBE_INTERVAL_S, sorted(_healthy_ports))
+        try:
+            await app.state.training.reattach()
+        except Exception:  # noqa: BLE001
+            log.exception("training re-attach failed")
 
     @app.get("/health")
     def health():
@@ -1161,7 +1174,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         return Response(generate_latest(reg), media_type="text/plain; version=0.0.4")
 
     @app.get("/v1/models")
-    def list_models():
+    def list_models(request: Request):
         """OpenAI-compatible chat-model catalog.
 
         Sourced from ``ALL_PUBLIC_ALIASES`` (derived from
@@ -1172,10 +1185,25 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         exclusion — the two used to drift, see E.1 audit 2026-05-18.
         """
         ids = [a for a in ALL_PUBLIC_ALIASES if a not in _BLOCKED_CHAT_ALIASES]
+        training = request.app.state.training
+        unloaded = (
+            set(training.state.unloaded_ports)
+            if training.state.is_active
+            else set()
+        )
         return {
             "object": "list",
             "data": [
-                {"id": mid, "object": "model", "owned_by": "ailiance"}
+                {
+                    "id": mid,
+                    "object": "model",
+                    "owned_by": "ailiance",
+                    "status": (
+                        "training"
+                        if MODEL_FORCE_MAP.get(mid) in unloaded
+                        else "ready"
+                    ),
+                }
                 for mid in ids
             ],
         }
@@ -1401,7 +1429,8 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         active_router = app.state.router
         if forced_port:
             domain = ""
-            worker_port = _gate_port(forced_port)
+            # Raw resolved port — gated below, after the training-mode check.
+            worker_port = forced_port
         elif active_router is not None:
             t0 = time.perf_counter()
             # Encode runs on CPU (no GPU on the prod host) and holds the GIL
@@ -1412,14 +1441,35 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             domain = selections[0][0] if selections else "python"
             # Fallback to Gemma (9304): reachable + fast for unmapped domains.
             worker_port = get_worker_for_domain(domain) or 9304
-            # Health gate: if the classified worker is currently down, fall
-            # back to a healthy worker so prompts don't 500 just because the
-            # router happened to classify them to a temporarily dead backend.
-            worker_port = _gate_port(worker_port)
         else:
             # No router loaded → default to Gemma (fast, reachable).
             domain = "general"
-            worker_port = _gate_port(9304)
+            worker_port = 9304
+
+        # Training-mode interception. Runs on the RAW resolved worker_port,
+        # BEFORE _gate_port() rewrites a dead/unloaded port to the 9304
+        # fallback — otherwise the unloaded-port match would be hidden and
+        # the 503 would never fire. When a medium35 campaign is active and
+        # the resolved worker has been unloaded: an explicitly-named model
+        # gets a graceful 503; an auto-routed request is re-pointed to a
+        # minimal still-loaded worker.
+        training = request.app.state.training
+        if training.state.is_active and worker_port in training.state.unloaded_ports:
+            if MODEL_FORCE_MAP.get(req.model) is not None:
+                return JSONResponse(
+                    status_code=503,
+                    content=build_training_503(training.state, req.model),
+                )
+            # Auto-routed request: re-point to a minimal still-loaded worker.
+            # Note: a later cascade-override may re-resolve the port; if cascade
+            # lands on an unloaded worker the request is not re-checked here — it
+            # degrades gracefully via _gate_port to the 9304 fallback (no 503).
+            worker_port = sorted(MINIMAL_ROUTABLE_PORTS)[0]
+
+        # Health gate: if the resolved worker is currently down, fall back to
+        # a healthy worker so prompts don't 500 just because the router
+        # happened to classify them to a temporarily dead backend.
+        worker_port = _gate_port(worker_port)
 
         # ------------------------------------------------------------------
         # Cascade complexity-based override (v0.4).
