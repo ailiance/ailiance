@@ -44,7 +44,8 @@ class FakeOps:
 
 
 @pytest.mark.asyncio
-async def test_campaign_fails_when_unload_frees_too_little(tmp_path):
+async def test_campaign_fails_when_unload_frees_too_little(tmp_path, monkeypatch):
+    monkeypatch.setattr("src.gateway.training.orchestrator.MEM_SETTLE_POLL_S", 0.0)
     ops = FakeOps()
     ops.free = 100.0  # after unload, still far below the 320 GB requirement
     orch = TrainingOrchestrator(ops, tmp_path / "s.json")
@@ -76,7 +77,8 @@ def test_build_503_body_has_progress():
 
 
 @pytest.mark.asyncio
-async def test_run_campaign_completes(tmp_path):
+async def test_run_campaign_completes(tmp_path, monkeypatch):
+    monkeypatch.setattr("src.gateway.training.orchestrator.MEM_SETTLE_POLL_S", 0.0)
     ops = FakeOps()
     ops.logs = {
         "a": "### DOMAIN COMPLETE a final_val_loss=0.40\n",
@@ -91,7 +93,8 @@ async def test_run_campaign_completes(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_abort_stops_the_campaign(tmp_path):
+async def test_abort_stops_the_campaign(tmp_path, monkeypatch):
+    monkeypatch.setattr("src.gateway.training.orchestrator.MEM_SETTLE_POLL_S", 0.0)
     ops = FakeOps()
     orch = TrainingOrchestrator(ops, tmp_path / "s.json")
     orch.state = CampaignState(status="PREFLIGHT", domains=["a", "b"],
