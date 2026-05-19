@@ -5,6 +5,7 @@ import hmac
 import os
 
 from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi.responses import PlainTextResponse
 
 
 def _check_token(token: str | None) -> None:
@@ -41,5 +42,16 @@ def make_training_router() -> APIRouter:
         _check_token(x_admin_token)
         await request.app.state.training.abort()
         return {"aborted": True}
+
+    @router.get("/log/{domain}", response_class=PlainTextResponse)
+    async def domain_log(request: Request, domain: str, tail: int = 100,
+                         x_admin_token: str | None = Header(default=None)):
+        _check_token(x_admin_token)
+        tail = max(1, min(tail, 1000))
+        ops = request.app.state.training._ops  # noqa: SLF001 — same package
+        text = await ops.read_domain_log(domain)
+        if not text:
+            return ""
+        return "\n".join(text.splitlines()[-tail:])
 
     return router
