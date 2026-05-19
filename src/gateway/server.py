@@ -82,6 +82,9 @@ _DEFAULT_WORKER_URLS = {
     #   autossh -M 0 -N -L 0.0.0.0:9340:localhost:9340 \
     #       clems@100.116.92.12
     9340: "http://localhost:9340",
+    # Studio swap server :9350 — one mlx_lm.server, no fixed model; loads
+    # the requested base model on demand. autossh tunnel :9350 → studio.
+    9350: "http://localhost:9350",
     # Studio M3 Ultra (512 GB) — MLX backends. All bind 127.0.0.1 on the
     # Studio host and are reached from electron-server via autossh tunnels
     # (one tunnel per port, see systemd `*-tunnel.service`). Defaults stay
@@ -387,12 +390,12 @@ MODEL_FORCE_MAP = {
     "ailiance-gemma": 9304,  # Gemma 3 4B IT on tower
     "ailiance-qwen": 8002,  # llama-server on kxkm-ai (RTX 4090) via autossh tunnel
     "ailiance-granite": 8003,  # Granite 4.1 30B Q4_K_M GGUF on kxkm-ai
-    "ailiance-qwen36": 9305,  # Qwen3.6-35B-A3B-MLX-BF16 on Studio (deeper specialist vs ailiance-qwen Q4)
+    "ailiance-qwen36": 9350,  # Qwen3.6-35B-A3B — swap pool :9350 (on-demand)
     "ailiance-ministral": 8502,  # Ministral-3-14B-Instruct MLX 4-bit on macM1
     "ailiance-ministral-reasoning": 8502,  # Ministral-3-14B-Reasoning MLX 4-bit on macM1
     "ailiance-gemma2": 8502,  # Gemma-4-E2B-it MLX 4-bit on macM1 (lighter than E4B)
-    # Devstral-Small-2-24B-MLX-4bit on Studio (:9316 base, :9317-9321 LoRA variants).
-    "ailiance-devstral-base": 9316,
+    # Devstral-Small-2-24B base — swap pool :9350 (on-demand).
+    "ailiance-devstral-base": 9350,
     "ailiance-python": 9330,
     "ailiance-cpp": 9330,
     "ailiance-rust-emb": 9330,
@@ -430,20 +433,19 @@ MODEL_FORCE_MAP = {
     "ailiance-apertus-spice-sim": 9322,
     "ailiance-apertus-emc-dsp-power": 9322,
     "ailiance-apertus-embedded": 9322,
-    # Studio flagship 2026-05-12 — Qwen3-235B-A22B-Instruct MoE 4-bit.
-    "ailiance-flagship": 9328,
-    "ailiance-qwen-235b": 9328,
+    # Qwen3-235B-A22B-Instruct MoE — swap pool :9350 (on-demand, ~120 GB).
+    "ailiance-flagship": 9350,
+    "ailiance-qwen-235b": 9350,
     # Studio S3 additions 2026-05-12 — 5 MLX 4-bit workers on dedicated ports.
     "ailiance-reasoning-r1": 9323,  # DeepSeek-R1-Distill-Qwen-32B 4-bit
-    "ailiance-llama": 9324,  # Llama-3.3-70B-Instruct 4-bit
+    "ailiance-llama": 9350,  # Llama-3.3-70B-Instruct — swap pool :9350
     "ailiance-pixtral": 9325,  # Pixtral-12B 4-bit (vision-language)
-    "ailiance-mistral-small": 9326,  # Mistral-Small-3.1-24B-Instruct 4-bit
+    "ailiance-mistral-small": 9350,  # Mistral-Small-3.1-24B — swap pool :9350
     "ailiance-coder-pro": 9327,  # Qwen3-Coder-30B-A3B-Instruct 4-bit
-    # Mixtral-8x22B-Instruct MLX 4-bit on Studio (mlx_lm.server :9329).
-    # `ailiance-mixtral` kept for prod main-line consumers; `-8x22b` is the
-    # explicit name introduced in feat/mixtral-and-gemma4-multilora.
-    "ailiance-mixtral": 9329,
-    "ailiance-mixtral-8x22b": 9329,
+    # Mixtral-8x22B-Instruct — swap pool :9350 (on-demand). `ailiance-mixtral`
+    # kept for prod main-line consumers; `-8x22b` is the explicit name.
+    "ailiance-mixtral": 9350,
+    "ailiance-mixtral-8x22b": 9350,
     # Gemma-4-E4B multi-LoRA custom server on Studio :9335 (mascarade + aggro + kicad9plus variants).
     "ailiance-gemma4-mascarade": 9335,
     "ailiance-gemma4-aggro": 9335,
