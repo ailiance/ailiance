@@ -258,6 +258,35 @@ adds `src/gateway/model_manager.py` (2-3 slots, memory-aware LRU routing,
 per-slot `asyncio.Lock`), a macM1 swap server, and `event: loading` SSE
 signalling. Own detailed plan later.
 
+## Phase 4 — Control plane (admin model selection + router retraining)
+
+Adds the operator surface from the spec's "Control plane" section. Spans
+`cockpit-admin` (ailiance-demo) and the gateway. Manual retrain trigger;
+router-artifact cache keyed by the active-domain set. Outline:
+
+### Gateway (`ailiance/ailiance`)
+- `configs/domain_models.yaml` — author the 47-domain → serving-alias map
+  (extract from current routing logic).
+- `configs/enabled_models.yaml` + loader; derive `active_domains`.
+- `/v1/models` filters to enabled aliases.
+- `router_cache` module + `output/router-registry.yaml`: hash the sorted
+  `active_domains`; look up an existing artifact or store a new one.
+- Endpoints behind the oidc-auth gate: `GET /admin/models`,
+  `PUT /admin/models/enabled`, `POST /admin/router/retrain`,
+  `GET /admin/router/retrain/{id}`.
+- Retrain job: FastAPI background task running `router_v7_curate` +
+  `router_v7_train` filtered to `active_domains`; register the artifact and
+  hot-reload `app.state.router` on success. Registry hit → skip training.
+
+### cockpit-admin (`ailiance-demo`)
+- "Modèles & Routeur" route + page: alias list with on/off toggles,
+  domains-served per alias, orphan-domain warnings.
+- "Réentraîner le routeur" button → `POST /admin/router/retrain`, poll
+  `GET …/{id}`; surface cached-instant vs training-in-progress.
+- Wire to the gateway endpoints through the admin API.
+
+Gets its own detailed TDD plan when this phase starts.
+
 ## Out of scope
 
 - Auto-downloading absent weights; on-the-fly quantization.

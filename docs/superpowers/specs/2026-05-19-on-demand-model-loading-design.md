@@ -136,6 +136,51 @@ before the first token; the cockpit playground shows "chargement du
 modèle…". Non-streaming callers get a longer timeout budget for swap-tier
 aliases.
 
+## Control plane — model selection & router retraining
+
+An operator can choose, from `admin.ailiance.fr`, which models are
+available; the router is retrained on the resulting domain set.
+
+### Data model
+- `configs/domain_models.yaml` — explicit map: each of the 47 router
+  domains → the model alias(es) that serve it (today implicit in routing).
+- `configs/enabled_models.yaml` — the operator-controlled set of enabled
+  aliases (default: all enabled).
+- Derived `active_domains` = domains with ≥ 1 enabled serving model.
+  Disabling the last model of a domain makes it *orphan* → dropped from the
+  router's label set.
+
+### Router artifact cache (avoid redundant retraining)
+Each router build is keyed by a short hash of its sorted `active_domains`
+set. A registry `output/router-registry.yaml` maps
+`domain_set_hash → {artifact_path, domains, trained_at}`. "Retrain" first
+hashes the current `active_domains`: a registry **hit** hot-reloads the
+existing artifact instantly (no training); a **miss** trains, stores the
+artifact under the hash, registers it, then hot-reloads. Selecting a
+previously-used configuration is therefore instant.
+
+### Admin UI (`cockpit-admin`)
+A "Modèles & Routeur" page: every alias with an on/off toggle, the domains
+each serves, and a warning when disabling one would orphan a domain. A
+**manual** "Réentraîner le routeur" button (enabled only when the selection
+differs from the live router's build); it shows whether the target config
+is cached (instant) or needs training, and the resulting domain count +
+job status.
+
+### Gateway endpoints (behind the `admin.ailiance.fr` Keycloak/tailnet gate)
+- `GET /admin/models` — aliases, enabled state, domains served.
+- `PUT /admin/models/enabled` — persist `enabled_models.yaml`.
+- `POST /admin/router/retrain` — manual trigger; hashes `active_domains`,
+  serves from cache or starts a background training job; returns a job id.
+- `GET /admin/router/retrain/{job_id}` — job status.
+
+### Retraining cost
+Only the MLP head (256→N) is retrained — the MiniLM encoder is frozen and
+its corpus embeddings are cached, so a train run is minutes, not hours. The
+job is a short FastAPI background task, not heavy infrastructure.
+`num_domains` is already a `gateway.yaml` parameter, so a variable-size
+head is supported. On success the gateway hot-reloads `app.state.router`.
+
 ## Data flow
 
 ```
