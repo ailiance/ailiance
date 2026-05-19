@@ -4,7 +4,8 @@ set -uo pipefail
 
 REPO="/Users/clems/KIKI-Mac_tunner"
 VENV="$REPO/.venv/bin/activate"
-MODEL="Mistral-Medium-3.5-128B-BF16"
+# Absolute path — a bare name is treated by mlx_lm as a HuggingFace repo id.
+MODEL="$REPO/models/Mistral-Medium-3.5-128B-BF16"
 # Curriculum data lives in the top-level ~/eu-kiki tree, NOT under $REPO.
 DATA_DIR="/Users/clems/eu-kiki/data/hf-traced"
 LOG_DIR="$REPO/logs"
