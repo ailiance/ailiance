@@ -83,6 +83,7 @@ class TrainingOrchestrator:
         abort (tracked separately) is never clobbered by a poll tick."""
         self.state.phase = phase
         self.state.iter = iter_
+        self.state.iter_total = D.PHASE_ITERS.get(phase, 0)
         self._save()
 
     async def start(self, domains: list[str] | None = None) -> None:

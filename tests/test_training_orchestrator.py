@@ -152,3 +152,14 @@ async def test_reattach_from_gating_skips_retrain(tmp_path):
     assert ops.spawn_calls == 0  # training already finished — not re-trained
     assert orch.state.status == "DONE"
     assert orch.state.verdicts == {"a": "OK"}
+
+
+@pytest.mark.asyncio
+async def test_progress_sets_iter_total(tmp_path):
+    orch = TrainingOrchestrator(FakeOps(), tmp_path / "s.json")
+    orch.state = CampaignState(status="TRAINING", domains=["a"])
+    orch._progress(2, 340)
+    assert orch.state.iter == 340
+    assert orch.state.iter_total == 800
+    orch._progress(1, 50)
+    assert orch.state.iter_total == 500

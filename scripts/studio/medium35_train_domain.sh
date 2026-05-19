@@ -70,6 +70,9 @@ case "${1:-}" in
   spawn)
     domain="${2:?domain required}"
     log="$LOG_DIR/medium35-$domain.log"
+    # $! is the PID of the `run` wrapper; it lives for the whole domain
+    # (it sources the venv and loops the 3 phases in-process), so the
+    # gateway polls it as the training liveness handle.
     nohup bash "$0" run "$domain" >"$log" 2>&1 </dev/null &
     echo "$!"
     ;;

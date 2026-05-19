@@ -63,3 +63,6 @@ The orchestrator persists `campaign_state.json`. On startup the gateway
 re-attaches automatically: it resumes from the crash-time status, re-attaching
 to the in-progress domain's live batch (or restarting it — resume-safe via the
 Studio-side `phaseN_done` sentinels). No manual action required.
+A phase that was interrupted mid-way restarts from iteration 0 (resume is
+phase-granular via the phaseN_done sentinels); its val-loss is therefore not
+strictly comparable to the baseline runs the gate thresholds came from.

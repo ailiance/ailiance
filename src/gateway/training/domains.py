@@ -28,3 +28,6 @@ LORA_DROPOUT = 0.01
 NUM_LAYERS = -1  # all layers
 
 HOURS_PER_DOMAIN = 17  # measured on medium35-cpp
+
+# Iterations per curriculum phase (medium35_train_domain.sh PHASE table).
+PHASE_ITERS: dict[int, int] = {1: 500, 2: 800, 3: 500}
