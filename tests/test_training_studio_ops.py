@@ -45,3 +45,22 @@ async def test_run_builds_ssh_command():
 async def test_pid_alive_true_on_exit_zero():
     with patch("asyncio.create_subprocess_exec", return_value=_FakeProc(returncode=0)):
         assert await StudioOps().pid_alive(123) is True
+
+
+@pytest.mark.asyncio
+async def test_run_timeout_kills_process():
+    waited = {"v": False}
+
+    class _SlowProc:
+        returncode = -9
+        async def communicate(self):
+            await asyncio.sleep(10)
+        def kill(self):
+            pass
+        async def wait(self):
+            waited["v"] = True
+
+    with patch("asyncio.create_subprocess_exec", return_value=_SlowProc()):
+        with pytest.raises(asyncio.TimeoutError):
+            await StudioOps().run("sleep 100", timeout=0.05)
+    assert waited["v"] is True

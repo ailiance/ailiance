@@ -44,6 +44,7 @@ class StudioOps:
             out, err = await asyncio.wait_for(proc.communicate(), timeout=timeout)
         except asyncio.TimeoutError:
             proc.kill()
+            await proc.wait()
             raise
         return SSHResult(proc.returncode or 0,
                          out.decode(errors="replace"),
@@ -70,6 +71,8 @@ class StudioOps:
             f"{self._target}:{REMOTE_SCRIPT_DIR}/",
         )
         await proc.communicate()
+        if proc.returncode != 0:
+            raise RuntimeError(f"scp to Studio failed (exit {proc.returncode})")
 
     async def unload_workers(self) -> list[int]:
         await self.run(f"bash {REMOTE_SCRIPT_DIR}/medium35_workers.sh unload",
@@ -84,7 +87,9 @@ class StudioOps:
         failed = []
         for line in res.stdout.splitlines():
             if line.startswith("RELOAD_FAILED "):
-                failed.append(int(line.split()[1]))
+                parts = line.split()
+                if len(parts) >= 2 and parts[1].isdigit():
+                    failed.append(int(parts[1]))
         return failed
 
     async def spawn_domain(self, domain: str) -> int:
