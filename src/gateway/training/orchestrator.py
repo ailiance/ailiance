@@ -113,6 +113,17 @@ class TrainingOrchestrator:
         self.state.abort_requested = True
         self._save()
 
+    async def reattach(self) -> bool:
+        """On gateway boot: resume a non-terminal campaign. Returns True if a
+        campaign was resumed. Skips preflight/unload (workers are already
+        unloaded); the in-progress domain re-attaches to its live batch pid,
+        or restarts it (resume-safe via phaseN_done sentinels) if the pid died."""
+        if not self.state.is_active:
+            return False
+        self._task = asyncio.create_task(self._run_campaign(resume=True))
+        self._task.add_done_callback(self._on_task_done)
+        return True
+
     def status(self) -> dict:
         return {
             "status": self.state.status,
@@ -145,11 +156,14 @@ class TrainingOrchestrator:
         self.state.unloaded_ports = await self._ops.unload_workers()
         self._save()
 
-    async def _train_domain(self, domain: str) -> None:
-        self._set("TRAINING", phase=0, iter=0)
-        pid = await self._ops.spawn_domain(domain)
-        self.state.batch_pid = pid
-        self._save()
+    async def _train_domain(self, domain: str, resume_pid: int | None = None) -> None:
+        if resume_pid is not None and await self._ops.pid_alive(resume_pid):
+            pid = resume_pid  # batch survived the gateway restart — re-attach
+        else:
+            self._set("TRAINING", phase=0, iter=0)
+            pid = await self._ops.spawn_domain(domain)
+            self.state.batch_pid = pid
+            self._save()
         deadline = time.monotonic() + MAX_DOMAIN_SECONDS
         while await self._ops.pid_alive(pid):
             if time.monotonic() > deadline:
@@ -180,16 +194,22 @@ class TrainingOrchestrator:
         self.state.unloaded_ports = []
         self._save()
 
-    async def _run_campaign(self) -> None:
+    async def _run_campaign(self, resume: bool = False) -> None:
         try:
-            if not await self._preflight():
-                return
-            await self._unload()
+            if not resume:
+                if not await self._preflight():
+                    return
+                await self._unload()
+            first = resume  # only the in-progress domain re-attaches to its pid
             while self.state.domain_index < len(self.state.domains):
                 if self.state.abort_requested:
                     break
                 domain = self.state.domains[self.state.domain_index]
-                await self._train_domain(domain)
+                await self._train_domain(
+                    domain,
+                    resume_pid=self.state.batch_pid if first else None,
+                )
+                first = False
                 await self._gate_domain(domain)
                 self.state.domain_index += 1
                 self._save()

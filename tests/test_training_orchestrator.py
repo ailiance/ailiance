@@ -1,7 +1,7 @@
 import pytest
 
 from src.gateway.training.orchestrator import TrainingOrchestrator, build_training_503
-from src.gateway.training.state import CampaignState
+from src.gateway.training.state import CampaignState, save_state
 
 
 class FakeOps:
@@ -92,3 +92,24 @@ async def test_abort_stops_the_campaign(tmp_path):
     assert orch.state.status == "ABORTED"
     assert orch.state.domain_index == 0   # no domain was trained
     assert ops.reloaded is True
+
+
+@pytest.mark.asyncio
+async def test_reattach_resumes_active_campaign(tmp_path):
+    ops = FakeOps()
+    ops.logs = {"a": "### DOMAIN COMPLETE a final_val_loss=0.40\n"}
+    state_path = tmp_path / "s.json"
+    save_state(state_path, CampaignState(status="TRAINING", domains=["a"],
+                                         batch_pid=999, unloaded_ports=[9301]))
+    orch = TrainingOrchestrator(ops, state_path)
+    resumed = await orch.reattach()
+    assert resumed is True
+    await orch._task  # let the resumed campaign run to completion
+    assert orch.state.status == "DONE"
+    assert orch.state.verdicts == {"a": "OK"}
+
+
+@pytest.mark.asyncio
+async def test_reattach_noop_when_idle(tmp_path):
+    orch = TrainingOrchestrator(FakeOps(), tmp_path / "absent.json")
+    assert await orch.reattach() is False
