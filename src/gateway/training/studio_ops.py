@@ -83,9 +83,16 @@ class StudioOps:
         return list(UNLOAD_PORTS)
 
     async def reload_workers(self, ports: list[int]) -> list[int]:
-        """Reload workers; return the ports that failed the HTTP healthcheck."""
+        """Reload workers; return the ports that failed the HTTP healthcheck.
+
+        The Studio `reload` healthchecks workers sequentially (up to ~300 s
+        each). Size the SSH timeout from the worker count plus a margin so a
+        worst-case slow reload is not cut off mid-flight.
+        """
+        timeout = 120.0 + 320.0 * max(len(ports), 1)
         res = await self.run(
-            f"bash {REMOTE_SCRIPT_DIR}/medium35_workers.sh reload", timeout=2400.0
+            f"bash {REMOTE_SCRIPT_DIR}/medium35_workers.sh reload",
+            timeout=timeout,
         )
         failed = []
         for line in res.stdout.splitlines():

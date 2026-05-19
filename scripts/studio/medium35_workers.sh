@@ -29,6 +29,11 @@ do_unload() {
       echo "ALREADY_DOWN $port"
       continue
     fi
+    # Capture the worker's exact argv so reload can re-run it. NOTE: if the
+    # worker was started without an explicit non-loopback --host, the reloaded
+    # process rebinds to 127.0.0.1 and the local healthcheck still passes
+    # while the gateway cannot reach it. Studio workers must be launched with
+    # --host 0.0.0.0.
     cmd="$(ps -o command= -p "$pid" 2>/dev/null)"
     label="$(label_for_pid "$pid")"
     # record: port <TAB> label-or-"-" <TAB> base64(command line)
