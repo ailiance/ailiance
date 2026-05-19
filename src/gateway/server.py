@@ -49,8 +49,11 @@ from src.gateway.inline_files import (
 )
 from src.gateway.observability import track_chat
 from src.gateway.training.admin import make_training_router
-from src.gateway.training.orchestrator import TrainingOrchestrator
-from src.gateway.training.studio_ops import StudioOps
+from src.gateway.training.orchestrator import TrainingOrchestrator, build_training_503
+from src.gateway.training.studio_ops import (
+    MINIMAL_ROUTABLE_PORTS,
+    StudioOps,
+)
 from src.orchestrator.chain_orchestrator import ChainOrchestrator
 from src.orchestrator.chain_policy import ChainPolicy
 from src.orchestrator.validators import StubValidator, make_validator
@@ -1406,7 +1409,8 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         active_router = app.state.router
         if forced_port:
             domain = ""
-            worker_port = _gate_port(forced_port)
+            # Raw resolved port — gated below, after the training-mode check.
+            worker_port = forced_port
         elif active_router is not None:
             t0 = time.perf_counter()
             # Encode runs on CPU (no GPU on the prod host) and holds the GIL
@@ -1417,14 +1421,32 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             domain = selections[0][0] if selections else "python"
             # Fallback to Gemma (9304): reachable + fast for unmapped domains.
             worker_port = get_worker_for_domain(domain) or 9304
-            # Health gate: if the classified worker is currently down, fall
-            # back to a healthy worker so prompts don't 500 just because the
-            # router happened to classify them to a temporarily dead backend.
-            worker_port = _gate_port(worker_port)
         else:
             # No router loaded → default to Gemma (fast, reachable).
             domain = "general"
-            worker_port = _gate_port(9304)
+            worker_port = 9304
+
+        # Training-mode interception. Runs on the RAW resolved worker_port,
+        # BEFORE _gate_port() rewrites a dead/unloaded port to the 9304
+        # fallback — otherwise the unloaded-port match would be hidden and
+        # the 503 would never fire. When a medium35 campaign is active and
+        # the resolved worker has been unloaded: an explicitly-named model
+        # gets a graceful 503; an auto-routed request is re-pointed to a
+        # minimal still-loaded worker.
+        training = request.app.state.training
+        if training.state.is_active and worker_port in training.state.unloaded_ports:
+            if MODEL_FORCE_MAP.get(req.model) is not None:
+                return JSONResponse(
+                    status_code=503,
+                    content=build_training_503(training.state, req.model),
+                )
+            # auto-routed request -> fall back to a minimal still-loaded worker
+            worker_port = sorted(MINIMAL_ROUTABLE_PORTS)[0]
+
+        # Health gate: if the resolved worker is currently down, fall back to
+        # a healthy worker so prompts don't 500 just because the router
+        # happened to classify them to a temporarily dead backend.
+        worker_port = _gate_port(worker_port)
 
         # ------------------------------------------------------------------
         # Cascade complexity-based override (v0.4).
