@@ -5,17 +5,22 @@ set -uo pipefail
 REPO="/Users/clems/KIKI-Mac_tunner"
 VENV="$REPO/.venv/bin/activate"
 MODEL="Mistral-Medium-3.5-128B-BF16"
-DATA_DIR="$REPO/eu-kiki/data/hf-traced"
+# Curriculum data lives in the top-level ~/eu-kiki tree, NOT under $REPO.
+DATA_DIR="/Users/clems/eu-kiki/data/hf-traced"
 LOG_DIR="$REPO/logs"
 
 # Verified hyperparameters (3 healthy medium35 runs, 2026-05-19).
 RANK=16; SCALE=32.0; DROPOUT=0.01; LAYERS=-1
-# phase -> "seq lr iters batch grad_accum"
-declare -A PHASE=(
-  [1]="512 8e-6 500 1 16"
-  [2]="1280 5e-6 800 2 8"
-  [3]="2048 3e-6 500 2 8"
-)
+
+# phase -> "seq lr iters batch grad_accum". A function, not an associative
+# array: macOS ships bash 3.2, which has no `declare -A`.
+phase_params() {
+  case "$1" in
+    1) echo "512 8e-6 500 1 16" ;;
+    2) echo "1280 5e-6 800 2 8" ;;
+    3) echo "2048 3e-6 500 2 8" ;;
+  esac
+}
 
 run_domain() {
   local domain="$1"
@@ -29,7 +34,7 @@ run_domain() {
   source "$VENV"
   for phase in 1 2 3; do
     [[ -f "$out_dir/phase${phase}_done" ]] && { echo "### PHASE $phase/3 SKIP"; continue; }
-    read -r seq lr iters batch ga <<<"${PHASE[$phase]}"
+    read -r seq lr iters batch ga <<<"$(phase_params "$phase")"
     echo "### PHASE $phase/3 domain=$domain seq=$seq"
     local cfg="$out_dir/config-phase${phase}.yaml"
     cat >"$cfg" <<YAML
