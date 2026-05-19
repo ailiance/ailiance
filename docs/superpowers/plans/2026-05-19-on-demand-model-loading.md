@@ -1,145 +1,143 @@
-# On-demand Model Loading Implementation Plan
+# On-demand Model Loading Implementation Plan (rev. A)
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax.
 
-**Goal:** Make all 46 gateway aliases serve their real model — long-tail
-models load on demand instead of silently degrading to the Gemma fallback.
+**Goal:** Serve every gateway alias's real model — long-tail models load on
+demand — without crashing the memory-constrained Mac Studio.
 
-**Architecture:** `mlx_lm.server` ≥ 0.31 reloads the model when a request
-names a different one. Phase 1 routes every long-tail alias to a single
-swap `mlx_lm.server` via the existing `MODEL_FORCE_MAP` + `ALIAS_MODEL_REWRITES`
-config — no new code. Phase 2 adds a `ModelManager` with a 2-3 slot pool and
-memory-aware LRU routing.
+**Architecture:** Free RAM first (stop low-traffic resident servers), then a
+swap `mlx_lm.server` loads distinct base models on demand. LoRA-variant
+families and the multi-slot pool are later phases.
 
 **Tech Stack:** Python 3.14, FastAPI gateway (`src/gateway/server.py`),
-`mlx_lm.server` workers on Apple Silicon, pytest.
+`mlx_lm.server` on Apple Silicon, pytest.
 
 **Reference spec:** `docs/superpowers/specs/2026-05-19-on-demand-model-loading-design.md`
 
+## Model taxonomy (drives the phasing)
+
+- **Distinct text base models** → swap pool: `llama` (Llama-3.3-70B),
+  `mixtral`/`mixtral-8x22b` (Mixtral-8x22B), `qwen-235b`/`flagship`
+  (Qwen3-235B), `qwen36` (Qwen3.6-35B), `devstral-base` (Devstral-24B),
+  `eurollm` (EuroLLM-22B), `mistral-small` (Mistral-Small-24B). All
+  confirmed on disk under `/Users/clems/KIKI-Mac_tunner/models/`.
+- **LoRA variants** → multi-LoRA servers (Phase 1bis): 9 `apertus-*`,
+  5 devstral (`python`/`cpp`/`rust-emb`/`html`/`ml-training`).
+- **Vision** → `pixtral` needs `mlx_vlm`, not `mlx_lm`; keep its own small
+  resident server (~7 GB), not in the swap pool.
+- **Local-only** (no gateway alias): `qwen2.5-7B` :8501, `qwen3-4b` :9341 —
+  stopping them frees RAM with no routing change.
+
+**Hard memory rule:** never route a model to a swap server unless the
+server's free budget ≥ the model's footprint. Routing Qwen3-235B (~120 GB)
+into ~92 GB free would OOM and risk a kernel panic (precedent 2026-05-12).
+Phase 1 frees the RAM before Phase 2 routes the big models.
+
 ---
 
-## Phase 1 — All models available (single swap server)
+## Phase 1 — Free RAM (demotion)
 
-Phase 1 is config-only and ships working software on its own: long-tail
-aliases stop falling back to Gemma. Thrashing (two cold models requested
-alternately) is accepted and fixed in Phase 2.
+Stop the low-traffic resident MLX servers so later phases have a real swap
+budget. Phase 1 is ops-only; it changes no gateway code. Standalone
+outcome: ~87 GB reclaimed, Studio free RAM ~92 → ~180 GB.
 
-### File structure (Phase 1)
+Servers to stop (measured RSS): `qwen36` :9305 (~19 GB), `eurollm` :9303
+(~43 GB), `qwen2.5-7B` :8501 (~4 GB), `qwen3-4b` :9341 (~8 GB),
+`mistral-small` :9326 (~13 GB). `pixtral` stays (vision, only ~7 GB).
 
+### Task 1: Inventory — DONE
+
+The Studio model library was inventoried 2026-05-19. All swap-pool base
+models are present on disk. No action; recorded for reference.
+
+### Task 2: Identify each cold server's launchd job / PID
+
+- [ ] **Step 1: List the launchd jobs and PIDs for the 5 cold servers**
+
+On the Studio (Terminal or bastion):
+
+```bash
+launchctl list | grep -iE 'cc.ailiance|cc.kiki|mlx'
+ps -axo pid,command | grep -E 'mlx_lm|mlx-lm' | grep -v grep
+```
+
+Map each of the 5 cold ports (9305, 9303, 8501, 9341, 9326) to its launchd
+label (e.g. `cc.ailiance.qwen36`) or bare PID.
+
+### Task 3: Stop the 5 cold servers
+
+- [ ] **Step 1: Stop each, one at a time, watching memory**
+
+For a launchd-managed server: `launchctl bootout gui/$(id -u)/<label>`.
+For a bare process: `kill <pid>`. After each, check `top -l1 | grep PhysMem`
+and confirm free RAM rises. Stop if anything unexpected happens.
+
+- [ ] **Step 2: Verify ~180 GB free**
+
+```bash
+top -l 1 -n 0 | grep PhysMem
+```
+
+Expected: unused ≥ ~170 GB.
+
+### Task 4: Mark the demoted aliases pending in the gateway
+
+The aliases `ailiance-qwen36`, `ailiance-eurollm`, `ailiance-mistral-small`
+now point at stopped ports. Until Phase 2 routes them to the swap pool they
+will fall back to Gemma — acceptable and unchanged from today's degraded
+state. No code change in Phase 1.
+
+- [ ] **Step 1: Note the degraded aliases in the gateway audit log**
+
+Append to `docs/transparency/router-training-data.md` (or the audit dir) a
+dated line listing the 3 demoted aliases as "pending swap-pool routing
+(Phase 2)". Commit.
+
+---
+
+## Phase 2 — Swap server + on-demand base models
+
+With ~180 GB free, stand up the swap server and route every distinct text
+base model to it. Standalone outcome: `llama`, `mixtral`, `qwen-235b`,
+`qwen36`, `devstral-base`, `eurollm`, `mistral-small` all serve their real
+model on demand instead of Gemma.
+
+### File structure
 - Modify `src/gateway/server.py` — `_DEFAULT_WORKER_URLS`, `MODEL_FORCE_MAP`,
   `ALIAS_MODEL_REWRITES`.
-- Create `tests/test_swap_pool_routing.py` — routing assertions.
-- New ops artefact on the Studio: `cc.ailiance.swap-1.plist` launchd agent.
+- Create `tests/test_swap_pool_routing.py`.
+- Ops: swap `mlx_lm.server` on `:9350` + autossh tunnel.
 
-Phase 1 routes only the **distinct base models** to the swap server.
-`mlx_lm.server` swaps a base model per request but cannot hot-swap LoRA
-adapters per request, so the 9 `apertus-*` and 5 devstral LoRA-variant
-aliases are NOT in Phase 1 — they are handled by Phase 1bis (multi-LoRA
-servers). The 7 Phase 1 swap aliases (all prefixed `ailiance-`):
-`flagship`, `qwen-235b`, `mixtral`, `mixtral-8x22b`, `llama`, `qwen36`,
-`devstral-base`.
+### Task 1: Launch the swap mlx_lm.server (:9350)
 
----
-
-### Task 1: Inventory the Studio model library
-
-The swap server resolves `body["model"]` as an on-disk path. We need the
-exact path of each long-tail model so `ALIAS_MODEL_REWRITES` can point at it.
-
-- [ ] **Step 1: List MLX model directories on the Studio**
-
-Run (from the dev host):
+- [ ] **Step 1: Start it (bastion, nohup — survives over SSH)**
 
 ```bash
-ssh electron-server "ssh clems@100.116.92.12 'ls -1d /Users/clems/KIKI-Mac_tunner/models/*/ ~/.cache/huggingface/hub/models--*/ 2>/dev/null'"
+ssh electron-server "ssh clems@100.116.92.12 'cd ~ && nohup /Users/clems/.venv-mistral/bin/python -m mlx_lm.server --model /Users/clems/KIKI-Mac_tunner/models/Qwen3.5-4B --host 0.0.0.0 --port 9350 --log-level INFO > /private/tmp/ailiance-swap-1.log 2>&1 &'"
 ```
 
-Expected: a list of model directories. Record, for each long-tail alias,
-the directory whose name matches the model (e.g. `ailiance-llama` →
-`.../Llama-3.3-70B-Instruct-MLX-4bit`).
+(Small default model so it boots fast; it swaps to the requested model on
+each request.)
 
-- [ ] **Step 2: Record the path table**
+- [ ] **Step 2: Verify the ModelProvider frees the old model on swap**
 
-Write the alias→path mapping into this plan's Task 4 table before starting
-Task 4. If a model is absent from disk (e.g. the deleted Apertus base),
-mark the alias `MISSING` — it will be excluded from Phase 1 and flagged for
-the separate Apertus cleanup.
+Send two requests naming different models; watch `top` RSS. If RSS spikes
+to old+new (double load), add a guarded `mx.clear_cache()` shim — record
+the finding before relying on big-model swaps.
 
-- [ ] **Step 3: Commit the inventory note**
+- [ ] **Step 3: Add the autossh tunnel electron-server:9350 → studio:9350**
 
-```bash
-git add docs/superpowers/plans/2026-05-19-on-demand-model-loading.md
-git commit -m "docs: record Studio model library inventory"
-```
+Mirror `mascarade-studio-tunnel.service`. Verify:
+`ssh electron-server "curl -sf -o /dev/null -w '%{http_code}' http://localhost:9350/v1/models"` → `200`.
 
----
-
-### Task 2: Launch the swap mlx_lm.server on the Studio
-
-A single `mlx_lm.server` on port `9350`, started with a small default model
-so it boots fast; it swaps to the requested model per request.
-
-- [ ] **Step 1: Create the launchd plist**
-
-Create `/Users/clems/Library/LaunchAgents/cc.ailiance.swap-1.plist` on the
-Studio (via a Terminal on the Studio — launchctl over SSH does not reliably
-start gui-domain agents):
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key><string>cc.ailiance.swap-1</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>/Users/clems/.venv-mistral/bin/python</string>
-    <string>-m</string><string>mlx_lm.server</string>
-    <string>--model</string>
-    <string>/Users/clems/KIKI-Mac_tunner/models/Mistral-Small-3.1-24B-Instruct-MLX-4bit</string>
-    <string>--host</string><string>0.0.0.0</string>
-    <string>--port</string><string>9350</string>
-    <string>--log-level</string><string>INFO</string>
-  </array>
-  <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><true/>
-  <key>StandardOutPath</key><string>/private/tmp/ailiance-swap-1.log</string>
-  <key>StandardErrorPath</key><string>/private/tmp/ailiance-swap-1.log</string>
-</dict>
-</plist>
-```
-
-- [ ] **Step 2: Load the agent (in a Terminal on the Studio)**
-
-```bash
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/cc.ailiance.swap-1.plist
-```
-
-- [ ] **Step 3: Verify it listens and the autossh tunnel reaches it**
-
-The gateway host (electron-server) reaches `:9350` via an autossh tunnel —
-add one mirroring the existing `:9340` tunnel:
-
-```bash
-# On electron-server, mirror mascarade-studio-tunnel.service for :9350
-ssh electron-server "curl -sS -o /dev/null -w '%{http_code}\n' --max-time 8 http://localhost:9350/v1/models"
-```
-
-Expected: `200`.
-
----
-
-### Task 3: Add the swap port to WORKER_URLS
-
-**Files:** Modify `src/gateway/server.py` — `_DEFAULT_WORKER_URLS` (around
-line 84, after the `9340` entry).
+### Task 2: Register the swap port in WORKER_URLS
 
 - [ ] **Step 1: Write the failing test**
 
 Create `tests/test_swap_pool_routing.py`:
 
 ```python
-"""Phase 1 swap-pool routing: long-tail aliases reach the swap server."""
+"""Swap-pool routing: distinct base models reach the swap server."""
 from src.gateway.server import (
     ALIAS_MODEL_REWRITES,
     MODEL_FORCE_MAP,
@@ -149,114 +147,56 @@ from src.gateway.server import (
 SWAP_PORT = 9350
 
 SWAP_ALIASES = [
-    "ailiance-flagship", "ailiance-qwen-235b", "ailiance-mixtral",
-    "ailiance-mixtral-8x22b", "ailiance-llama", "ailiance-qwen36",
-    "ailiance-devstral-base",
+    "ailiance-llama", "ailiance-mixtral", "ailiance-mixtral-8x22b",
+    "ailiance-qwen-235b", "ailiance-flagship", "ailiance-qwen36",
+    "ailiance-devstral-base", "ailiance-mistral-small",
 ]
+# Note: EuroLLM is stopped in Phase 1 to free RAM but has no public gateway
+# alias (absent from /v1/models), so it is not in SWAP_ALIASES.
 
 
 def test_swap_port_is_registered():
     assert SWAP_PORT in WORKER_URLS
 ```
 
-- [ ] **Step 2: Run it, verify it fails**
+- [ ] **Step 2: Run it, verify it fails** — `uv run pytest tests/test_swap_pool_routing.py::test_swap_port_is_registered -v` → FAIL.
 
-Run: `uv run pytest tests/test_swap_pool_routing.py::test_swap_port_is_registered -v`
-Expected: FAIL — `9350 not in WORKER_URLS`.
-
-- [ ] **Step 3: Add the swap port to `_DEFAULT_WORKER_URLS`**
-
-In `src/gateway/server.py`, after the `9340: "http://localhost:9340",`
-entry, add:
+- [ ] **Step 3: Add the port** — in `_DEFAULT_WORKER_URLS`, after the `9340`
+entry:
 
 ```python
-    # Studio swap server :9350 — one mlx_lm.server with no fixed model;
-    # loads the requested long-tail model on demand (ModelProvider reloads
-    # when the request names a different model). via autossh tunnel
-    # electron-server:9350 → studio:9350.
+    # Studio swap server :9350 — one mlx_lm.server, no fixed model; loads
+    # the requested base model on demand. autossh tunnel :9350 → studio.
     9350: "http://localhost:9350",
 ```
 
-- [ ] **Step 4: Run it, verify it passes**
+- [ ] **Step 4: Run it, verify it passes.**
 
-Run: `uv run pytest tests/test_swap_pool_routing.py::test_swap_port_is_registered -v`
-Expected: PASS.
+- [ ] **Step 5: Commit** — `git commit -m "feat(gateway): register swap server port 9350"`.
 
-- [ ] **Step 5: Commit**
+### Task 3: Route base aliases to the swap port
 
-```bash
-git add src/gateway/server.py tests/test_swap_pool_routing.py
-git commit -m "feat(gateway): register swap server port 9350"
-```
-
----
-
-### Task 4: Route long-tail aliases to the swap port
-
-**Files:** Modify `src/gateway/server.py` — `MODEL_FORCE_MAP` (lines
-381-453). Repoint the long-tail aliases from their dead Studio ports
-(9316/9322/9328/9329/9330/9305) to `9350`.
-
-- [ ] **Step 1: Write the failing test**
-
-Append to `tests/test_swap_pool_routing.py`:
+- [ ] **Step 1: Write the failing test** — append:
 
 ```python
-def test_long_tail_aliases_route_to_swap_port():
+def test_base_aliases_route_to_swap_port():
     for alias in SWAP_ALIASES:
         assert MODEL_FORCE_MAP.get(alias) == SWAP_PORT, alias
 ```
 
-- [ ] **Step 2: Run it, verify it fails**
+- [ ] **Step 2: Run it, verify it fails.**
 
-Run: `uv run pytest tests/test_swap_pool_routing.py::test_long_tail_aliases_route_to_swap_port -v`
-Expected: FAIL — aliases still point at 9316/9328/9329/9330/9305.
+- [ ] **Step 3: Repoint** — set every `SWAP_ALIASES` entry's `MODEL_FORCE_MAP`
+port to `9350`. Leave `apertus-*`, the 5 devstral LoRA aliases, and
+`pixtral` untouched.
 
-- [ ] **Step 3: Repoint the aliases**
+- [ ] **Step 4: Run it, verify it passes.**
 
-In `MODEL_FORCE_MAP`, change the port of every alias in `SWAP_ALIASES`
-(the 7 base-model aliases) to `9350`:
+- [ ] **Step 5: Commit** — `git commit -m "feat(gateway): route base models to the swap server"`.
 
-```python
-    "ailiance-devstral-base": 9350,
-    "ailiance-flagship": 9350,
-    "ailiance-qwen-235b": 9350,
-    "ailiance-mixtral": 9350,
-    "ailiance-mixtral-8x22b": 9350,
-    "ailiance-llama": 9350,
-    "ailiance-qwen36": 9350,
-```
+### Task 4: Add swap-server model rewrites
 
-Leave the 9 `apertus-*` and 5 devstral LoRA-variant aliases
-(`python`/`cpp`/`rust-emb`/`html`/`ml-training`) untouched — they are
-LoRA variants handled in Phase 1bis, not the swap pool.
-
-- [ ] **Step 4: Run it, verify it passes**
-
-Run: `uv run pytest tests/test_swap_pool_routing.py::test_long_tail_aliases_route_to_swap_port -v`
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add src/gateway/server.py tests/test_swap_pool_routing.py
-git commit -m "feat(gateway): route long-tail aliases to the swap server"
-```
-
----
-
-### Task 5: Add swap-server model rewrites
-
-**Files:** Modify `src/gateway/server.py` — `ALIAS_MODEL_REWRITES`
-(lines 529-560).
-
-The swap `mlx_lm.server` loads `body["model"]` as an on-disk path. Each
-swap alias needs an `ALIAS_MODEL_REWRITES` entry with the path recorded in
-Task 1.
-
-- [ ] **Step 1: Write the failing test**
-
-Append to `tests/test_swap_pool_routing.py`:
+- [ ] **Step 1: Write the failing test** — append:
 
 ```python
 def test_swap_aliases_have_a_model_rewrite():
@@ -265,137 +205,61 @@ def test_swap_aliases_have_a_model_rewrite():
         assert ALIAS_MODEL_REWRITES[alias].get("model"), alias
 ```
 
-- [ ] **Step 2: Run it, verify it fails**
+- [ ] **Step 2: Run it, verify it fails.**
 
-Run: `uv run pytest tests/test_swap_pool_routing.py::test_swap_aliases_have_a_model_rewrite -v`
-Expected: FAIL — missing rewrites.
-
-- [ ] **Step 3: Add the rewrites**
-
-In `ALIAS_MODEL_REWRITES`, add one entry per swap alias using the path from
-Task 1. Example shape (replace paths with the Task 1 inventory values):
+- [ ] **Step 3: Add the rewrites** — in `ALIAS_MODEL_REWRITES`, one entry per
+swap alias pointing at the on-disk path (Task 1 inventory):
 
 ```python
     "ailiance-llama": {"model": "/Users/clems/KIKI-Mac_tunner/models/Llama-3.3-70B-Instruct-MLX-4bit"},
     "ailiance-mixtral": {"model": "/Users/clems/KIKI-Mac_tunner/models/Mixtral-8x22B-Instruct-MLX-4bit"},
+    "ailiance-mixtral-8x22b": {"model": "/Users/clems/KIKI-Mac_tunner/models/Mixtral-8x22B-Instruct-MLX-4bit"},
     "ailiance-qwen-235b": {"model": "/Users/clems/KIKI-Mac_tunner/models/Qwen3-235B-A22B-Instruct-MLX-4bit"},
-    # ... one entry per alias in SWAP_ALIASES, paths from Task 1 ...
+    "ailiance-flagship": {"model": "/Users/clems/KIKI-Mac_tunner/models/Qwen3-235B-A22B-Instruct-MLX-4bit"},
+    "ailiance-qwen36": {"model": "/Users/clems/KIKI-Mac_tunner/models/Qwen3.6-35B-A3B-MLX-BF16"},
+    "ailiance-devstral-base": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
+    "ailiance-eurollm": {"model": "/Users/clems/KIKI-Mac_tunner/models/EuroLLM-22B-Instruct-2512"},
+    "ailiance-mistral-small": {"model": "/Users/clems/KIKI-Mac_tunner/models/Mistral-Small-3.1-24B-Instruct-MLX-4bit"},
 ```
 
-- [ ] **Step 4: Run it, verify it passes**
+- [ ] **Step 4: Run it, verify it passes.**
 
-Run: `uv run pytest tests/test_swap_pool_routing.py::test_swap_aliases_have_a_model_rewrite -v`
-Expected: PASS.
+- [ ] **Step 5: Commit** — `git commit -m "feat(gateway): add swap-server model-path rewrites"`.
 
-- [ ] **Step 5: Commit**
+### Task 5: Full suite + deploy
 
-```bash
-git add src/gateway/server.py tests/test_swap_pool_routing.py
-git commit -m "feat(gateway): add swap-server model-path rewrites"
-```
+- [ ] **Step 1: Run the suite** — `uv run pytest tests/ -q`. Fix any
+`test_gateway_alias_inventory.py` drift; the `_validate` port check passes
+(9350 registered).
 
----
+- [ ] **Step 2: PR, CI, merge** — `gh pr create --title "feat: swap server for on-demand base models"`.
 
-### Task 6: Verify the existing routing invariants still hold
+- [ ] **Step 3: Deploy** — `ssh electron-server "cd /home/electron/ailiance && git pull --ff-only origin main && sudo systemctl restart ailiance-gateway"`.
 
-**Files:** none modified — run the existing suite.
-
-- [ ] **Step 1: Run the full gateway test suite**
-
-Run: `uv run pytest tests/ -q`
-Expected: PASS, including `test_gateway_alias_inventory.py` and the
-`_validate` check that every `MODEL_FORCE_MAP` port is in `WORKER_URLS`
-(9350 is now registered, so it passes).
-
-- [ ] **Step 2: Fix any failure**
-
-If `test_gateway_alias_inventory.py` asserts a removed Apertus alias, update
-that test to match the Task 5 decision. Re-run until green.
-
-- [ ] **Step 3: Commit any test updates**
-
-```bash
-git add tests/
-git commit -m "test: realign alias inventory with swap-pool routing"
-```
-
----
-
-### Task 7: Deploy and verify end-to-end
-
-- [ ] **Step 1: Open a PR and merge after CI passes**
-
-```bash
-git push -u origin feat/swap-pool-phase1
-gh pr create --title "feat: on-demand swap server for long-tail models" --body "Phase 1 of the on-demand model loading spec."
-```
-
-- [ ] **Step 2: Deploy the gateway**
-
-```bash
-ssh electron-server "cd /home/electron/ailiance && git pull --ff-only origin main && sudo systemctl restart ailiance-gateway"
-```
-
-- [ ] **Step 3: End-to-end check**
-
-```bash
-for m in ailiance-llama ailiance-mixtral ailiance-qwen36; do
-  curl -sS --max-time 180 -X POST https://gateway.ailiance.fr/v1/chat/completions \
-    -H 'content-type: application/json' \
-    -d "{\"model\":\"$m\",\"messages\":[{\"role\":\"user\",\"content\":\"OK\"}],\"max_tokens\":4,\"stream\":false}" \
-  | python3 -c "import sys,json;d=json.load(sys.stdin);print('$m ->', d.get('model'))"
-done
-```
-
-Expected: each alias reports `served` = its real model (not `eu-kiki-gemma`).
-First call per model is slow (cold load).
+- [ ] **Step 4: End-to-end** — POST a short completion to `ailiance-llama`,
+`ailiance-mixtral`, `ailiance-qwen36`; each must report `served` = its real
+model. First call per model is slow (cold load).
 
 ---
 
 ## Phase 1bis — LoRA-variant families (multi-LoRA servers)
 
-The 9 `apertus-*` and 5 devstral (`python`/`cpp`/`rust-emb`/`html`/
-`ml-training`) aliases are LoRA variants — one base model, many domain
-adapters. A swap `mlx_lm.server` cannot serve them (no per-request adapter
-swap). They need the multi-LoRA-server pattern: one base in VRAM, adapters
-hot-swapped per request — as `mascarade_multi_server` (:9340) already does
-for the 10 mascarade hardware LoRAs. Outline (own detailed plan later):
+The 9 `apertus-*` and 5 devstral LoRA aliases need the multi-LoRA-server
+pattern (one base in VRAM, adapters hot-swapped per request) — as
+`mascarade_multi_server` (:9340) already does. Outline: stand up one
+multi-LoRA server per family (Apertus-70B-4bit + 9 adapters, Devstral-24B +
+5 adapters) reusing that code; repoint the 14 aliases; confirm adapter
+weights under `/Users/clems/lora-adapters`. Own detailed plan later.
 
-- Stand up one multi-LoRA server per family — Apertus-70B-4bit + 9
-  adapters, Devstral-24B + 5 adapters — reusing the `mascarade_multi_server`
-  code path.
-- Repoint the 14 LoRA-variant aliases in `MODEL_FORCE_MAP` at those
-  servers' ports; `ALIAS_MODEL_REWRITES` maps each alias to its adapter id.
-- Confirm the adapter weights exist under `/Users/clems/lora-adapters`;
-  train or restore any missing.
+## Phase 3 — Multi-slot pool + ModelManager
 
-## Phase 2 — Swap pool + ModelManager (follow-on plan)
-
-Phase 2 removes the single-server thrashing. It is large enough for its own
-detailed plan, written once Phase 1 ships. Outline:
-
-- **ModelManager module** (`src/gateway/model_manager.py`): `ALIAS_TIER`,
-  `MODEL_FOOTPRINT`, `SWAP_SLOTS` tables; `resolve(alias) -> worker_url`
-  with warm-hit / memory-aware LRU slot selection.
-- **Second Studio swap server** (`:9351`) + **macM1 swap server** — extra
-  plists, extra `WORKER_URLS` entries.
-- **Server integration**: `forced_port = MODEL_FORCE_MAP.get(...)` becomes
-  a `ModelManager.resolve(...)` call for swap-tier aliases; reuse the
-  per-`worker_url` `asyncio.Lock` (already in `server.py`) to serialise
-  swaps.
-- **Cold-start signalling**: emit `event: loading` on the SSE stream when
-  the chosen slot must reload; the cockpit playground renders it.
-- **Demotion**: move `qwen36`, `eurollm`, `pixtral`, `qwen2.5-7B`,
-  `qwen3-4b`, `mistral-small` from pinned to swap/macM1 tiers to free the
-  ~190 GB swap budget (see spec "Memory budget").
-- **Idle eviction**: optional background unload of swap models idle > N min.
-
-Each Phase 2 component gets test-first tasks in its own plan document.
-
----
+Single-server swapping thrashes when two cold models alternate. Phase 3
+adds `src/gateway/model_manager.py` (2-3 slots, memory-aware LRU routing,
+per-slot `asyncio.Lock`), a macM1 swap server, and `event: loading` SSE
+signalling. Own detailed plan later.
 
 ## Out of scope
 
-- Auto-downloading absent model weights.
-- On-the-fly quantization.
-- kxkm-ai on-demand GGUF loading (separate llama.cpp stack).
+- Auto-downloading absent weights; on-the-fly quantization.
+- kxkm-ai on-demand GGUF (separate llama.cpp stack).
+- Vision-model swapping (`pixtral` keeps a dedicated `mlx_vlm` server).
