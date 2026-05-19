@@ -1459,6 +1459,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 return JSONResponse(
                     status_code=503,
                     content=build_training_503(training.state, req.model),
+                    headers={"Retry-After": "3600"},
                 )
             # Auto-routed request: re-point to a minimal still-loaded worker.
             # Note: a later cascade-override may re-resolve the port; if cascade

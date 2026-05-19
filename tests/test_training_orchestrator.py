@@ -74,6 +74,12 @@ def test_build_503_body_has_progress():
     assert body["training"]["current_domain"] == "kicad-pcb"
     assert body["training"]["domain_index"] == 2
     assert body["training"]["domains_total"] == 2
+    # Human-readable message carries the ETA and the fallback aliases so a CLI
+    # client that only surfaces error.message still gives the user useful info.
+    msg = body["error"]["message"]
+    assert "temporairement indisponible" in msg
+    assert "ailiance-mistral-small" in msg
+    assert body["training"]["eta_campaign"] in msg
 
 
 @pytest.mark.asyncio

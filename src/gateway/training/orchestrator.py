@@ -35,16 +35,31 @@ class StudioOpsProtocol(Protocol):
     async def read_domain_log(self, domain: str) -> str: ...
 
 
+AVAILABLE_DURING_TRAINING: tuple[str, ...] = (
+    "ailiance-mistral-small", "ailiance-qwen",
+)
+
+
 def build_training_503(state: CampaignState, alias: str) -> dict:
-    """OpenAI-compatible 503 body with the live training step."""
+    """OpenAI-compatible 503 body with the live training step.
+
+    The human-readable `error.message` includes the ETA and the fallback
+    aliases so that a CLI client surfacing only the message still gives the
+    user actionable information; the structured `training` block and
+    `available_models` field carry the same data for machine consumers.
+    """
     total = len(state.domains)
     remaining = max(0, total - state.domain_index)
     eta_hours = remaining * D.HOURS_PER_DOMAIN
     eta = f"~{eta_hours} h" if eta_hours < 48 else f"~{eta_hours // 24} jours"
+    fallbacks = ", ".join(AVAILABLE_DURING_TRAINING)
     return {
         "error": {
-            "message": f"Modèle '{alias}' indisponible : campagne "
-                       f"d'entraînement {state.campaign} en cours.",
+            "message": (
+                f"Modèle '{alias}' temporairement indisponible. "
+                f"Campagne d'entraînement {state.campaign} en cours, "
+                f"{eta} restants. Modèles disponibles : {fallbacks}."
+            ),
             "type": "model_unavailable_training",
             "code": "training_in_progress",
         },
@@ -60,7 +75,7 @@ def build_training_503(state: CampaignState, alias: str) -> dict:
             "eta_campaign": eta,
             "last_verdicts": state.verdicts,
         },
-        "available_models": ["ailiance-mistral-small", "ailiance-qwen"],
+        "available_models": list(AVAILABLE_DURING_TRAINING),
     }
 
 
