@@ -18,3 +18,8 @@ SWAP_ALIASES = [
 
 def test_swap_port_is_registered():
     assert SWAP_PORT in WORKER_URLS
+
+
+def test_base_aliases_route_to_swap_port():
+    for alias in SWAP_ALIASES:
+        assert MODEL_FORCE_MAP.get(alias) == SWAP_PORT, alias
