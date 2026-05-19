@@ -36,9 +36,18 @@ class CampaignState:
 
 
 def load_state(path: Path) -> CampaignState:
+    """Load campaign state from `path`.
+
+    Returns a default IDLE `CampaignState` if the file is absent or
+    contains invalid JSON — a corrupt state file must never crash the
+    gateway at startup.
+    """
     if not path.exists():
         return CampaignState()
-    return CampaignState(**json.loads(path.read_text()))
+    try:
+        return CampaignState(**json.loads(path.read_text()))
+    except (json.JSONDecodeError, TypeError):
+        return CampaignState()
 
 
 def save_state(path: Path, state: CampaignState) -> None:

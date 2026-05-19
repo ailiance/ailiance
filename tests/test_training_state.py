@@ -25,3 +25,9 @@ def test_roundtrip_persistence(tmp_path):
 
 def test_load_missing_returns_idle(tmp_path):
     assert load_state(tmp_path / "absent.json").status == "IDLE"
+
+
+def test_load_corrupt_returns_idle(tmp_path):
+    path = tmp_path / "campaign_state.json"
+    path.write_text("{not valid json")
+    assert load_state(path).status == "IDLE"
