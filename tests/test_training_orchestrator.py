@@ -188,3 +188,36 @@ async def test_gate_records_failed_oom(tmp_path):
     orch.state = CampaignState(status="GATING", domains=["a"])
     await orch._gate_domain("a")
     assert orch.state.verdicts["a"] == "FAILED_OOM"
+
+
+@pytest.mark.asyncio
+async def test_settled_free_memory_waits_for_rise_to_stop(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "src.gateway.training.orchestrator.MEM_SETTLE_POLL_S", 0.0)
+    ops = FakeOps()
+    # free memory climbs 100 -> 200 -> 305 -> 306 then flat (buffers reclaimed)
+    readings = iter([100.0, 200.0, 305.0, 306.0, 306.0])
+
+    async def rising():
+        return next(readings)
+    ops.free_memory_gb = rising
+    orch = TrainingOrchestrator(ops, tmp_path / "s.json")
+    settled = await orch._settled_free_memory()
+    assert settled == 306.0  # stopped once the rise flattened (306 <= 305+2)
+
+
+@pytest.mark.asyncio
+async def test_unload_gates_on_settled_memory(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "src.gateway.training.orchestrator.MEM_SETTLE_POLL_S", 0.0)
+    ops = FakeOps()
+    # immediate reading 302 is below the 320 gate, but it settles at 360
+    readings = iter([302.0, 340.0, 360.0, 360.0])
+
+    async def rising():
+        return next(readings)
+    ops.free_memory_gb = rising
+    orch = TrainingOrchestrator(ops, tmp_path / "s.json")
+    orch.state = CampaignState(status="UNLOADING", domains=["a"])
+    await orch._unload()  # must NOT raise — settled memory 360 >= 320
+    assert orch.state.status == "UNLOADING"
