@@ -3,20 +3,16 @@
 Deploys the gateway-orchestrated training feature (PR #106) to the production
 gateway on **electron-server** (`ailiance-gateway.service`, FastAPI :9300).
 
-## 0. Prerequisite — branch reconciliation (DECISION REQUIRED)
+## 0. Branch state — no reconciliation needed
 
-The production checkout `/home/electron/ailiance` currently runs the branch
-`hotfix/rollback-mascarade-9340-to-8004`, **not** `main`. PR #106 targets
-`main`. Before deploying, decide how to reconcile:
-
-- **Option A** — merge the hotfix into `main` as well (or confirm it is
-  already there), merge PR #106, then deploy `main`. Production ends on
-  `main` with both the rollback and the training feature.
-- **Option B** — keep production on the hotfix branch and merge PR #106 into
-  that branch instead of `main`.
-
-Option A is preferred (production back on `main`). Do not switch the prod
-branch blind — the hotfix is deployed for a reason (the :9340 bf16 incident).
+The production checkout `/home/electron/ailiance` sits on the branch
+`hotfix/rollback-mascarade-9340-to-8004`. Verified 2026-05-19: that branch is
+**0 commits ahead of `origin/main`** — the rollback is already merged into
+`main`, and the hotfix branch name is now just a stale label on the same
+content. So no reconciliation is required: merge PR #106 into `main`, then
+deploy `main` (step 3). The prod checkout also has some untracked files
+(`audit/`, local `scripts/router_v7_*.py`) — harmless, a `git checkout main`
+leaves them in place.
 
 ## 1. Choose the admin token
 
@@ -47,7 +43,7 @@ already reaches Studio directly — no override needed unless that changes.
     ssh electron-server
     cd /home/electron/ailiance
     git fetch origin
-    git checkout main          # per Option A
+    git checkout main          # off the stale hotfix label (see step 0)
     git pull --ff-only origin main
 
 The medium35 feature lands under `src/gateway/training/` and `scripts/studio/`.
