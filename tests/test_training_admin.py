@@ -53,3 +53,12 @@ def test_admin_disabled_without_env(monkeypatch):
     c = TestClient(app)
     assert c.get("/admin/training/status",
                  headers={"X-Admin-Token": "x"}).status_code == 503
+
+
+def test_start_with_explicit_domains():
+    orch = FakeOrch()
+    c = _client(orch)
+    r = c.post("/admin/training/start", json={"domains": ["foo", "bar"]},
+               headers={"X-Admin-Token": "secret"})
+    assert r.status_code == 202
+    assert orch.started == ["foo", "bar"]

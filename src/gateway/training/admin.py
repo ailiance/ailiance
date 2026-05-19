@@ -1,6 +1,7 @@
 """Admin endpoints to control the medium35 training campaign."""
 from __future__ import annotations
 
+import hmac
 import os
 
 from fastapi import APIRouter, Header, HTTPException, Request
@@ -10,7 +11,7 @@ def _check_token(token: str | None) -> None:
     expected = os.environ.get("AILIANCE_ADMIN_TOKEN")
     if not expected:
         raise HTTPException(status_code=503, detail="admin disabled (no token)")
-    if token != expected:
+    if not hmac.compare_digest(token or "", expected):
         raise HTTPException(status_code=401, detail="invalid admin token")
 
 
