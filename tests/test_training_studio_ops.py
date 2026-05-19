@@ -64,3 +64,37 @@ async def test_run_timeout_kills_process():
         with pytest.raises(asyncio.TimeoutError):
             await StudioOps().run("sleep 100", timeout=0.05)
     assert waited["v"] is True
+
+
+@pytest.mark.asyncio
+async def test_reload_workers_timeout_scales_with_ports():
+    captured = {}
+
+    async def fake_run(self, command, timeout=60.0):
+        captured["command"] = command
+        captured["timeout"] = timeout
+        from src.gateway.training.studio_ops import SSHResult
+        return SSHResult(0, "RELOADED 9301\nRELOAD_FAILED 9303\n", "")
+
+    with patch.object(StudioOps, "run", new=fake_run):
+        failed = await StudioOps().reload_workers([9301, 9303])
+    # 120 + 320*2 = 760s for 2 ports; must exceed the 9-worker worst case too
+    assert captured["timeout"] == 120.0 + 320.0 * 2
+    assert "reload" in captured["command"]
+    assert failed == [9303]
+
+
+@pytest.mark.asyncio
+async def test_reload_timeout_covers_full_fleet():
+    captured = {}
+
+    async def fake_run(self, command, timeout=60.0):
+        captured["timeout"] = timeout
+        from src.gateway.training.studio_ops import SSHResult
+        return SSHResult(0, "", "")
+
+    from src.gateway.training.studio_ops import UNLOAD_PORTS
+    with patch.object(StudioOps, "run", new=fake_run):
+        await StudioOps().reload_workers(list(UNLOAD_PORTS))
+    # 9 workers x 300s sequential worst case = 2700s; timeout must exceed it
+    assert captured["timeout"] > 2700.0
