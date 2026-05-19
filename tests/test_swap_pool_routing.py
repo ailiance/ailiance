@@ -23,3 +23,9 @@ def test_swap_port_is_registered():
 def test_base_aliases_route_to_swap_port():
     for alias in SWAP_ALIASES:
         assert MODEL_FORCE_MAP.get(alias) == SWAP_PORT, alias
+
+
+def test_swap_aliases_have_a_model_rewrite():
+    for alias in SWAP_ALIASES:
+        assert alias in ALIAS_MODEL_REWRITES, alias
+        assert ALIAS_MODEL_REWRITES[alias].get("model"), alias
