@@ -115,11 +115,13 @@ class TrainingOrchestrator:
 
     async def reattach(self) -> bool:
         """On gateway boot: resume a non-terminal campaign. Returns True if a
-        campaign was resumed. Skips preflight/unload (workers are already
-        unloaded); the in-progress domain re-attaches to its live batch pid,
-        or restarts it (resume-safe via phaseN_done sentinels) if the pid died."""
+        campaign was resumed. Skips preflight/unload when the workers are
+        already unloaded; the in-progress domain re-attaches to its live batch
+        pid, or restarts (resume-safe via phaseN_done sentinels) if it died."""
         if not self.state.is_active:
             return False
+        if self._task is not None and not self._task.done():
+            return False  # a campaign task is already running
         self._task = asyncio.create_task(self._run_campaign(resume=True))
         self._task.add_done_callback(self._on_task_done)
         return True
@@ -159,6 +161,7 @@ class TrainingOrchestrator:
     async def _train_domain(self, domain: str, resume_pid: int | None = None) -> None:
         if resume_pid is not None and await self._ops.pid_alive(resume_pid):
             pid = resume_pid  # batch survived the gateway restart — re-attach
+            self._set("TRAINING")  # correct a stale resumed status
         else:
             self._set("TRAINING", phase=0, iter=0)
             pid = await self._ops.spawn_domain(domain)
@@ -194,25 +197,40 @@ class TrainingOrchestrator:
         self.state.unloaded_ports = []
         self._save()
 
-    async def _run_campaign(self, resume: bool = False) -> None:
-        try:
-            if not resume:
-                if not await self._preflight():
-                    return
-                await self._unload()
-            first = resume  # only the in-progress domain re-attaches to its pid
-            while self.state.domain_index < len(self.state.domains):
-                if self.state.abort_requested:
-                    break
-                domain = self.state.domains[self.state.domain_index]
+    async def _domain_loop(self, resume_status: str) -> None:
+        """Run train+gate for each remaining domain. On a resume:
+        - resume_status TRAINING: the first domain re-attaches to its batch pid;
+        - resume_status GATING: the first domain's training already finished,
+          so it is gated only (not re-trained)."""
+        first = resume_status in ("TRAINING", "GATING")
+        skip_train_first = resume_status == "GATING"
+        while self.state.domain_index < len(self.state.domains):
+            if self.state.abort_requested:
+                break
+            domain = self.state.domains[self.state.domain_index]
+            if not (first and skip_train_first):
                 await self._train_domain(
                     domain,
                     resume_pid=self.state.batch_pid if first else None,
                 )
-                first = False
-                await self._gate_domain(domain)
-                self.state.domain_index += 1
-                self._save()
+            first = False
+            await self._gate_domain(domain)
+            self.state.domain_index += 1
+            self._save()
+
+    async def _run_campaign(self, resume: bool = False) -> None:
+        try:
+            # Crash-time status decides where to resume. PREFLIGHT/UNLOADING:
+            # workers not yet (fully) unloaded -> run preflight + unload.
+            # TRAINING/GATING: workers already unloaded -> straight to the loop.
+            # RELOADING: all domains done -> straight to reload.
+            status = self.state.status if resume else "IDLE"
+            if status in ("IDLE", "PREFLIGHT", "UNLOADING"):
+                if not await self._preflight():
+                    return
+                await self._unload()
+            if status != "RELOADING":
+                await self._domain_loop(status)
             self._set("RELOADING")
             await self._reload()
             self._set("ABORTED" if self.state.abort_requested else "DONE")

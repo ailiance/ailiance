@@ -9,6 +9,9 @@ class FakeOps:
         self.reloaded = False
         self.free = 400.0
         self.logs = {}
+        self.spawn_calls = 0
+        self.alive_limit = 0      # pid_alive returns True for this many calls
+        self._alive_calls = 0
 
     async def venv_ok(self):
         return True
@@ -27,10 +30,14 @@ class FakeOps:
         return []
 
     async def spawn_domain(self, domain):
+        self.spawn_calls += 1
         return 4242
 
     async def pid_alive(self, pid):
-        return False  # batch already finished
+        if self._alive_calls < self.alive_limit:
+            self._alive_calls += 1
+            return True
+        return False
 
     async def read_domain_log(self, domain):
         return self.logs.get(domain, "")
@@ -113,3 +120,35 @@ async def test_reattach_resumes_active_campaign(tmp_path):
 async def test_reattach_noop_when_idle(tmp_path):
     orch = TrainingOrchestrator(FakeOps(), tmp_path / "absent.json")
     assert await orch.reattach() is False
+
+
+@pytest.mark.asyncio
+async def test_reattach_polls_live_batch(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "src.gateway.training.orchestrator.POLL_INTERVAL_S", 0.0)
+    ops = FakeOps()
+    ops.alive_limit = 2  # the resumed batch is still alive for 2 poll checks
+    ops.logs = {"a": "### DOMAIN COMPLETE a final_val_loss=0.40\n"}
+    state_path = tmp_path / "s.json"
+    save_state(state_path, CampaignState(status="TRAINING", domains=["a"],
+                                         batch_pid=999, unloaded_ports=[9301]))
+    orch = TrainingOrchestrator(ops, state_path)
+    assert await orch.reattach() is True
+    await orch._task
+    assert ops.spawn_calls == 0  # re-attached to the live batch, no re-spawn
+    assert orch.state.status == "DONE"
+
+
+@pytest.mark.asyncio
+async def test_reattach_from_gating_skips_retrain(tmp_path):
+    ops = FakeOps()
+    ops.logs = {"a": "### DOMAIN COMPLETE a final_val_loss=0.40\n"}
+    state_path = tmp_path / "s.json"
+    save_state(state_path, CampaignState(status="GATING", domains=["a"],
+                                         batch_pid=999, unloaded_ports=[9301]))
+    orch = TrainingOrchestrator(ops, state_path)
+    assert await orch.reattach() is True
+    await orch._task
+    assert ops.spawn_calls == 0  # training already finished — not re-trained
+    assert orch.state.status == "DONE"
+    assert orch.state.verdicts == {"a": "OK"}
