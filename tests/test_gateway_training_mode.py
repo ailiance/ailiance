@@ -38,6 +38,7 @@ def test_explicit_unloaded_alias_returns_503():
                               "messages": [{"role": "user", "content": "hi"}]})
     assert resp.status_code == 503
     assert resp.json()["error"]["code"] == "training_in_progress"
+    assert resp.headers.get("Retry-After") == "3600"
 
 
 def test_no_503_when_campaign_idle():
