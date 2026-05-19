@@ -399,8 +399,12 @@ MODEL_FORCE_MAP = {
     "ailiance-python": 9330,
     "ailiance-cpp": 9330,
     "ailiance-rust-emb": 9330,
-    "ailiance-html": 9330,
-    "ailiance-ml-training": 9330,
+    # devstral-html-css / devstral-ml-training LoRA adapters are
+    # degenerate (repetition-loop garbage, verified 2026-05-19 by a
+    # direct :9330 call). Route to Gemma until the adapters are
+    # retrained — a coherent generic answer beats garbage.
+    "ailiance-html": 9304,
+    "ailiance-ml-training": 9304,
     # Studio MLX :9340 — 10 qwen3-4b-mascarade hardware experts. Each LoRA
     # (trained 2026-05-11, Qwen3-4B-Instruct-2507 base) was merged and
     # converted to MLX bf16, replacing the Tower Ollama Q4_K_M path so the
@@ -563,8 +567,9 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     "ailiance-python": {"model": "devstral-python"},
     "ailiance-cpp": {"model": "devstral-cpp"},
     "ailiance-rust-emb": {"model": "devstral-rust-embedded"},
-    "ailiance-html": {"model": "devstral-html-css"},
-    "ailiance-ml-training": {"model": "devstral-ml-training"},
+    # ailiance-html / ailiance-ml-training intentionally omitted — they
+    # route to Gemma :9304 (degenerate adapters); the :9304 port-level
+    # override supplies the eu-kiki-gemma model id.
     # Studio multi-LoRA Apertus 70B custom server :9322. One base model in
     # VRAM, adapters swap per request via mlx_lm.tuner.utils.load_adapters
     # under an asyncio.Lock. Each alias rewrites the `model` body field to
