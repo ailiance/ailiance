@@ -70,7 +70,7 @@ case "${1:-}" in
   spawn)
     domain="${2:?domain required}"
     log="$LOG_DIR/medium35-$domain.log"
-    setsid bash "$0" run "$domain" >"$log" 2>&1 &
+    nohup bash "$0" run "$domain" >"$log" 2>&1 </dev/null &
     echo "$!"
     ;;
   run)  run_domain "${2:?domain required}" ;;
