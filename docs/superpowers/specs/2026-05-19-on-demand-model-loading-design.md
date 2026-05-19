@@ -35,11 +35,24 @@ Genuinely hot models, one dedicated always-on `mlx_lm.server` each:
 no quality downgrade), `mascarade` :9340 (10 hardware LoRA experts),
 `ailiance-coder-pro`, `ailiance-reasoning-r1`.
 
-### Swap pool — Studio (2 slots)
-Two `mlx_lm.server` instances started without a fixed `--model`, pointed at
-the local model library. They load the long-tail heavy models on demand:
-- **slot XL** (~120 GB budget): `qwen-235b`/`flagship`, `mixtral`, `llama`.
-- **slot M** (~45 GB budget): `devstral-*`, `apertus-*` (see Apertus note).
+### Swap pool — Studio (distinct base models only)
+`mlx_lm.server` swaps a *base model* per request — it cannot hot-swap a
+LoRA adapter per request (`--adapter-path` is a startup flag; the OpenAI
+request has no adapter field). So the swap pool serves **distinct base
+models only**, confirmed on disk:
+- **slot XL** (~120 GB budget): `qwen-235b`/`flagship` (Qwen3-235B),
+  `mixtral`/`mixtral-8x22b` (Mixtral-8x22B), `llama` (Llama-3.3-70B).
+- **slot M** (~45 GB budget): `qwen36` (Qwen3.6-35B), `devstral-base`
+  (Devstral-Small-2-24B).
+
+### LoRA-variant families — multi-LoRA servers (not the swap pool)
+The 9 `apertus-*` aliases (Apertus-70B base + 9 domain LoRAs) and the 5
+devstral aliases `python`/`cpp`/`rust-emb`/`html`/`ml-training` (Devstral
+base + 5 LoRAs) are **LoRA variants**, not distinct base models. They need
+the multi-LoRA-server pattern — one base in VRAM, N adapters hot-swapped
+per request — exactly what `mascarade_multi_server` (:9340) already does
+for the 10 mascarade hardware LoRAs. Each family gets its own multi-LoRA
+server; this is a separate workstream from the swap pool.
 
 ### Swap server — macM1 (1 slot)
 One `mlx_lm.server` swap instance on macM1 (32 GB) for medium models

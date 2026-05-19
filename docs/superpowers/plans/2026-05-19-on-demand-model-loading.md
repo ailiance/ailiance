@@ -31,13 +31,13 @@ alternately) is accepted and fixed in Phase 2.
 - Create `tests/test_swap_pool_routing.py` — routing assertions.
 - New ops artefact on the Studio: `cc.ailiance.swap-1.plist` launchd agent.
 
-The long-tail aliases routed to the swap server in Phase 1:
-`apertus-real`, `apertus-electronics-hw`, `apertus-math-reasoning`,
-`apertus-math-gsm8k`, `apertus-math`, `apertus-security-fenrir`,
-`apertus-spice-sim`, `apertus-emc-dsp-power`, `apertus-embedded`,
-`devstral-base`, `python`, `cpp`, `rust-emb`, `html`, `ml-training`,
-`flagship`, `qwen-235b`, `mixtral`, `mixtral-8x22b`, `llama`, `qwen36`.
-(All prefixed `ailiance-`.)
+Phase 1 routes only the **distinct base models** to the swap server.
+`mlx_lm.server` swaps a base model per request but cannot hot-swap LoRA
+adapters per request, so the 9 `apertus-*` and 5 devstral LoRA-variant
+aliases are NOT in Phase 1 — they are handled by Phase 1bis (multi-LoRA
+servers). The 7 Phase 1 swap aliases (all prefixed `ailiance-`):
+`flagship`, `qwen-235b`, `mixtral`, `mixtral-8x22b`, `llama`, `qwen36`,
+`devstral-base`.
 
 ---
 
@@ -149,10 +149,9 @@ from src.gateway.server import (
 SWAP_PORT = 9350
 
 SWAP_ALIASES = [
-    "ailiance-devstral-base", "ailiance-python", "ailiance-cpp",
-    "ailiance-rust-emb", "ailiance-html", "ailiance-ml-training",
     "ailiance-flagship", "ailiance-qwen-235b", "ailiance-mixtral",
     "ailiance-mixtral-8x22b", "ailiance-llama", "ailiance-qwen36",
+    "ailiance-devstral-base",
 ]
 
 
@@ -215,37 +214,29 @@ Expected: FAIL — aliases still point at 9316/9328/9329/9330/9305.
 
 - [ ] **Step 3: Repoint the aliases**
 
-In `MODEL_FORCE_MAP`, change the port of every alias in `SWAP_ALIASES` to
-`9350`. Example — the Devstral block becomes:
+In `MODEL_FORCE_MAP`, change the port of every alias in `SWAP_ALIASES`
+(the 7 base-model aliases) to `9350`:
 
 ```python
     "ailiance-devstral-base": 9350,
-    "ailiance-python": 9350,
-    "ailiance-cpp": 9350,
-    "ailiance-rust-emb": 9350,
-    "ailiance-html": 9350,
-    "ailiance-ml-training": 9350,
+    "ailiance-flagship": 9350,
+    "ailiance-qwen-235b": 9350,
+    "ailiance-mixtral": 9350,
+    "ailiance-mixtral-8x22b": 9350,
+    "ailiance-llama": 9350,
+    "ailiance-qwen36": 9350,
 ```
 
-and likewise `ailiance-flagship`, `ailiance-qwen-235b`, `ailiance-mixtral`,
-`ailiance-mixtral-8x22b`, `ailiance-llama`, `ailiance-qwen36` → `9350`.
-Leave the `apertus-*` aliases for Step 5.
+Leave the 9 `apertus-*` and 5 devstral LoRA-variant aliases
+(`python`/`cpp`/`rust-emb`/`html`/`ml-training`) untouched — they are
+LoRA variants handled in Phase 1bis, not the swap pool.
 
 - [ ] **Step 4: Run it, verify it passes**
 
 Run: `uv run pytest tests/test_swap_pool_routing.py::test_long_tail_aliases_route_to_swap_port -v`
 Expected: PASS.
 
-- [ ] **Step 5: Decide the Apertus aliases**
-
-The Apertus base model was deleted (2026-05-12). Per the spec's open
-question: if `Apertus-70B-...-4bit-MLX` is present on disk (Task 1
-inventory), route the 9 `apertus-*` aliases to `9350` and add them to
-`SWAP_ALIASES` in the test. If absent, remove the 9 `apertus-*` entries
-from `MODEL_FORCE_MAP` and from the `/v1/models` listing instead. Apply
-whichever the inventory dictates; update the test to match.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add src/gateway/server.py tests/test_swap_pool_routing.py
@@ -360,6 +351,23 @@ Expected: each alias reports `served` = its real model (not `eu-kiki-gemma`).
 First call per model is slow (cold load).
 
 ---
+
+## Phase 1bis — LoRA-variant families (multi-LoRA servers)
+
+The 9 `apertus-*` and 5 devstral (`python`/`cpp`/`rust-emb`/`html`/
+`ml-training`) aliases are LoRA variants — one base model, many domain
+adapters. A swap `mlx_lm.server` cannot serve them (no per-request adapter
+swap). They need the multi-LoRA-server pattern: one base in VRAM, adapters
+hot-swapped per request — as `mascarade_multi_server` (:9340) already does
+for the 10 mascarade hardware LoRAs. Outline (own detailed plan later):
+
+- Stand up one multi-LoRA server per family — Apertus-70B-4bit + 9
+  adapters, Devstral-24B + 5 adapters — reusing the `mascarade_multi_server`
+  code path.
+- Repoint the 14 LoRA-variant aliases in `MODEL_FORCE_MAP` at those
+  servers' ports; `ALIAS_MODEL_REWRITES` maps each alias to its adapter id.
+- Confirm the adapter weights exist under `/Users/clems/lora-adapters`;
+  train or restore any missing.
 
 ## Phase 2 — Swap pool + ModelManager (follow-on plan)
 
