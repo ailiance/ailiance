@@ -1440,7 +1440,10 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                     status_code=503,
                     content=build_training_503(training.state, req.model),
                 )
-            # auto-routed request -> fall back to a minimal still-loaded worker
+            # Auto-routed request: re-point to a minimal still-loaded worker.
+            # Note: a later cascade-override may re-resolve the port; if cascade
+            # lands on an unloaded worker the request is not re-checked here — it
+            # degrades gracefully via _gate_port to the 9304 fallback (no 503).
             worker_port = sorted(MINIMAL_ROUTABLE_PORTS)[0]
 
         # Health gate: if the resolved worker is currently down, fall back to
