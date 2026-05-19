@@ -46,6 +46,19 @@ One `mlx_lm.server` swap instance on macM1 (32 GB) for medium models
 ≤ ~24 GB: `ministral`, `ministral-reasoning`, `gemma2`/`gemma4`,
 `mistral-small`, `qwen2.5`-class.
 
+## Host capacity (measured 2026-05-19)
+
+- **Studio** — 512 GB. ~369 GB genuinely resident: ~208 GB of gateway MLX
+  servers, ~43 GB EuroLLM, and **~77 GB for the kiki/Zacus voice pipeline**
+  (`eu-kiki` :9200 — a non-gateway consumer that must stay). ~92 GB free +
+  ~42 GB reclaimable file cache → ~130 GB headroom before any change.
+- **macM1** — 32 GB. One swap server, models ≤ ~24 GB.
+- **kxkm-ai** — 62 GB RAM (~47 GB available) + RTX 4090 24 GB VRAM
+  (~5 GB free). **NVIDIA/llama.cpp stack — MLX does not run here.** It is
+  *not* a swap-pool host; it stays as the fixed GGUF pair `ailiance-qwen`
+  (Qwen3-Next-80B) + `ailiance-granite` (Granite-30B). On-demand GGUF
+  loading on kxkm-ai is a possible separate follow-up, out of scope here.
+
 ## Memory budget — without downgrading Mistral-Medium
 
 Mistral-Medium-128B stays at Q8 (130 GB). The swap-pool budget is funded by
