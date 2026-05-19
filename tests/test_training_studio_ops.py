@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.gateway.training.studio_ops import StudioOps
+from src.gateway.training.studio_ops import SSHResult, StudioOps
 
 
 class _FakeProc:
@@ -17,12 +17,48 @@ class _FakeProc:
         pass
 
 
+def _make_fake_run(stdout):
+    async def fake_run(self, command, timeout=60.0):
+        return SSHResult(0, stdout, "")
+    return fake_run
+
+
+_VM_STAT_SAMPLE = """Mach Virtual Memory Statistics: (page size of 16384 bytes)
+Pages free:                            16973156.
+Pages active:                           3664794.
+Pages inactive:                        12152962.
+Pages speculative:                        98729.
+Pages throttled:                               0.
+Pages wired down:                        474239.
+Pages purgeable:                            3145.
+Pages stored in compressor:               107320.
+File-backed pages:                     12136776.
+Anonymous pages:                        3779709.
+"""
+
+
+def test_parse_vm_stat_available_gb():
+    from src.gateway.training.studio_ops import parse_vm_stat_available_gb
+    gb = parse_vm_stat_available_gb(_VM_STAT_SAMPLE)
+    # free 16973156 + inactive 12152962 + speculative 98729 + purgeable 3145
+    # = 29227992 pages * 16384 / 1024^3 ~= 445.9 GB
+    assert 445.0 < gb < 447.0
+
+
+def test_parse_vm_stat_unparseable_returns_zero():
+    from src.gateway.training.studio_ops import parse_vm_stat_available_gb
+    assert parse_vm_stat_available_gb("garbage output") == 0.0
+
+
 @pytest.mark.asyncio
-async def test_free_memory_parses_top_output():
-    out = b"PhysMem: 412G used (3G wired), 99G unused.\n"
-    with patch("asyncio.create_subprocess_exec", return_value=_FakeProc(stdout=out)):
-        ops = StudioOps()
-        assert await ops.free_memory_gb() == 99.0
+async def test_free_memory_gb_uses_vm_stat():
+    from src.gateway.training.studio_ops import StudioOps
+    with patch.object(
+        StudioOps, "run",
+        new=_make_fake_run(_VM_STAT_SAMPLE),
+    ):
+        gb = await StudioOps().free_memory_gb()
+    assert 445.0 < gb < 447.0
 
 
 @pytest.mark.asyncio
