@@ -20,14 +20,38 @@ UNLOAD_PORTS: tuple[int, ...] = (9301, 9303, 9324, 8500, 9323, 9327, 9325, 9328,
 # Kept resident so the gateway stays partially routable.
 MINIMAL_ROUTABLE_PORTS: frozenset[int] = frozenset({9326, 8501})
 
-_UNUSED_RE = re.compile(r"([0-9.]+)G unused")
-
-
 @dataclass
 class SSHResult:
     returncode: int
     stdout: str
     stderr: str
+
+
+def parse_vm_stat_available_gb(text: str) -> float:
+    """Parse `vm_stat` output → available memory in GB.
+
+    Available = free + inactive + speculative + purgeable pages, times the
+    page size declared in the header line. Returns 0.0 if the output cannot
+    be parsed.
+    """
+    page_size = 4096
+    m = re.search(r"page size of (\d+) bytes", text)
+    if m:
+        page_size = int(m.group(1))
+    wanted = ("Pages free", "Pages inactive", "Pages speculative",
+              "Pages purgeable")
+    total_pages = 0
+    found = False
+    for line in text.splitlines():
+        for key in wanted:
+            if line.strip().startswith(key):
+                digits = line.split(":", 1)[1].strip().rstrip(".")
+                if digits.isdigit():
+                    total_pages += int(digits)
+                    found = True
+    if not found:
+        return 0.0
+    return total_pages * page_size / (1024 ** 3)
 
 
 class StudioOps:
@@ -51,9 +75,15 @@ class StudioOps:
                          err.decode(errors="replace"))
 
     async def free_memory_gb(self) -> float:
-        res = await self.run("top -l1 -s0 | awk '/PhysMem/{print}'")
-        m = _UNUSED_RE.search(res.stdout)
-        return float(m.group(1)) if m else 0.0
+        """Memory genuinely available for a large allocation, in GB.
+
+        Uses `vm_stat`: available = free + inactive + speculative + purgeable.
+        macOS reclaims inactive/file-cache pages under memory pressure, so
+        `top`'s strict 'unused' figure undercounts available memory by
+        hundreds of GB and must not be used for the preflight gate.
+        """
+        res = await self.run("vm_stat")
+        return parse_vm_stat_available_gb(res.stdout)
 
     async def venv_ok(self) -> bool:
         res = await self.run(
