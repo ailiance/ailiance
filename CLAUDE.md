@@ -4,64 +4,139 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Context
 
-AILIANCE is a 100% EU-sovereign multi-model LLM serving pipeline. It routes requests to **3 European/Swiss foundation models** via a small MiniLM domain classifier, each fine-tuned with LoRA adapters on HF-traceable datasets. Distributed deployment: workers on Mac Studio M3 Ultra (512 GB) MLX, gateway on `electron-server` (systemd, FastAPI), public exposure via Cloudflare Tunnel → `kiki-cockpit`.
+**ailiance** is the EU-sovereign multi-model LLM serving pipeline of L'Electron Rare. The system routes OpenAI-compatible requests across **11 named backends + 13 mascarade hardware-specialist LoRA experts** via a 47-domain MiniLM classifier (router v7), with a FastAPI gateway deployed as the `ailiance-gateway.service` systemd unit on `electron-server`, and public exposure on `https://gateway.ailiance.fr` (Cloudflare Tunnel).
+
+The brand was carved out of `L-electron-Rare` on **2026-05-11** into the dedicated GitHub org [`ailiance`](https://github.com/ailiance); domain `ailiance.fr` was verified the same day. HuggingFace models live under [`Ailiance-fr`](https://huggingface.co/Ailiance-fr) (10 models + 13 datasets; 20/20 models Apache-2.0).
+
+### Repo path note (legacy)
+
+The local clone directory is still `~/Documents/Projets/eu-kiki/` for historical reasons. The upstream remote points at `ailiance/ailiance` (org carve-out). The local path is **slated for rename** to `~/Documents/Projets/ailiance/`; the rename is documented but **out of scope for this branch** (filesystem ops, requires updating IDE workspaces + symlinks + a couple of helper scripts).
+
+### Service rename (cutover 2026-05-11)
+
+- Active unit: **`ailiance-gateway.service`** (FastAPI, port 9300, EnvFile carries `AILIANCE_WORKERS_JSON`).
+- Legacy unit: `eu-kiki-gateway.service` is `disabled` + `inactive` and kept on disk as a rollback path.
+- Production filesystem on electron-server moved `/home/electron/eu-kiki/` → `/home/electron/ailiance/`.
 
 ## Architecture
 
 ```
-client → ailiance.fr (Cloudflare Tunnel)
-       → kiki-cockpit (electron-server :443, Traefik)
-       → ailiance gateway (electron-server :9300, systemd `ailiance-gateway.service`)
-       → router classifier (MiniLM v6, L1+L2 cache, smart truncation)
-       → worker via Tailscale (URLs from AILIANCE_WORKERS_JSON env):
-            - Mistral Medium 3.5 128B :9301 (Studio, MLX Q8, alias `ailiance-apertus` retained)
-            - Devstral :9302 (Studio, MLX BF16, currently offline)
-            - EuroLLM :9303 (Studio, MLX BF16)
-            - Gemma 3 :9304 (Tower, llama-server)
+client → gateway.ailiance.fr (Cloudflare Tunnel 2c6b04a3…)
+       → ailiance-gateway.service (electron-server :9300, FastAPI)
+       → router v7 (MiniLM-L6-v2 384d + MLP 256→47, sigmoid multi-label)
+       → backend selection:
+           ├─ 11 named workers (Studio MLX / macM1 MLX / Tower llama.cpp / kxkm-ai llama.cpp)
+           └─ 13 mascarade LoRA experts (MacStudio MLX bf16 :9340, PR #100)
+       → FIFO per-worker_url asyncio.Lock (PR #68, prevents head-of-line blocking)
+       → SSE token stream back to client
 ```
 
-Workers (3 EU/CH base models):
-- **Mistral-Medium-3.5-128B-Instruct** (`:9301`) — Mistral AI 🇫🇷 — replaces Apertus 70B on studio (R2 refactor 2026-05-10). Deployed via `scripts/deploy_mistral_studio.sh` with mlx<0.31 pinned (thread-stream regression workaround). Alias `ailiance-apertus` retained for back-compat.
-- **Devstral-Small-2-24B-MLX-4bit** (`:9302`) — Mistral AI — code generation (16 LoRA domains)
-- **EuroLLM-22B-Instruct-2512** (`:9303`) — utter-project — multilingual EU (4 LoRA domains)
+### Router v7 (live since 2026-05-12, PR #77 `133a9b5`)
 
-Router: **all-MiniLM-L6-v2** (384d, 22M) + MLP head (256 hidden) → 47 domains, sigmoid multi-label, top-k=4, threshold=0.50. Active checkpoint = the `output/router-prod/` stable symlink (currently `router-v7-multimodel`; the earlier router-v6 head scored 87.7% top-1 / 98.7% top-3 on its validation split). Auto-device (MPS/CUDA/CPU). L1 LRU cache (exact match) + L2 cosine ≥ 0.95 cache (paraphrase) + auto-prewarm on boot. Length-aware smart truncation: short → full encode, medium → 128-tok left-truncate, long (> 1000 chars) → head 256 + tail 256.
+| Property | Value |
+|---|---|
+| Encoder | `sentence-transformers/all-MiniLM-L6-v2` (384d, 22M params) |
+| Head | 384 → 256 → 47 MLP, sigmoid multi-label, threshold 0.50 |
+| Labels | **47 domains** (`output/router-prod/meta.json`) |
+| Training corpus | **5 696 examples from 14 LLMs** (multi-model adversarial sampling) |
+| Top-1 / Top-3 | **0.8895 / ~0.98** (was 0.4862 / ~0.85 on v6 base corpus) |
+| Δ vs v6 | +0.4033 top-1 |
+| Caches | L1 LRU 1024 (~0.01 ms hit) + L2 cosine ≥0.95 (~0.2 ms hit) + auto-prewarm |
+| Smart truncation | short→full · medium→128-tok left-trunc · long (>1000 chars)→head 256 + tail 256 |
+| Disk footprint | ~88 MB (MiniLM 88 MB + MLP head 436 KB) |
+| Active checkpoint | `output/router-prod/` stable symlink → `router-v7-multimodel` |
 
-⚠️ **Quarantined adapters**: EuroLLM `chat-fr` and `traduction-tech` produce `"user user user…"` loops (training chat-template leakage). The worker silently falls back to base EuroLLM for those domains. See `MLXWorkerRuntime.QUARANTINED_DOMAINS` in `src/worker/runtime.py`. Re-train pending.
+Note: Jina v3 was evaluated as router-v6 candidate and **rejected on bench** (top-1 0.874 vs 0.876, encode 9.7 vs 1.6 ms/prompt, Δ separation 0.15 vs 0.34). Cache `models--jinaai--*` may still be present on electron-server but is **not loaded**.
+
+### 11 named backends (gateway aliases)
+
+| Alias | Model | Host:Port | Quant | Notes |
+|---|---|---|---|---|
+| `ailiance` | Auto-router (default) | — | — | Picks best backend per router v7 + override map |
+| `ailiance-mistral-medium` | Mistral-Medium-3.5-128B-Instruct | studio :9301 | MLX Q8 (~130 GB) | **Main heavyweight** (replaces decommissioned Apertus 70B) |
+| `ailiance-mistral` | Mistral-Small-3.1-24B-Instruct | studio :9326 | MLX 4-bit (~13 GB) | launchd auto-restart |
+| `ailiance-gemma` | Gemma 3 4B IT (GGUF Q4_K_M) | tower :9304 | llama.cpp | n_ctx_train=131072 |
+| `ailiance-gemma2` | Gemma 3 4B IT (MLX 4-bit) | macm1 :8502 | MLX 4-bit | Hot-swap on `:8502` server |
+| `ailiance-gemma4` | Gemma-4-E4B-it-MLX-4bit + LoRA `gemma4-e4b-eukiki` | macm1 :8502 | MLX 4-bit | **Default on macm1 :8502** |
+| `ailiance-eurollm` | EuroLLM-22B-Instruct-2512 | studio :9303 | MLX BF16 (~45 GB) | UP since 2026-05-12 |
+| `ailiance-qwen` | Qwen3.5-9B-MLX-4bit | macm1 :8502 | MLX 4-bit | Hot-swap |
+| `ailiance-granite` | granite-4.1-30b-4bit | macm1 :8502 | MLX 4-bit | Hot-swap |
+| `ailiance-ministral` | Ministral-3-14B-Instruct-2512-4bit | macm1 :8502 | MLX 4-bit | Hot-swap |
+| `ailiance-ministral-reasoning` | Ministral-3-14B-Reasoning-2512-4bit | macm1 :8502 | MLX 4-bit | Hot-swap, needs `max_tokens≥2048` |
+
+Plus complementary auxiliaries used internally / via direct alias on the router map: `ailiance-reasoning-r1` (DeepSeek-R1-Distill-Qwen-32B :9323 MLX 4bit), `ailiance-llama` (Llama-3.3-70B :9324 MLX 4-bit), Pixtral-12B vision worker :9325, Qwen3-Coder-30B :9327, plus `kxkm-ai` heavyweights: Qwen3-Next 80B MoE :18888 (via autossh tunnel `electron-server:8002`) and Granite-4.1-30B :18889 (via `:8003`).
+
+### 13 mascarade LoRA experts (hardware specialists)
+
+Served from MacStudio MLX bf16 (port `:9340`) since the **2026-05-18 cutover (PR #100)** — Qwen3-4B base + 10 mascarade LoRAs merged + converted to MLX bf16, with no quantization loss. Routed by the 9-domain `MASCARADE_DOMAINS` override (see "Domain routing overrides" below).
+
+Aliases: `ailiance-{kicad, spice, stm32, emc, embedded, platformio, freecad, dsp, iot, power, components-review, coder, embed}`.
+
+LoRAs trained from `ailiance-models-tuning` (Qwen3-4B-Instruct-2507, r=16 / α=32, 126–522 real steps with checkpoints, **all 10 hardware LoRAs really trained** — earlier "5/10 dirs empty" note was incorrect; audit 2026-05-18 confirmed checkpoints for all 10). Published on HF under [`Ailiance-fr`](https://huggingface.co/Ailiance-fr).
+
+Legacy: the same LoRAs are still available as Tower-Ollama Q4_K_M `mascarade-*:latest` (tunnel `tower-ollama-tunnel.service` `electron-server:8004 → tower:11434`). Kept as rollback only — **production routing no longer hits Tower :8004** since PR #100.
+
+### Domain routing overrides (live state)
+
+| Domain(s) | Routes to | Source |
+|---|---|---|
+| `kicad`, `stm32`, `emc`, `embedded`, `platformio`, `freecad`, `dsp`, `iot`, `power` | MacStudio MLX bf16 `:9340` (mascarade) | PR #100 cutover 2026-05-18; replaces Tower Q4 `:8004` |
+| `spice` | `ailiance-apertus` → fallback Apertus :9301 (now Mistral-Medium) | Removed from MASCARADE_DOMAINS PR #55 (2026-05-11) — bench shows −25 on spice-sim |
+| `kicad-dsl`, `kicad-pcb` | macm1 `:8502` (eu-kiki Gemma-4 + LoRA) | PR #54 — Gemma-4 champion P1 bench (+55 DSL, +42 PCB) |
+
+A request with a `tools[]` field is **force-routed to `qwen-32b-awq`** regardless of the classifier output, because Mistral-Medium 128B has no native function-calling and hallucinates XML otherwise (gateway hardcoded since 2026-05-12; see `reference_ailiance_gateway_tools_force_route`).
+
+### Inference defaults registry
+
+`src/gateway/inference_defaults.py` exposes a per-alias registry of caller-wins defaults (`temperature`, `max_tokens`, `top_p`, `repetition_penalty`, `stop`, `chat_template_kwargs`). When adding a new backend alias, also add an entry here. Notable entries:
+
+- Reasoning models (`ailiance-reasoning-r1`, `ailiance-ministral-reasoning`, Gemma-3 thinking, Apertus math reasoning): `max_tokens ≥ 2048` (default 1024 truncates chain-of-thought).
+- Qwen3.5 family (`ailiance-qwen`): inject `chat_template_kwargs.enable_thinking=false` for short outputs.
+- Pixtral: low temperature, custom stop tokens to prevent `USER:` fabrication.
+- Coder aliases: `temperature=0.2`.
 
 ## Repo layout
 
 ```
-ailiance/
-├── configs/                     # apertus.yaml, devstral.yaml, eurollm.yaml, gateway.yaml
+ailiance/                              # upstream org/repo (local path still ./eu-kiki/)
+├── configs/                           # apertus.yaml (legacy), devstral.yaml, eurollm.yaml,
+│   │                                  # gateway.yaml, gemma4.yaml, chain_policies.yaml,
+│   │                                  # models-display.yaml, reflector_prompts.yaml
 ├── src/
-│   ├── gateway/                 # FastAPI :9300, dispatch, Prometheus, env-driven worker URLs
-│   ├── router/                  # MiniLM + MLP classifier (47 domains, smart truncation, caches)
-│   ├── worker/                  # 1 model / process, BF16, shared memory pool, QUARANTINED_DOMAINS guard
-│   └── mlx_models/              # Apertus MLX impl + xielu activation
-├── scripts/                     # ~50 scripts (scrape, build, train, eval, router pipeline)
-│   ├── scrape_*.py              # OSHWA, arXiv, Wikipedia, Hackaday, Arduino, ESP-IDF, STM32, Rust, KiCad
-│   ├── build_hf_datasets.py     # 729 lines — HF→JSONL orchestrator
-│   ├── train_apertus.py / train_devstral.py / train_eurollm.py
-│   ├── train_ailiance_batch.py / train_ailiance_hf_batch.py    # sequential
+│   ├── gateway/                       # FastAPI :9300, dispatch, FIFO lock per worker_url,
+│   │                                  # tenant_isolation, alias_inventory, inference_defaults,
+│   │                                  # observability (Prometheus + Langfuse)
+│   ├── router/                        # MiniLM + MLP classifier v7, domain_map, L1+L2 caches
+│   ├── worker/                        # 1 model / process, QUARANTINED_DOMAINS guard
+│   └── mlx_models/                    # Apertus MLX impl + xielu activation (legacy refs)
+├── scripts/                           # ~50 scripts (scrape, build, train, eval, router pipeline)
+│   ├── scrape_*.py                    # OSHWA, arXiv, Wikipedia, Hackaday, Arduino, ESP-IDF, STM32, Rust, KiCad
+│   ├── build_hf_datasets.py
+│   ├── train_ailiance_batch.py
 │   ├── rebuild_router_dataset.py + augment_niche_domains.py + augment_short_greetings.py
 │   ├── build_router_data.py / encode_router_minilm.py / train_router_from_embeddings.py
-│   ├── build_confusion_matrix.py / calibrate_threshold.py    # router QA
-│   ├── pdf_pipeline/ + scan_pii.py + fix_provenance.py       # PDF compliance
-│   ├── vlm_poc_pipeline.py                                   # VLM POC
-│   └── eval_framework.py / run_eval.sh
+│   ├── pdf_pipeline/ + scan_pii.py + fix_provenance.py
+│   └── eval_framework.py / run_eval.sh / launch_eval_safe.sh
+├── tools/router_v7/                   # multi-LLM corpus generators (PR #77)
+├── vendored/iact-bench/               # submodule, real validators (v0.2.0)
 ├── data/
-│   ├── hf-traced/               # 35 domain folders, train.jsonl + valid.jsonl + MANIFEST.json
-│   ├── router/                  # train.jsonl + valid.jsonl (split from router-clean)
-│   ├── router-clean/            # 32 per-domain JSONL (9 967 rows, niche+greetings curated)
-│   └── router-minilm-v6/        # pre-encoded MiniLM embeddings (npy)
+│   ├── hf-traced/                     # domain folders, train/valid JSONL + MANIFEST.json
+│   ├── router/                        # train/valid (split from router-clean)
+│   ├── router-clean/                  # per-domain JSONL (niche+greetings curated)
+│   └── router-minilm-v7-multimodel/   # pre-encoded MiniLM embeddings (npy)
 ├── docs/
-│   ├── eu-ai-act-transparency.md   # Doc principale Art. 52/53
-│   ├── pdf-compliance-report.md    # Audit PDF pipeline (DSM Art.4 TDM)
-│   ├── vlm-compliance-report.md    # Audit VLM POC
-│   └── specs/                      # 2026-04-26 design + plan
-├── tests/                       # pytest — apertus, xielu, worker, integration, runtime, router, gateway
-├── pyproject.toml               # Python ≥3.13, Apache-2.0
+│   ├── eu-ai-act-transparency.md      # Master Art. 52/53 dossier
+│   ├── transparency/
+│   │   ├── router-training-data.md
+│   │   ├── confusion-top10.md
+│   │   ├── 2026-05-05-encoder-bench.log     # Jina v3 rejection record
+│   │   └── 2026-05-19-phase1-ram-demotion.md
+│   ├── router-mascarade-override-2026-05-11.md
+│   ├── router-v0.3-deliberate.md
+│   ├── pdf-compliance-report.md
+│   └── provenance/                    # per-alias JSON (Annex IV §1(c))
+├── tests/                             # pytest — gateway, router, worker, integration, runtime
+├── pyproject.toml                     # Python ≥3.13, Apache-2.0
 └── uv.lock
 ```
 
@@ -73,181 +148,92 @@ uv venv && uv pip install -e ".[dev,router,data]"
 
 # Tests
 uv run python -m pytest
-uv run python -m pytest tests/test_xielu.py -v     # single file
-uv run python -m pytest -k "test_name"             # single test
+uv run python -m pytest tests/test_router.py -v
+uv run python -m pytest -k "test_name"
 
 # Build datasets (HF-traceable, EU AI Act-compliant)
 uv run python scripts/build_hf_datasets.py
-uv run python scripts/scrape_oshwa.py              # 3265 OSHWA-certified projects
+uv run python scripts/scrape_oshwa.py
 
-# Train LoRA adapters (3 modèles, séquentiel)
+# Train LoRA adapters (sequential)
 uv run python scripts/train_ailiance_batch.py
 
-# Train router (full v6 pipeline, ~25 min on macM1 MPS)
-uv run python scripts/rebuild_router_dataset.py        # HF + niche + greetings → data/router-clean/
-uv run python scripts/build_router_data.py             # split 80/20 → data/router/
-uv run python scripts/encode_router_minilm.py          # MiniLM 384d → data/router-minilm-vN/
-uv run python scripts/train_router_from_embeddings.py --emb-dir data/router-minilm-vN --hidden-dim 256 --output-dir output/router-vN
+# Train router v7 (multi-model corpus → MLP head)
+bash tools/router_v7/finalize.sh                       # full pipeline
+# or step-by-step:
+uv run python tools/router_v7/gen_corpus_multi.py
+uv run python tools/router_v7/gen_augment.py
+uv run python scripts/build_router_data.py
+uv run python scripts/encode_router_minilm.py
+uv run python scripts/train_router_from_embeddings.py \
+    --emb-dir data/router-minilm-v7-multimodel \
+    --hidden-dim 256 \
+    --output-dir output/router-v7-multimodel
 
 # Router QA
-uv run python scripts/build_confusion_matrix.py        # → docs/transparency/confusion-top10.md
+uv run python scripts/build_confusion_matrix.py
 uv run python scripts/calibrate_threshold.py
 
-# Local dev: launch all workers + gateway in one process tree
+# Local dev (launch gateway + workers in one process tree)
 bash scripts/start.sh
 
-# Production deploy
-# - Gateway runs as systemd unit `ailiance-gateway.service` on electron-server
-#   with AILIANCE_WORKERS_JSON env (Tailscale URLs to Studio MLX workers)
-# - Workers run as nohup uvicorn on Studio (PIDs in /tmp/ailiance-*.log)
-# - Router weights deployed via `git pull` then repoint the
-#   `output/router-prod` symlink (output/router-vN/ is git-ignored)
+# Production
+# - Gateway: `ailiance-gateway.service` on electron-server (EnvFile carries AILIANCE_WORKERS_JSON)
+# - Workers: launchd plists on studio (auto-restart, see ~/CLAUDE.md MacStudio block),
+#   nohup mlx_lm.server on macm1, llama.cpp on tower + kxkm-ai
+# - Router weights: `git pull` then repoint output/router-prod symlink, restart service
 
 # Logs
-tail -f /tmp/ailiance-eurollm.log    # studio
-tail -f /tmp/ailiance-apertus.log    # studio
 ssh electron-server "sudo journalctl -u ailiance-gateway -f"
+ssh studio "tail -f /tmp/ailiance-eurollm.log /tmp/ailiance-mistral-medium.log"
 ```
 
-## Domains par modèle
+## Public endpoint
 
-### Apertus 70B (20 domaines)
-electronics-hw, emc, dsp, spice, kicad, stm32, platformio, iot, embedded, math, reasoning, security, music-audio, freecad, power, misra-c, autosar-cert, doc-technique-ce, calcul-normatif, normes-iec
+`https://gateway.ailiance.fr/v1/*` — OpenAI-compatible, **no auth** (live since 2026-05-12 11:47, via Cloudflare Tunnel `2c6b04a3…` → `localhost:9300`). 46 aliases enumerated at `/v1/models`. LiteLLM proxy on `electron-server:8800` sits in front for cost tracking (SpendLogs in local postgres).
 
-### Devstral 24B (16 domaines)
-python, rust, typescript, cpp, shell, html-css, sql, web-backend, web-frontend, docker, devops, yaml-json, llm-ops, llm-orch, ml-training, lua-upy
+```bash
+curl -sN https://gateway.ailiance.fr/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"ailiance","messages":[{"role":"user","content":"Hello"}]}'
+```
 
-### EuroLLM 22B (4 domaines)
-chat-fr, traduction-tech, redaction-multilingue, localisation-doc
+## EU AI Act compliance
 
-## Conformité EU AI Act
-
-- **Art. 52/53** : `docs/eu-ai-act-transparency.md` couvre système, modèles, provenance, datasets, classification "limited risk"
-- **DSM Art. 4 TDM** : audit PDF pipeline (`docs/pdf-compliance-report.md`) — robots.txt, SHA-256, ST/Espressif/TI/NXP/KiCad
-- **Datasets HF-traceable** : `data/hf-traced/{domain}/MANIFEST.json` documente `hf_dataset_id`, license, download_date, `n_source_rows`, `n_used`
-- **Tous modèles Apache-2.0** avec provenance documentée
+- **Art. 52/53** — `docs/eu-ai-act-transparency.md` covers system, models, provenance, datasets, "limited risk" classification.
+- **DSM Art. 4 TDM** — `docs/pdf-compliance-report.md` audits robots.txt + SHA-256 manifests for ST/Espressif/TI/NXP/KiCad PDFs.
+- **Datasets HF-traceable** — `data/hf-traced/{domain}/MANIFEST.json` documents `hf_dataset_id`, license, download_date, `n_source_rows`, `n_used`.
+- **All 20 HF models Apache-2.0**, full provenance. 13 datasets remain CC-BY-SA-4.0 / GPL-3.0 (Stack Exchange / KiCad upstream constraint).
 
 ## Key Design Decisions
 
-- BF16 for all models (512 GB unified memory allows it)
-- Multi-process workers (1 model per process, shared memory pool)
-- Sigmoid routing (domains overlap, not mutually exclusive)
-- LoRA on attention projections only (`q/k/v/o_proj`)
-- `xielu` activation custom-implemented for Apertus MLX support
-- Local-only deployment, no cloud, no telemetry
+- BF16 (Studio 512 GB unified memory) / 4-bit MLX (macm1 32 GB) / Q4_K_M GGUF (tower, kxkm-ai).
+- One model per process (isolation, predictable memory).
+- Sigmoid multi-label routing (domains overlap: `docker` ∩ `devops`, `embedded` ∩ `stm32`).
+- LoRA on `q/k/v/o_proj` only.
+- FIFO `asyncio.Lock` per `worker_url` (PR #68 `9440122`, prevents head-of-line blocking under load).
+- Inference defaults registry per-alias (`src/gateway/inference_defaults.py`).
+- Local-only deployment, no cloud, no telemetry.
 
-## Production deployment (live 2026-05-06)
+## Notes & sister projects
 
-| Component | Host | Port | Notes |
-|---|---|---|---|
-| Cloudflare Tunnel | — | 443 | `ailiance.fr` → cockpit |
-| kiki-cockpit | electron-server | 443 | React SPA + Python API (`/api/public/chat`) |
-| ailiance gateway | electron-server | 9300 | systemd unit, FastAPI, MiniLM router |
-| EuroLLM worker | studio (Tailscale 100.116.92.12) | 9303 | MLX BF16, ~22 GB |
-| Mistral 128B worker | studio | 9301 | MLX Q8, ~130 GB (alias `ailiance-apertus`) |
-| Devstral worker | (TBD) | 9302 | currently offline |
-| Gemma 3 worker | tower (100.78.6.122) | 9304 | llama-server |
+- **`Ailiance-fr` on HuggingFace** is the product-distribution namespace. **`electron-rare`** on HF remains the IP source-of-truth.
+- **`ailiance-mac-tuner`** (`~/Documents/Projets/ailiance-mac-tuner/`) — non-EU foundation distillation track. Some training scripts and configs mirror across.
+- **`ailiance-bench`** ([github.com/ailiance/ailiance-bench](https://github.com/ailiance/ailiance-bench)) — Phase 6 scoreboard (7 tasks, eu-kiki champion 4/7, mascarade champion P3 +48, kicad9plus catastrophic forgetting −31 P3).
+- **`iact-bench`** — vendored at `vendored/iact-bench` (v0.2.0). Real `IactBenchValidator` is the default; clients can opt out via `AILIANCE_VALIDATOR=stub` for local dev without docker.
+- **kxkm-ai** is a *different machine* from `kx6tm-23` (Proxmox PVE host, no GPU). The two are conflated in some legacy notes — see corrected mapping in `docs/eu-ai-act-transparency.md` §2.7.
 
-Worker URLs are supplied to the gateway via `AILIANCE_WORKERS_JSON` env var (set in the systemd unit). Override at boot to redirect traffic without code changes.
+## Decommissioned / archived
 
-## Roadmap (audit 2026-05-04)
+- **Apertus 70B (source)** — deleted 2026-05-12 from Studio (~1.3 TB freed). `Apertus-70B-Instruct-2509-4bit-MLX` (37 GB) still on disk but **not served**. Alias `ailiance-apertus` is kept as back-compat redirect to `ailiance-mistral-medium`.
+- **Devstral :9302** — decommissioned on macm1 (pre-2026-05-10). Devstral multi-LoRA :9330 on Studio is currently DOWN post-reboot 2026-05-12.
+- **Tower-Ollama mascarade Q4 (:8004)** — legacy fallback since PR #100. Production no longer routes there.
+- **`eu-kiki-gateway.service`** — disabled+inactive, kept for rollback.
 
-### État réel d'entraînement
+## See also
 
-| Modèle | Adapters entraînés | Cible | Statut |
-|--------|--------------------|-------|--------|
-| Apertus 70B | 6 (electronics-hw, embedded, math, math-gsm8k, math-reasoning, spice-sim) | 8 | 🟠 PARTIAL — manque `emc-dsp-power`, `security-fenrir` |
-| Devstral 2 24B | 22/22 | 22 | 🟢 DONE |
-| EuroLLM 22B | 3 (chat-fr, multilingual-eu, traduction-tech) | 4 | 🟠 PARTIAL — 1 manquant |
-| Router 32-domain | trained | — | 🟢 DONE (`output/router/router.safetensors`) |
-| Eval framework | code prêt (52 ko) | — | 🔴 **JAMAIS LANCÉ** — `output/eval/raw/` vide |
-| VLM PoC | 6 runs, loss diverge >5 | — | 🔴 CRASHED — `vlm_poc_run6.log` "No adapter produced" |
-| Pipeline PDF (360 pairs) | intégré dans Apertus spice-sim/freecad/embedded/electronics-hw | — | 🟢 DONE |
-| Batch v2 medium-35 (Mistral-Medium-3.5-128B) | math-gsm8k done, math-reasoning iter 400 val 0.511 | 4+ | 🟠 EN COURS |
-
-### 🔴 Bloquants
-
-1. **Re-train EuroLLM `chat-fr` + `traduction-tech`** — adapters quarantined depuis 2026-05-05 (training chat-template leak → "user user…" loop). Audit `scripts/train_eurollm.py` pour vérifier le strip du template. ~6 h chacun.
-2. **Démarrer un Devstral worker** — port 9302 vide actuellement. Devrait tourner sur Studio (Apertus + EuroLLM y sont déjà). MLX 4-bit ~13 GB. ~30 min.
-3. **Stabiliser ou abandonner VLM PoC** — loss diverge sur 6 runs successifs. Revoir prepro images, lr, ou archiver. 1-2 j.
-
-### ✅ Récents (résolus 2026-05-05/06)
-
-- ✅ **Router divergence résolue** : `classifier.py` aligné sur MiniLM 384d + 47 domaines (matches `gateway.yaml`).
-- ✅ **Router v6 trained** — top-1 65.5% → 87.7% (+22 pts), top-3 85.3% → 98.7%. 9 967 rows curated, niche-augmented, greetings-grounded.
-- ✅ **Smart truncation length-aware** — short (full), medium (left-trunc 128), long (head 256 + tail 256).
-- ✅ **L1 LRU + L2 cosine cache + auto-prewarm** — p95 spike éliminé, L1 hit ~0.01 ms.
-- ✅ **systemd unit gateway** — `ailiance-gateway.service` enabled+active sur electron-server, env `AILIANCE_WORKERS_JSON` persisté.
-- ✅ **Quarantine adapters mécanisme** — `MLXWorkerRuntime.QUARANTINED_DOMAINS` fallback base.
-- ✅ **Bench suite publishable** — HumanEval+, MT-Bench full, GSM8K, KIKI-DSL v3, model card v0.4.1.
-
-### 🟠 Important
-
-- Compléter **Apertus** : `emc-dsp-power` et `security-fenrir` adapters finals. Logs présents → reprendre. ~6 h chacun.
-- Compléter **EuroLLM** : domaine manquant (`localisation-doc` ?). ~6 h.
-- Finir **batch v2 medium-35** (Mistral-Medium-3.5-128B) : math-reasoning en cours, manque chat-fr/multilingual-eu/traduction-tech. ~6-8 h.
-- Réintégrer `data/quarantine/` (5 dirs PII flaggés) après filtrage propre. 0.5 j.
-
-### 🟡 Cleanup
-
-- Publier sur HF les adapters EU validés (Apache-2.0, full provenance EU AI Act) — aucun adapter AILIANCE sur `clemsail/` ni `electron-rare/` à ce jour (audit 2026-05-04). Le script existe en sister project (`ailiance-mac-tuner/scripts/release_hf.py`). 3-4 h.
-- Standardiser le format de sortie eval (`output/eval/<YYYY-MM-DD>-<scope>.{json,md}`).
-- Documenter le différentiel "20 domains HF-traced (48K examples)" du commit `f2c9cee` vs ~81K lignes mesurées sur 24 domaines (probablement sous-ensemble curé/dédupliqué).
-
-### 🟢 Future
-
-- Réconcilier les `data/scraped/` non utilisés (arduino, hackaday, oshwa, kicad — finalisé seulement pour kicad/freecad).
-- VLM full pipeline si convergence trouvée.
-- Évaluations adverses (red team) sur les modèles EU pour conformité Art. 55.
-
-## Notes
-
-- **48K vs 81K examples** : commit `f2c9cee` annonce "20 domains HF-traced (48K examples)" — la mesure brute donne ~81K lignes train sur 24 domaines. Les 48K désignent vraisemblablement le sous-ensemble curé/dédupliqué. À confirmer.
-- **Repo GitHub** : `ailiance/ailiance` (privé) — poussé le 2026-05-04. Mirror local sur studio + electron-server + macM1.
-- **Router weights `output/router-vN/` git-ignored** — déploiement par `git pull` sur electron-server (les poids publiés viennent d'un commit/release tracé, jamais d'un rsync local→remote), puis on repointe le symlink `output/router-prod` vers la nouvelle version et `sudo systemctl restart ailiance-gateway`.
-- **kxkm-ai** : RTX 4090 24 GB, joignable via electron-server bastion (`ssh kxkm@10.2.0.237`). Actuellement sert llama-server Qwen3-Next-80B + ComfyUI + SearXNG + OpenWebUI (stack chat avec web-search tool). Pas utilisé par ailiance à ce jour.
-
-## Sister project
-
-`~/Documents/Projets/ailiance-mac-tuner/` — non-EU foundation distillation. Les scripts `train_ailiance_*.py` et configs `ailiance-*.yaml` y sont mirrorés.
-
-## AILIANCE eval — sequential-strict runbook (added 2026-05-10)
-
-Use `--mode sequential-strict` whenever the bench has to load multiple
-base models in one run. The launcher `scripts/launch_eval_safe.sh` writes
-`output/eval/last_run_status.json` so background pollers can detect
-SIGKILL (`signal: 9`) without parsing logs.
-
-```bash
-# Stop EuroLLM worker first so :9303 is free.
-kill -TERM $(lsof -tiTCP:9303 -sTCP:LISTEN)
-bash ~/ailiance/scripts/launch_eval_safe.sh --sequential-strict
-# Restart EuroLLM after.
-cd ~/ailiance && nohup .venv/bin/python -m uvicorn src.worker.server:make_eurollm_app --factory --host 0.0.0.0 --port 9303 > logs/eurollm.log 2>&1 &
-```
-
-**v1-only fallback** (use until v2/qwen36 SwitchLinear LoRA support lands):
-
-```bash
-bash ~/ailiance/scripts/launch_eval_safe.sh --v1-only
-```
-
-`--mode sequential-strict` aborts at v2/qwen36/python with
-`ValueError: Can't convert layer of type SwitchLinear to LoRA` because
-`mlx_lm_fork.tuner.utils:74` does not yet support MoE SwitchLinear layers.
-Until that gap is closed, use `--v1-only` for the production v1 matrix
-(31 cells: 6 Apertus + 22 Devstral + 3 EuroLLM).
-
-**Memory budget**: `scripts/eval_framework.py` sets the MLX soft cap to
-440 GiB via the module-level constant `WIRED_MEMORY_BUDGET_GIB`. Stays
-8 GiB under the macOS `iogpu.wired_limit_mb=458752` (= 448 GiB) hard
-cap. Going above the wired cap caused the kernel to SIGKILL the eval at
-import time on 2026-05-10. The probe `_assert_within_budget(...)` is
-called between every model transition in sequential-strict mode and
-raises a clean RuntimeError if peak ever crosses the budget — so an
-overrun produces a Python traceback instead of a `Killed: 9` line.
-
-**Validation 2026-05-10**: 31-cell v1 run (Apertus + Devstral + EuroLLM,
-`--quick`) completed in 550s with exit 0. 28 of 31 cells produced ppl
-values; 3 cells were skipped silently (missing or unevaluable adapters
-— audit `output/adapters/{apertus,devstral}/` to identify).
+- `~/CLAUDE.md` — cluster-wide infrastructure (electron-server / Studio / macm1 / Tower / kxkm-ai block).
+- `~/.claude/projects/-Users-electron/memory/reference_ailiance_gateway_2026_05_11.md` — cutover record.
+- `~/.claude/projects/-Users-electron/memory/reference_router_v7_2026_05_12.md` — v7 training details.
+- `~/.claude/projects/-Users-electron/memory/reference_inference_defaults_registry.md` — per-alias defaults.
+- `~/.claude/projects/-Users-electron/memory/reference_gateway_fifo_2026_05_12.md` — FIFO lock details.
