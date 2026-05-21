@@ -2,15 +2,15 @@
 
 # ailiance
 
-### EU-sovereign LLM gateway — five production workers, full provenance, no cloud
+### EU-sovereign AI infrastructure gateway — 11 backends + 13 hardware-specialist LoRA experts, full provenance, no cloud
 
-[![status](https://img.shields.io/badge/status-4%2F5%20healthy%20%2B%20mascarade-success)](https://ailiance.fr/api/public/status)
+[![status](https://img.shields.io/badge/status-live-success)](https://gateway.ailiance.fr/v1/models)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![EU AI Act](https://img.shields.io/badge/EU%20AI%20Act-Art.%2052%2F53-1f4e8a)](docs/eu-ai-act-transparency.md)
-[![router](https://img.shields.io/badge/router--v6-87.7%25%20top--1-brightgreen)](docs/transparency/router-training-data.md)
+[![router](https://img.shields.io/badge/router--v7-88.95%25%20top--1-brightgreen)](docs/transparency/router-training-data.md)
 [![ailiance.fr](https://img.shields.io/badge/live-ailiance.fr-7e3af2)](https://ailiance.fr)
 
-**Live now → [`ailiance.fr`](https://ailiance.fr)** · OpenAI-compatible API at [`/api/public/chat`](https://ailiance.fr/api/public/chat) · Health at [`/api/public/status`](https://ailiance.fr/api/public/status) · Transparency dossier at [`/transparency`](https://ailiance.fr/transparency)
+**Public API → [`https://gateway.ailiance.fr`](https://gateway.ailiance.fr/v1/models)** (OpenAI-compatible, no auth) · Landing page [`ailiance.fr`](https://ailiance.fr) · Transparency dossier [`/transparency`](https://ailiance.fr/transparency)
 
 </div>
 
@@ -18,18 +18,20 @@
 
 ## Where to find related artifacts
 
-- **Live demo & cockpit**: https://www.ailiance.fr
+- **Public API**: https://gateway.ailiance.fr/v1/* (OpenAI-compatible, no auth — live since 2026-05-12 11:47)
+- **Landing page**: https://ailiance.fr (domain verified 2026-05-11)
 - **Status dashboard**: https://home.saillant.cc
 - **HuggingFace IP source-of-truth**: https://huggingface.co/electron-rare
-- **HuggingFace product distribution**: https://huggingface.co/Ailiance-fr
-- **Audit-grade bench validators**: https://github.com/ailiance/iact-bench
+- **HuggingFace product distribution**: https://huggingface.co/Ailiance-fr (10 models + 13 datasets, 20/20 models Apache-2.0)
+- **GitHub org**: https://github.com/ailiance (carve-out from `L-electron-Rare`, 2026-05-11)
+- **Audit-grade bench validators**: https://github.com/ailiance/iact-bench (vendored at `vendored/iact-bench`, v0.2.0)
 - **Benchmark results**: https://github.com/ailiance/ailiance-bench
 
-Ailiance is the EU-sovereign LLM serving stack of [LElectron Rare](https://www.electron-rare.fr), a French SME. Multi-model, audit-grade, EU AI Act Art. 13/15/52/53 transparency.
+Ailiance is the EU-sovereign LLM serving stack of [L'Electron Rare](https://www.electron-rare.fr), a French SME. Multi-model, audit-grade, EU AI Act Art. 13/15/52/53 transparency. The brand was carved out of `L-electron-Rare` on **2026-05-11** into the dedicated [`ailiance` GitHub org](https://github.com/ailiance); domain `ailiance.fr` was verified the same day.
 
 ## What it is
 
-A **multi-model LLM serving pipeline** running on a home cluster — three EU/CH foundation models, two complementary base-model workers, all behind a single OpenAI-compatible endpoint. The router decides which model answers, the gateway forwards, the worker streams. No cloud, no telemetry, full audit trail.
+A **multi-model LLM serving pipeline** running on a home cluster — **11 named backends** plus **13 mascarade hardware-specialist LoRA experts** behind a single OpenAI-compatible endpoint. The 47-domain MiniLM router decides which backend answers, the FastAPI gateway forwards through a FIFO per-worker lock, the worker streams. No cloud, no telemetry, full audit trail.
 
 ### Architecture at a glance
 
@@ -39,45 +41,48 @@ flowchart TB
     cf[/"Cloudflare Tunnel<br/>ailiance.fr"/]
 
     subgraph electron["electron-server (Ubuntu, no GPU)"]
-        cockpit["kiki-cockpit<br/>(Docker)"]
-        gateway["ailiance-gateway :9300<br/>FastAPI · MiniLM router-prod<br/>L1+L2 cache · /metrics"]
-        cockpit --> gateway
+        gateway["ailiance-gateway.service :9300<br/>FastAPI · router v7 (MiniLM+MLP 47)<br/>FIFO per-worker lock · L1+L2 cache · /metrics"]
     end
 
-    user -->|HTTPS| cf --> cockpit
+    user -->|HTTPS gateway.ailiance.fr| cf --> gateway
 
     subgraph studio["studio · Mac Studio M3 Ultra · 512 GB"]
-        apertus["🇫🇷 Mistral Medium 3.5 128B<br/>MLX Q8 · :9301"]
-        eurollm["🇪🇺 EuroLLM 22B<br/>MLX 8-bit · :9303"]
+        mistralmed["🇫🇷 Mistral Medium 3.5 128B<br/>MLX Q8 · :9301"]
+        eurollm["🇪🇺 EuroLLM 22B<br/>MLX BF16 · :9303"]
+        mascarade["🇫🇷 mascarade bf16 · :9340<br/>Qwen3-4B + 10 hw LoRAs merged"]
+        otherstudio["+ Llama 70B :9324 · Pixtral :9325<br/>Mistral-Small :9326 · Coder-30B :9327<br/>R1-Distill :9323"]
     end
 
     subgraph macm1["macm1 · Mac mini M1 · 32 GB"]
-        devstral["🇫🇷 Devstral 24B<br/>MLX 4-bit · :9302"]
+        macm1srv["mlx_lm.server hot-swap · :8502 + :8503<br/>Gemma-4 / Gemma-3 / Ministral-3<br/>Granite-4.1 / Qwen3.5 / Llama-3.2<br/>+ 6 LoRA adapters"]
     end
 
     subgraph tower["tower · NVIDIA Quadro P2000 5 GB"]
-        gemma["Gemma 3 4B IT<br/>GGUF Q4_K_M · :9304"]
+        gemma["Gemma 3 4B IT<br/>llama.cpp Q4 · :9304"]
     end
 
     subgraph kxkm["kxkm-ai · RTX 4090 24 GB + 64 GB RAM (LAN-only)"]
-        qwen["🇨🇳 Qwen3-Next 80B MoE<br/>Q4_K_M · MoE expert offload<br/>llama.cpp :18888"]
+        qwen["🇨🇳 Qwen3-Next 80B MoE<br/>llama.cpp Q4_K_M · :18888"]
+        granite["Granite-4.1-30B<br/>llama.cpp Q4_K_M · :18889"]
     end
 
-    gateway -->|Tailscale| apertus
-    gateway -->|Tailscale| devstral
+    gateway -->|Tailscale| mistralmed
     gateway -->|Tailscale| eurollm
+    gateway -->|Tailscale| mascarade
+    gateway -->|Tailscale| macm1srv
     gateway -->|Tailscale| gemma
-    gateway -.->|"autossh tunnel<br/>:8002 → :18888"| qwen
+    gateway -.->|"autossh :8002→:18888"| qwen
+    gateway -.->|"autossh :8003→:18889"| granite
 
     classDef sov fill:#dbeafe,stroke:#1e40af,stroke-width:2px,color:#0c2a5b
     classDef ext fill:#fef3c7,stroke:#92400e,stroke-width:2px,color:#451a03
     classDef gw fill:#ede9fe,stroke:#5b21b6,stroke-width:2px,color:#1e1147
-    class apertus,devstral,eurollm sov
-    class gemma,qwen ext
-    class gateway,cockpit gw
+    class mistralmed,eurollm,mascarade sov
+    class gemma,qwen,granite,macm1srv,otherstudio ext
+    class gateway gw
 ```
 
-Blue = EU/CH-origin · Amber = third-country base-model worker (annotated in transparency dossier).
+Blue = EU/CH-origin sovereign workers · Amber = third-country base-model workers (annotated in transparency dossier).
 
 ### Request lifecycle
 
@@ -86,28 +91,27 @@ sequenceDiagram
     autonumber
     participant U as User
     participant C as Cloudflare Tunnel
-    participant K as kiki-cockpit (Docker)
-    participant G as gateway :9300
-    participant R as router-prod (MiniLM+MLP)
+    participant G as ailiance-gateway.service :9300
+    participant R as router v7 (MiniLM+MLP 47)
+    participant L as FIFO lock per worker_url
     participant W as Worker (MLX / llama.cpp)
 
-    U->>C: POST /api/public/chat<br/>{model_id, messages}
-    C->>K: forward
-    K->>K: rate-limit (Traefik 30/min)<br/>+ slowapi guard
-    K->>G: POST /v1/chat/completions
+    U->>C: POST /v1/chat/completions<br/>{model, messages}
+    C->>G: forward (gateway.ailiance.fr)
 
-    alt model_id == ailiance/auto
-        G->>R: encode(prompt)
-        R-->>G: top-k domains<br/>(sigmoid, threshold 0.50)
-        G->>G: pick best worker<br/>(domain → port)
-    else explicit alias
-        G->>G: MODEL_FORCE_MAP[alias]<br/>→ worker port
+    alt model == "ailiance" (auto)
+        G->>R: encode(prompt) — L1 LRU → L2 cosine ≥0.95 → MiniLM
+        R-->>G: top-k of 47 domain scores
+        G->>G: apply overrides (MASCARADE_DOMAINS, kicad-dsl/pcb, tools[] forcing)
+    else explicit alias (11 named + 13 mascarade)
+        G->>G: alias → worker_url
     end
 
-    G->>W: stream chat-completions
-    W-->>G: SSE tokens
-    G-->>K: SSE + route-decision header
-    K-->>C: SSE
+    G->>L: acquire FIFO lock for worker_url
+    L->>W: stream chat-completions
+    W-->>L: SSE tokens
+    L-->>G: release on done
+    G-->>C: SSE + route-decision header
     C-->>U: live token stream
 
     Note over G: Prometheus counters<br/>per (model, status)<br/>at /metrics
@@ -116,17 +120,20 @@ sequenceDiagram
 ## Try it in 10 seconds
 
 ```bash
-# Pick any worker — same OpenAI shape
-curl -sN https://ailiance.fr/api/public/chat \
+# Pick any worker — same OpenAI shape, no auth
+curl -sN https://gateway.ailiance.fr/v1/chat/completions \
   -H 'Content-Type: application/json' \
-  -d '{"model_id":"ailiance/qwen3-next-80b-a3b-instruct",
+  -d '{"model":"ailiance-qwen",
        "messages":[{"role":"user","content":"Compare LoRA and QLoRA in two sentences."}]}'
 
-# Or let the router pick:
-curl -sN https://ailiance.fr/api/public/chat \
+# Or let the router pick (alias "ailiance" = auto):
+curl -sN https://gateway.ailiance.fr/v1/chat/completions \
   -H 'Content-Type: application/json' \
-  -d '{"model_id":"ailiance/auto",
+  -d '{"model":"ailiance",
        "messages":[{"role":"user","content":"Show me a Rust function that parses TOML"}]}'
+
+# List all 46 aliases:
+curl -s https://gateway.ailiance.fr/v1/models | jq '.data[].id'
 ```
 
 The route decision is surfaced in the SSE stream so you see *why* a worker was picked.
@@ -149,17 +156,37 @@ If you ship a product that needs to *prove* what model was used, on what data, u
 
 ## Production fleet
 
-5/5 healthy on 2026-05-06 — verifiable live at [`/api/public/status`](https://ailiance.fr/api/public/status).
+Live at [`gateway.ailiance.fr/v1/models`](https://gateway.ailiance.fr/v1/models) — 46 aliases enumerated.
 
-| Alias | Model | Origin | Quant | Host | Port |
-|---|---|---|---|---|---|
-| `ailiance-mistral` (alias `ailiance-apertus`) | **Mistral Medium 3.5 128B Instruct** | Mistral AI 🇫🇷 | MLX Q8 | studio (Mac Studio M3 Ultra, 512 GB) | `:9301` |
-| `ailiance-devstral` | **Devstral Small 2 24B Instruct 2512** | Mistral AI 🇫🇷 | MLX 4-bit | macm1 (Mac mini M1, 32 GB) | `:9302` |
-| `ailiance-eurollm` | **EuroLLM 22B Instruct 2512** | utter-project 🇪🇺 | MLX 8-bit | studio (Mac Studio M3 Ultra) | `:9303` |
-| `ailiance-gemma` | **Gemma 3 4B IT** | Google DeepMind | GGUF Q4_K_M | tower (NVIDIA Quadro P2000 5 GB) | `:9304` |
-| `ailiance-qwen` | **Qwen3-Next 80B A3B Instruct** | Qwen / Alibaba Cloud | Q4_K_M GGUF, MoE expert offload | kxkm-ai (NVIDIA RTX 4090 24 GB + 64 GB RAM) | `:8002` * |
+### 11 named backends
 
-\* Qwen reaches the gateway via an `autossh` tunnel (`electron-server:8002` → `kxkm-ai:18888`); kxkm-ai is LAN-only and is a **different machine** from `kx6tm-23` (Proxmox PVE host, no GPU). Other workers are addressed over Tailscale magic DNS.
+| Alias | Model | Origin | Quant | Host:Port |
+|---|---|---|---|---|
+| `ailiance` | Auto-router (default — picks per router v7 + overrides) | — | — | — |
+| `ailiance-mistral-medium` | **Mistral Medium 3.5 128B Instruct** | Mistral AI 🇫🇷 | MLX Q8 | studio :9301 |
+| `ailiance-mistral` | **Mistral Small 3.1 24B Instruct** | Mistral AI 🇫🇷 | MLX 4-bit | studio :9326 |
+| `ailiance-gemma` | **Gemma 3 4B IT** | Google DeepMind | llama.cpp Q4_K_M | tower :9304 |
+| `ailiance-gemma2` | **Gemma 3 4B IT** (MLX) | Google DeepMind | MLX 4-bit | macm1 :8502 |
+| `ailiance-gemma4` | **Gemma-4 E4B + LoRA `gemma4-e4b-eukiki`** | Google DeepMind + L'Electron Rare | MLX 4-bit | macm1 :8502 |
+| `ailiance-eurollm` | **EuroLLM 22B Instruct 2512** | utter-project 🇪🇺 | MLX BF16 | studio :9303 |
+| `ailiance-qwen` | **Qwen3.5 9B MLX** | Qwen / Alibaba Cloud | MLX 4-bit | macm1 :8502 |
+| `ailiance-granite` | **Granite-4.1 30B** | IBM | MLX 4-bit | macm1 :8502 |
+| `ailiance-ministral` | **Ministral-3 14B Instruct 2512** | Mistral AI 🇫🇷 | MLX 4-bit | macm1 :8502 |
+| `ailiance-ministral-reasoning` | **Ministral-3 14B Reasoning 2512** | Mistral AI 🇫🇷 | MLX 4-bit | macm1 :8502 |
+
+### 13 mascarade hardware-specialist LoRA experts
+
+Served from **MacStudio MLX bf16 `:9340`** since the **2026-05-18 cutover (PR #100)** — Qwen3-4B base merged with each mascarade LoRA and converted to MLX bf16 (no quantization loss). Aliases: `ailiance-{kicad, spice, stm32, emc, embedded, platformio, freecad, dsp, iot, power, components-review, coder, embed}`.
+
+LoRA training: `ailiance-models-tuning` on Qwen3-4B-Instruct-2507, rank 16 / α 32, 126–522 real steps. **All 10 hardware LoRAs verified trained** (audit 2026-05-18; earlier "5/10 dirs empty" note was incorrect). Published on HuggingFace under [`Ailiance-fr`](https://huggingface.co/Ailiance-fr).
+
+Routing override: 9 hardware domains (`kicad, stm32, emc, embedded, platformio, freecad, dsp, iot, power`) bypass the heavyweight Mistral-Medium and route directly to MacStudio mascarade :9340. `spice` was **removed** from `MASCARADE_DOMAINS` on 2026-05-11 (PR #55) after bench showed −25 on spice-sim. `kicad-dsl` and `kicad-pcb` route to macm1 :8502 (Gemma-4 + eukiki LoRA — PR #54 — bench champion P1 +55 DSL, +42 PCB).
+
+### Auxiliary workers (direct alias, no auto-routing)
+
+`ailiance-reasoning-r1` (DeepSeek-R1-Distill-Qwen-32B-MLX-4bit :9323), `ailiance-llama` (Llama-3.3-70B :9324 MLX 4-bit), Pixtral-12B vision :9325, Qwen3-Coder-30B :9327, `ailiance-mixtral` (Mixtral-8x22B :9329, since PR #68 `9440122`), Qwen3-Next-80B-MoE :18888 on kxkm-ai (via `autossh electron-server:8002 → kxkm-ai:18888`), Granite-4.1-30B :18889 on kxkm-ai (via `:8003`).
+
+> kxkm-ai is **LAN-only** and is a **different machine** from `kx6tm-23` (Proxmox PVE host, no GPU). Other workers are addressed over Tailscale magic DNS.
 
 #### Cluster topology
 
@@ -198,9 +225,7 @@ flowchart TB
 
 Note: kxkm-ai is a **distinct machine** from `kx6tm-23` (Proxmox PVE, AMD ES1000 only, no GPU) — earlier internal docs conflated them; the corrected mapping is reflected in [`docs/eu-ai-act-transparency.md` §2.7](docs/eu-ai-act-transparency.md).
 
-LoRA adapters: Apertus (20 domains — electronics, EMC, DSP, SPICE, KiCad, STM32, IoT, embedded, MISRA-C, AUTOSAR, IEC norms…), Devstral (16 — Python, Rust, TypeScript, C++, shell, SQL, web, Docker, devops, llm-ops, ml-training…), EuroLLM (4 — chat-fr, traduction-tech, redaction-multilingue, localisation-doc). Gemma 3 and Qwen3-Next serve as base-model workers (no adapter).
-
-## Routing — `router-prod`
+## Routing — `router-prod` (v7 multimodel, live 2026-05-12)
 
 The active checkpoint lives behind the stable `output/router-prod`
 symlink (today it points at `router-v7-multimodel`); `gateway.yaml`
@@ -209,12 +234,15 @@ loads that path so a retrain only repoints the symlink.
 | Property | Value |
 |---|---|
 | Encoder | `sentence-transformers/all-MiniLM-L6-v2` (384d, 22 M params) |
-| Head | 384 → 256 → 47 MLP (sigmoid multi-label, threshold 0.50) |
-| Domains | 47 (`output/router-prod/meta.json`) |
-| Top-1 / Top-3 (router-v6 corpus) | **87.7 %** / **98 %** |
-| Δ vs router-v5 | +22 pts top-1, +13 pts top-3 |
+| Head | 384 → 256 → **47** MLP (sigmoid multi-label, threshold 0.50) |
+| Domains | **47** (`output/router-prod/meta.json`) |
+| Training corpus | **5 696 examples from 14 LLMs** (multi-model adversarial sampling, PR #77 `133a9b5`) |
+| Top-1 | **0.8895** (was 0.4862 on the v6 base corpus, **+0.4033**) |
 | Encoder cache | L1 LRU 1024 (~0.01 ms hit) + L2 cosine ≥ 0.95 (~0.2 ms hit) + auto-prewarm at boot |
 | Cold compute | ~9 ms on Studio MPS · ~17 ms on electron-server CPU |
+| Disk footprint | ~88 MB (MiniLM 88 MB + MLP head 436 KB) |
+
+Jina v3 was evaluated as a v6 candidate and **rejected on bench** (top-1 0.874 vs 0.876, encode 9.7 vs 1.6 ms/prompt, Δ separation 0.15 vs 0.34). See [`docs/transparency/router-training-data.md`](docs/transparency/router-training-data.md).
 
 Confusion top-10 and per-domain stats: [`docs/transparency/confusion-top10.md`](docs/transparency/confusion-top10.md).
 
@@ -277,19 +305,13 @@ for the full API contract, audit-trail layout, validator-pin
 update workflow, and performance budget. Mixture (v0.3.1) and
 Sequential (v0.4) are scaffolded but degrade to direct in v0.3.0.
 
-### Router v0.3.1 — Mascarade Tower override (shipped 2026-05-11)
+### Mascarade override (PR #49 → PR #100 MLX bf16 cutover 2026-05-18)
 
-Ten hardware domains now bypass Apertus and route to the Tower-Ollama
-`mascarade-*:latest` LoRA stack (Qwen3 4B Q4_K_M) via autossh tunnel
-`:8004`. Throughput jumps from ~3 tok/s (Studio 128B Q8) to
-~80 tok/s on a single P2000 5 GB — **~20x speedup** on `kicad`,
-`stm32`, `spice`, `emc`, `embedded`, `platformio`, `freecad`,
-`dsp`, `iot`, `power`.
+Nine hardware domains (`kicad, stm32, emc, embedded, platformio, freecad, dsp, iot, power`) bypass the heavyweight Mistral-Medium and route to the **MacStudio MLX bf16 mascarade worker `:9340`** (Qwen3-4B base merged with each LoRA, zero quantization loss). Tunnel: `mascarade-studio-tunnel.service`.
 
-Paired with a temporary fallback from EuroLLM `:9303` (down,
-Studio plist requires GUI bootstrap) to Gemma `:9304` for the
-4 `chat-fr`/`traduction-tech`/`redaction-multilingue`/`localisation-doc`
-labels. Flag `EUROLLM_LIVE` in `src/router/domain_map.py` controls revert.
+`spice` was **removed** from `MASCARADE_DOMAINS` on 2026-05-11 (PR #55) — bench shows −25 on spice-sim. `kicad-dsl` and `kicad-pcb` route to macm1 :8502 (Gemma-4 + eukiki LoRA, PR #54).
+
+History: initial override (PR #49, 2026-05-11) routed to Tower-Ollama Q4_K_M `mascarade-*:latest` (`:8004`). The Tower stack remains as rollback (via `tower-ollama-tunnel.service`) but production no longer hits it since PR #100. EuroLLM `:9303` is **back UP** (validated 2026-05-12 00:30); `EUROLLM_LIVE=True` in the prod branch.
 
 Full spec, test coverage, revert path, and follow-ups in
 [`docs/router-mascarade-override-2026-05-11.md`](docs/router-mascarade-override-2026-05-11.md).
@@ -362,13 +384,16 @@ uv run python scripts/scrape_wikipedia_electronics.py
 # Train LoRA adapters (3 models, sequential)
 bash scripts/train_ailiance_batch.sh
 
-# Train router-v6 (~25 min on macM1 MPS)
-uv run python scripts/rebuild_router_dataset.py
+# Train router v7 (multi-model corpus, ~25 min on macM1 MPS)
+bash tools/router_v7/finalize.sh
+# or step-by-step:
+uv run python tools/router_v7/gen_corpus_multi.py
+uv run python tools/router_v7/gen_augment.py
 uv run python scripts/build_router_data.py
 uv run python scripts/encode_router_minilm.py
 uv run python scripts/train_router_from_embeddings.py \
-  --emb-dir data/router-minilm-v6 --hidden-dim 256 \
-  --output-dir output/router-v6
+  --emb-dir data/router-minilm-v7-multimodel --hidden-dim 256 \
+  --output-dir output/router-v7-multimodel
 
 # Launch
 bash scripts/start.sh
@@ -391,10 +416,14 @@ src/
 
 | File | Role |
 |------|------|
-| `configs/apertus.yaml` | (legacy) Apertus 70B config — `:9301` on studio now serves Mistral Medium 3.5 128B Q8 via `scripts/deploy_mistral_studio.sh` (mlx<0.31 pinned for thread-stream regression). Alias `ailiance-apertus` retained for back-compat. |
-| `configs/devstral.yaml` | Devstral 24B worker — port 9302, MLX 4-bit on macm1, 16 domains |
-| `configs/eurollm.yaml` | EuroLLM 22B worker — port 9303, MLX 8-bit on studio, 4 domains |
-| `configs/gateway.yaml` | FastAPI gateway + router config (Gemma 3 on tower :9304, Qwen3-Next on kxkm-ai :8002 via autossh) |
+| `configs/gateway.yaml` | FastAPI gateway + router v7 config — 47 domains, full backend URL map (`AILIANCE_WORKERS_JSON` can override at boot) |
+| `configs/gemma4.yaml` | Gemma-4 E4B worker on macm1 :8502 (default + LoRA adapter `gemma4-e4b-eukiki`) |
+| `configs/eurollm.yaml` | EuroLLM 22B worker on studio :9303 (MLX BF16) |
+| `configs/chain_policies.yaml` | Router v0.3 deliberation chain policies (validator+retry per domain) |
+| `configs/models-display.yaml` | Per-alias display metadata (model card, badges) for the public catalog |
+| `configs/reflector_prompts.yaml` | System prompts injected per backend (tenant isolation, jailbreak guards) |
+| `configs/apertus.yaml` | **Legacy** — Apertus 70B source deleted 2026-05-12; `:9301` on studio now serves Mistral Medium 3.5 128B Q8. Alias `ailiance-apertus` retained as back-compat redirect. |
+| `configs/devstral.yaml` | **Legacy** — Devstral worker `:9302` on macm1 decommissioned pre-2026-05-10. Devstral multi-LoRA `:9330` on Studio is currently DOWN post-reboot 2026-05-12. |
 
 ## Data pipeline
 
@@ -431,15 +460,16 @@ flowchart LR
     CLEAN -->|router corpus| ROUTER
 
     subgraph router["Router pipeline"]
-        ROUTER["data/router-clean/<br/>9 967 rows × 32 domains"]
-        EMBED["MiniLM encode<br/>data/router-minilm-v6/"]
+        ROUTER["data/router-clean/<br/>5 696 rows × 47 domains<br/>(multi-model corpus, 14 LLMs)"]
+        EMBED["MiniLM encode<br/>data/router-minilm-v7-multimodel/"]
         TRAIN["MLP head train<br/>30 epochs"]
         ROUTER --> EMBED --> TRAIN
     end
 
-    LORA --> WORKER1["Apertus + 20 LoRA"]
-    LORA --> WORKER2["Devstral + 16 LoRA"]
-    LORA --> WORKER3["EuroLLM + 4 LoRA"]
+    LORA --> WORKER1["Mistral-Medium 128B + LoRA"]
+    LORA --> WORKER2["mascarade Qwen3-4B + 10 LoRA<br/>(MLX bf16 :9340)"]
+    LORA --> WORKER3["EuroLLM 22B + LoRA"]
+    LORA --> WORKER4["Gemma-4 + eukiki / mascarade LoRA (macm1)"]
     TRAIN --> ACTIVE["output/router-prod/<br/>active checkpoint<br/>(stable symlink)"]
 
     classDef src fill:#fef3c7,stroke:#92400e
@@ -471,13 +501,20 @@ flowchart LR
 - **Backend portability** — the OpenAI-compatible HTTP contract runs on Apple Silicon (MLX), CUDA (vLLM, TGI, llama.cpp), ROCm, and CPU (llama.cpp). MLX is reference, not requirement.
 - **HF-traceable everything** — every weight, every adapter, every training row has a `MANIFEST.json` with provenance.
 
-## Sister project
+## Sister projects
 
-[`ailiance-mac-tuner`](https://github.com/ailiance/ailiance-mac-tuner) — non-EU foundation distillation track (Mistral Large, Qwen3.5-122B, Devstral 2 123B dense). The ailiance training scripts (`train_ailiance_*.py`) and configs are mirrored there.
+- [`ailiance-mac-tuner`](https://github.com/ailiance/ailiance-mac-tuner) — non-EU foundation distillation track (Mistral Large, Qwen3.5-122B, Devstral 2 123B dense). Training scripts and configs mirror across.
+- [`ailiance-models-tuning`](https://github.com/ailiance/ailiance-models-tuning) — the 10 mascarade Qwen3-4B LoRAs (rank 16 / α 32), source for the MLX bf16 merge served on MacStudio :9340.
+- [`ailiance-agent`](https://github.com/ailiance/ailiance-agent) — sovereign code agent (fork of Cline; CLI `aki`), routes by default to `gateway.ailiance.fr` with JSONL EU AI Act tracing.
+- [`ailiance-bench`](https://github.com/ailiance/ailiance-bench) — Phase 6 scoreboard (eu-kiki champion 4/7 tasks).
+
+## Contributing
+
+Issues and PRs welcome on the [`ailiance` org](https://github.com/ailiance). All 6 core repos are Apache-2.0. The 13 HF datasets remain CC-BY-SA-4.0 / GPL-3.0 due to upstream constraints (Stack Exchange, KiCad).
 
 ## License
 
-Apache-2.0 for the codebase and all ailiance adapters. Per-worker licenses called out per row in [Production fleet](#production-fleet) — Gemma 3 carries Google's Gemma Terms of Use, review obligations apply for downstream commercial use.
+Apache-2.0 for the codebase and all ailiance adapters (all 6 ailiance org repos carved out 2026-05-11). Per-worker licenses called out per row in [Production fleet](#production-fleet) — Gemma 3 carries Google's Gemma Terms of Use, review obligations apply for downstream commercial use.
 
 ---
 
