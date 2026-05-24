@@ -36,6 +36,13 @@ dependencies = [
     "pytesseract>=0.3.10",
     "pillow>=10.0",
     "pdf2image>=1.17",
+    # OpenAI Realtime API wrap (src/realtime/) — msgpack framing on the
+    # Kyutai STT WS, scipy for input audio resampling, soundfile for
+    # voice-bridge WAV payload decoding, websockets for the upstream WS.
+    "msgpack>=1.0",
+    "scipy>=1.10",
+    "soundfile>=0.12",
+    "websockets>=12",
 ]
 
 [project.optional-dependencies]

@@ -1066,6 +1066,12 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
     app.state.training = TrainingOrchestrator(StudioOps(), Path(os.environ.get("AILIANCE_CAMPAIGN_STATE", "campaign_state.json")))
     app.include_router(make_training_router())
 
+    # v1 OpenAI Realtime-compatible WebSocket — see src/realtime/.
+    # Behind the same auth as /v1/chat/completions; one upstream Kyutai
+    # STT session per connection (MacStudio :8304).
+    from src.realtime.router import router as realtime_router
+    app.include_router(realtime_router)
+
     start_time = time.time()
     http_client = httpx.AsyncClient(timeout=600.0)
 
