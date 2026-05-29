@@ -438,3 +438,22 @@ def test_track_chat_accepts_served_model(monkeypatch):
 
     asyncio.run(_run())
     assert captured.get("served_model") == "qwen36-emc-dsp-power"
+
+
+# ---------------------------------------------------------------------------
+# Issue #116 — EFFECTIVE_FORCE_MAP: self-maintaining, drops unconfigured ports
+# ---------------------------------------------------------------------------
+
+
+def test_effective_force_map_drops_unconfigured_ports():
+    from src.gateway.server import EFFECTIVE_FORCE_MAP, MODEL_FORCE_MAP, WORKER_URLS
+    for alias, port in EFFECTIVE_FORCE_MAP.items():
+        assert port in WORKER_URLS, f"{alias}:{port} not in WORKER_URLS"
+    dead = [a for a, p in MODEL_FORCE_MAP.items() if p not in WORKER_URLS]
+    for a in dead:
+        assert a not in EFFECTIVE_FORCE_MAP
+
+
+def test_effective_force_map_not_empty_at_cold_start():
+    from src.gateway.server import EFFECTIVE_FORCE_MAP
+    assert len(EFFECTIVE_FORCE_MAP) > 0

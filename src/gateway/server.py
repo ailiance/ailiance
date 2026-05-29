@@ -478,6 +478,15 @@ MODEL_FORCE_MAP = {
     "ailiance-gemma4-kicad9plus": 9335,
 }
 
+# Self-maintaining force-map: only aliases whose port is in the resolved
+# worker table (AILIANCE_WORKERS_JSON over _DEFAULT_WORKER_URLS). Retired
+# per-port workers drop automatically — no manual prune, no operator data.
+# Complements the runtime liveness filter (#12): this drops *never-configured*
+# ports; liveness drops *configured-but-down* ports.
+EFFECTIVE_FORCE_MAP = {
+    alias: port for alias, port in MODEL_FORCE_MAP.items() if port in WORKER_URLS
+}
+
 
 # Aliases derived from MODEL_FORCE_MAP but NOT advertised on the public
 # /v1/models surface. Today only the bare auto-router id ``ailiance`` is
@@ -498,13 +507,14 @@ def _compute_public_aliases() -> list[str]:
     before 2026-05-18 the two endpoints maintained independent hand-rolled
     lists and drifted (22 aliases on /v1/models had no display metadata
     counterpart). The order is: bare ``ailiance`` auto-router first, then
-    ``MODEL_FORCE_MAP`` keys in their declaration order (Python dicts
+    ``EFFECTIVE_FORCE_MAP`` keys in their declaration order (Python dicts
     preserve insertion order since 3.7), minus the ``_INTERNAL_ALIASES``
-    denylist.
+    denylist. Only aliases whose port is in WORKER_URLS are included —
+    retired / never-configured ports drop automatically (#116).
     """
     ordered: list[str] = ["ailiance"]
     seen: set[str] = {"ailiance"}
-    for alias in MODEL_FORCE_MAP:
+    for alias in EFFECTIVE_FORCE_MAP:
         if alias in _INTERNAL_ALIASES or alias in seen:
             continue
         ordered.append(alias)
@@ -1134,7 +1144,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             }
             # Reuse the same forward-rewrite logic so orchestrator-issued
             # calls hit the same upstream model id as direct calls.
-            forced = MODEL_FORCE_MAP.get(model, HEALTH_FALLBACK_PORT)
+            forced = EFFECTIVE_FORCE_MAP.get(model, HEALTH_FALLBACK_PORT)
             url = WORKER_URLS[_gate_port(forced)]
             override = ALIAS_MODEL_REWRITES.get(model) or (
                 WORKER_FORWARD_OVERRIDES.get(forced)
@@ -1216,7 +1226,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         # (it's classifier-dispatched) so it is always kept.
         ids = [
             a for a in ids
-            if a == "ailiance" or MODEL_FORCE_MAP.get(a) in _healthy_ports
+            if a == "ailiance" or EFFECTIVE_FORCE_MAP.get(a) in _healthy_ports
         ]
         training = request.app.state.training
         unloaded = (
@@ -1458,7 +1468,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         # O(n) reparses on the hot path.
         user_msg = _last_user_text(req)
 
-        forced_port = MODEL_FORCE_MAP.get(req.model)
+        forced_port = EFFECTIVE_FORCE_MAP.get(req.model)
         active_router = app.state.router
         if forced_port:
             domain = ""
