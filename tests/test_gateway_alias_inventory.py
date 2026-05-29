@@ -221,3 +221,38 @@ class TestResponseStamping:
         from src.gateway.server import inventory_or_unknown as srv_inv
 
         assert srv_inv("ailiance-kicad").lora == ("mascarade-kicad",)
+
+
+class TestServedModelFor:
+    def test_qwen36_instance_a_domain(self):
+        from src.router.domain_map import QWEN36_PORT
+        from src.gateway.alias_inventory import served_model_for
+        assert served_model_for(alias="ailiance", domain="emc",
+                                worker_port=QWEN36_PORT) == "qwen36-emc-dsp-power"
+
+    def test_qwen36_instance_b_domain(self):
+        from src.router.domain_map import QWEN36_PORT_B
+        from src.gateway.alias_inventory import served_model_for
+        assert served_model_for(alias="ailiance", domain="cpp",
+                                worker_port=QWEN36_PORT_B) == "qwen36-cpp"
+
+    def test_omlx_domain(self):
+        from src.router.domain_map import OMLX_PORT, DOMAIN_TO_OMLX_MODEL
+        from src.gateway.alias_inventory import served_model_for
+        assert served_model_for(alias="ailiance", domain="python",
+                                worker_port=OMLX_PORT) == DOMAIN_TO_OMLX_MODEL["python"]
+
+    def test_explicit_alias_uses_registry_base_model(self):
+        from src.gateway.alias_inventory import served_model_for, _REGISTRY
+        expected = _REGISTRY["ailiance-eurollm"].base_model
+        assert served_model_for(alias="ailiance-eurollm", domain=None,
+                                worker_port=9303) == expected
+
+    def test_unknown_falls_back_to_alias(self):
+        from src.gateway.alias_inventory import served_model_for
+        assert served_model_for(alias="ailiance-nope", domain=None,
+                                worker_port=12345) == "ailiance-nope"
+
+    def test_never_raises_on_empty(self):
+        from src.gateway.alias_inventory import served_model_for
+        assert served_model_for(alias="", domain=None, worker_port=0) == "unknown"
