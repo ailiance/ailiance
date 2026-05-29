@@ -47,6 +47,7 @@ dependencies = [
     # Verifiable Credentials and URDNA2015 JSON-LD canonicalization.
     "jwcrypto>=1.5",
     "pyld>=2.0",
+    "cryptography>=41",  # RSA signing key + publicKeyJwk (keys.py)
 ]
 
 [project.optional-dependencies]

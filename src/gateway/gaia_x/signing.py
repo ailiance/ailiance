@@ -15,6 +15,7 @@ b64:false contract).
 """
 from __future__ import annotations
 
+import copy
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -53,7 +54,7 @@ def sign_credential(credential: dict, key_path: Path, cfg: GaiaXConfig) -> dict:
     """Return *credential* with a JsonWebSignature2020 proof appended."""
     digest = canonical_digest(credential)
     key = _signing_key(key_path)
-    signed = dict(credential)
+    signed = copy.deepcopy(credential)
     signed["proof"] = {
         "type": "JsonWebSignature2020",
         "created": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
