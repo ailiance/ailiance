@@ -465,7 +465,7 @@ MODEL_FORCE_MAP = {
     # Studio S3 additions 2026-05-12 — 5 MLX 4-bit workers on dedicated ports.
     "ailiance-reasoning-r1": 9323,  # DeepSeek-R1-Distill-Qwen-32B 4-bit
     "ailiance-llama": 9350,  # Llama-3.3-70B-Instruct — swap pool :9350
-    "ailiance-pixtral": 9325,  # Pixtral-12B 4-bit (vision-language)
+    "ailiance-pixtral": 8500,  # Pixtral-12B 8bit on omlx :8500 (was dead :9325)
     "ailiance-mistral-small": 9350,  # Mistral-Small-3.1-24B — swap pool :9350
     "ailiance-coder-pro": 9327,  # Qwen3-Coder-30B-A3B-Instruct 4-bit
     # Mixtral-8x22B-Instruct — swap pool :9350 (on-demand). `ailiance-mixtral`
@@ -630,7 +630,7 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
         "model": "Llama-3.3-70B-Instruct-MLX-4bit",
     },
     "ailiance-pixtral": {
-        "model": "Pixtral-12B-MLX-4bit",
+        "model": "pixtral-12b-8bit",  # omlx :8500 subdir (8bit); standalone :9325 retired
     },
     "ailiance-mistral-small": {
         "model": "Mistral-Small-3.1-24B-Instruct-MLX-4bit",
