@@ -23,6 +23,7 @@ from prometheus_client import CollectorRegistry, Counter, Histogram, generate_la
 from src.gateway.alias_inventory import (
     inventory_or_unknown,
     resolve_effective_alias,
+    served_model_for,
     to_dict as inventory_to_dict,
     to_headers as inventory_to_headers,
 )
@@ -380,6 +381,13 @@ def _worker_headers(
         # path / model id the worker reports.
         inv = inventory_or_unknown(effective_alias)
         headers.update(inventory_to_headers(inv))
+    served = served_model_for(
+        alias=effective_alias or "",
+        domain=domain,
+        worker_port=worker_port,
+    )
+    if served and served not in ("unknown", "auto-router"):
+        headers["X-Ailiance-Served-Model"] = served
     return headers
 
 

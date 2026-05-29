@@ -405,3 +405,16 @@ def test_mid_stream_drop_telemetry(monkeypatch, caplog):
     assert drop_warnings, (
         f"Expected a WARNING log containing 'mid-stream', got records: {[(r.levelname, r.message) for r in caplog.records]}"
     )
+
+
+def test_worker_headers_includes_served_model():
+    from src.router.domain_map import QWEN36_PORT
+    from src.gateway.server import _worker_headers
+    h = _worker_headers(worker_port=QWEN36_PORT, domain="emc", effective_alias="ailiance")
+    assert h["X-Ailiance-Served-Model"] == "qwen36-emc-dsp-power"
+
+
+def test_worker_headers_omits_served_model_when_uninformative():
+    from src.gateway.server import _worker_headers
+    h = _worker_headers(worker_port=9304, domain="", effective_alias="ailiance")
+    assert "X-Ailiance-Served-Model" not in h
