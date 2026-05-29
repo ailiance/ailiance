@@ -43,6 +43,10 @@ dependencies = [
     "scipy>=1.10",
     "soundfile>=0.12",
     "websockets>=12",
+    # Gaia-X credential issuance (src/gateway/gaia_x/) — JWS signing of
+    # Verifiable Credentials and URDNA2015 JSON-LD canonicalization.
+    "jwcrypto>=1.5",
+    "pyld>=2.0",
 ]
 
 [project.optional-dependencies]
