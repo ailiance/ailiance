@@ -3,13 +3,22 @@ import pytest
 
 
 def test_domain_map_lookup():
-    from src.router.domain_map import DOMAIN_TO_WORKER, OMLX_PORT, get_worker_for_domain
+    from src.router.domain_map import (
+        DOMAIN_TO_QWEN36,
+        OMLX_PORT,
+        QWEN36_PORT,
+        get_worker_for_domain,
+    )
 
-    # omlx consolidation (2026-05-29): all domains in DOMAIN_TO_OMLX_MODEL route
-    # to the single omlx :8500 server (OMLX_PORT). Per-port workers are legacy.
+    # qwen36 hybrid routing (f375c12): domains in DOMAIN_TO_QWEN36 route to
+    # QWEN36_PORT (9360); domains in DOMAIN_TO_OMLX_MODEL but NOT in
+    # DOMAIN_TO_QWEN36 stay on OMLX_PORT (8500).
+    # python is NOT in DOMAIN_TO_QWEN36 → stays omlx :8500.
     assert get_worker_for_domain("python") == OMLX_PORT
-    assert get_worker_for_domain("electronics-hw") == OMLX_PORT
-    assert get_worker_for_domain("chat-fr") == OMLX_PORT
+    # electronics-hw IS in DOMAIN_TO_QWEN36 → routes to :9360.
+    assert get_worker_for_domain("electronics-hw") == QWEN36_PORT
+    # chat-fr IS in DOMAIN_TO_QWEN36 → routes to :9360.
+    assert get_worker_for_domain("chat-fr") == QWEN36_PORT
     assert get_worker_for_domain("unknown-domain") is None
 
 
@@ -39,72 +48,81 @@ def test_classifier_config():
 
 
 def test_mascarade_overrides_apertus():
-    """The mascarade-specialized domains route to the omlx server (:8500)
-    after the omlx consolidation (2026-05-29). Previously routed to
-    Tower :8004 (Ollama Q4_K_M), then Studio MLX :9340 (MASCARADE_PORT).
-    Now all domains in DOMAIN_TO_OMLX_MODEL — including mascarade hardware
-    domains — resolve to OMLX_PORT via the last-write-wins consolidation loop."""
+    """qwen36 hybrid routing (f375c12): mascarade hardware domains that are
+    also in DOMAIN_TO_QWEN36 now route to QWEN36_PORT (9360) — the qwen36
+    loop is last-write-wins in DOMAIN_TO_WORKER, after omlx consolidation.
+    MASCARADE_DOMAINS not in DOMAIN_TO_QWEN36 stay on OMLX_PORT (none currently).
+    The confidence-gate still applies: below MASCARADE_MIN_CONFIDENCE the
+    fallback is APERTUS_PORT regardless of the final high-confidence target."""
     from src.router.domain_map import (
         APERTUS_DOMAINS,
+        DOMAIN_TO_QWEN36,
         MASCARADE_DOMAINS,
         MASCARADE_PORT,
         OMLX_PORT,
+        QWEN36_PORT,
         get_worker_for_domain,
     )
 
     assert MASCARADE_PORT == 9340  # Studio MLX bf16 (was Tower Ollama :8004)
     assert MASCARADE_DOMAINS <= APERTUS_DOMAINS  # subset = override semantics
 
-    # After omlx consolidation, mascarade domains are in DOMAIN_TO_OMLX_MODEL
-    # and thus route to OMLX_PORT (last-write-wins over MASCARADE_PORT).
+    # After qwen36 hybrid routing, mascarade domains in DOMAIN_TO_QWEN36
+    # route to QWEN36_PORT; those not in DOMAIN_TO_QWEN36 stay on OMLX_PORT.
     for d in MASCARADE_DOMAINS:
-        assert get_worker_for_domain(d) == OMLX_PORT, (
-            f"{d!r} must route to omlx :8500 after consolidation, "
-            f"got {get_worker_for_domain(d)}"
+        expected = QWEN36_PORT if d in DOMAIN_TO_QWEN36 else OMLX_PORT
+        assert get_worker_for_domain(d) == expected, (
+            f"{d!r} expected {expected}, got {get_worker_for_domain(d)}"
         )
 
 
 def test_kicad_pcb_routes_to_eukiki():
-    """'kicad-pcb' routes to omlx :8500 (OMLX_PORT) after the omlx
-    consolidation (2026-05-29). Previously routed to macm1 :8502
-    (AILIANCE_MACM1_PORT) as a eu-kiki P1 champion (commit 46801af,
-    +42 pts). Now served via the omlx multi-model server with model
-    'gemma-4-e4b-eukiki-fused' (DOMAIN_TO_OMLX_MODEL)."""
+    """'kicad-pcb' routes to omlx :8500 (OMLX_PORT). It is intentionally
+    excluded from DOMAIN_TO_QWEN36 (broken output noted in f375c12 comment).
+    Served via the omlx multi-model server with model 'gemma-4-e4b-eukiki-fused'
+    (DOMAIN_TO_OMLX_MODEL). Previously routed to macm1 :8502 (AILIANCE_MACM1_PORT)
+    as a eu-kiki P1 champion (commit 46801af, +42 pts)."""
     from src.router.domain_map import OMLX_PORT, get_worker_for_domain
 
     assert get_worker_for_domain("kicad-pcb") == OMLX_PORT
 
 
 def test_kicad_dsl_routes_to_eukiki():
-    """'kicad-dsl' routes to omlx :8500 (OMLX_PORT) after the omlx
-    consolidation (2026-05-29). Previously routed to macm1 :8502
-    (AILIANCE_MACM1_PORT) as a eu-kiki P1 champion (commit 46801af,
-    +55 pts). Now served via the omlx multi-model server with model
-    'gemma-4-e4b-eukiki-fused' (DOMAIN_TO_OMLX_MODEL)."""
-    from src.router.domain_map import OMLX_PORT, get_worker_for_domain
+    """'kicad-dsl' routes to qwen36 :9360 (QWEN36_PORT) after the qwen36
+    hybrid routing change (f375c12). It is in DOMAIN_TO_QWEN36 with adapter
+    'qwen36-kicad-dsl'. Previously routed to macm1 :8502 (AILIANCE_MACM1_PORT)
+    as a eu-kiki P1 champion (commit 46801af, +55 pts), then omlx :8500."""
+    from src.router.domain_map import QWEN36_PORT, get_worker_for_domain
 
-    assert get_worker_for_domain("kicad-dsl") == OMLX_PORT
+    assert get_worker_for_domain("kicad-dsl") == QWEN36_PORT
 
 
 def test_eukiki_domains_all_route_to_8502():
-    """AILIANCE_MACM1_DOMAINS (kicad-dsl, kicad-pcb) now route to omlx :8500
-    after the omlx consolidation (2026-05-29) — the omlx server handles these
-    via DOMAIN_TO_OMLX_MODEL. AILIANCE_MACM1_PORT (:8502) constant is preserved
-    for potential rollback; AILIANCE_MACM1_DOMAINS defines the label set."""
+    """AILIANCE_MACM1_DOMAINS (kicad-dsl, kicad-pcb): after qwen36 hybrid
+    routing (f375c12), kicad-dsl is in DOMAIN_TO_QWEN36 → QWEN36_PORT (9360);
+    kicad-pcb is NOT in DOMAIN_TO_QWEN36 (excluded, broken output) → OMLX_PORT
+    (8500) via DOMAIN_TO_OMLX_MODEL. AILIANCE_MACM1_PORT (:8502) is preserved
+    for rollback; AILIANCE_MACM1_DOMAINS defines the label set."""
     from src.router.domain_map import (
         AILIANCE_MACM1_DOMAINS,
         AILIANCE_MACM1_PORT,
         DOMAIN_TO_OMLX_MODEL,
+        DOMAIN_TO_QWEN36,
         OMLX_PORT,
+        QWEN36_PORT,
         get_worker_for_domain,
     )
 
     assert AILIANCE_MACM1_PORT == 8502
     for d in AILIANCE_MACM1_DOMAINS:
-        expected = OMLX_PORT if d in DOMAIN_TO_OMLX_MODEL else AILIANCE_MACM1_PORT
+        if d in DOMAIN_TO_QWEN36:
+            expected = QWEN36_PORT
+        elif d in DOMAIN_TO_OMLX_MODEL:
+            expected = OMLX_PORT
+        else:
+            expected = AILIANCE_MACM1_PORT
         assert get_worker_for_domain(d) == expected, (
-            f"{d!r} must route to omlx :8500 after consolidation, "
-            f"got {get_worker_for_domain(d)}"
+            f"{d!r} expected {expected}, got {get_worker_for_domain(d)}"
         )
 
 
@@ -113,36 +131,38 @@ def test_confidence_gating_falls_back_to_apertus():
     Apertus. This protects against false-positive specialist routing
     on ambiguous prompts where the bigger generalist is safer.
 
-    omlx consolidation (2026-05-29): high-confidence mascarade domains
-    now route to OMLX_PORT (8500) instead of MASCARADE_PORT (9340),
-    because the omlx loop is last-write-wins in DOMAIN_TO_WORKER.
+    qwen36 hybrid routing (f375c12): high-confidence mascarade domains
+    now route to QWEN36_PORT (9360) instead of OMLX_PORT (8500), because
+    the qwen36 loop is last-write-wins in DOMAIN_TO_WORKER.
     The low-confidence → APERTUS_PORT fallback is unchanged."""
     from src.router.domain_map import (
         APERTUS_PORT,
         MASCARADE_MIN_CONFIDENCE,
         MASCARADE_PORT,
         OMLX_PORT,
+        QWEN36_PORT,
         get_worker_for_domain_with_confidence,
     )
 
-    # High confidence → omlx (consolidation: kicad in DOMAIN_TO_OMLX_MODEL → OMLX_PORT)
+    # High confidence + kicad in DOMAIN_TO_QWEN36 → qwen36 :9360
     assert (
         get_worker_for_domain_with_confidence("kicad", 0.996)
-        == OMLX_PORT
+        == QWEN36_PORT
     )
     # Below threshold → Apertus fallback (confidence gate still active)
     assert (
         get_worker_for_domain_with_confidence("kicad", 0.50)
         == APERTUS_PORT
     )
-    # Exactly at threshold → omlx (>= semantics; above MASCARADE_MIN_CONFIDENCE)
+    # Exactly at threshold → qwen36 (>= semantics; kicad in DOMAIN_TO_QWEN36)
     assert (
         get_worker_for_domain_with_confidence(
             "kicad", MASCARADE_MIN_CONFIDENCE
         )
-        == OMLX_PORT
+        == QWEN36_PORT
     )
-    # Non-mascarade domain ignores threshold; python → omlx after consolidation
+    # Non-mascarade domain ignores threshold; python NOT in DOMAIN_TO_QWEN36
+    # → omlx :8500 after consolidation
     assert (
         get_worker_for_domain_with_confidence("python", 0.01) == OMLX_PORT
     )
@@ -152,20 +172,19 @@ def test_confidence_gating_falls_back_to_apertus():
 
 
 def test_eurollm_domains_route_to_eurollm_when_live():
-    """omlx consolidation (2026-05-29): EUROLLM_LIVE flag removed from
-    domain_map.py. The 4 EUROLLM_DOMAINS (chat-fr, traduction-tech,
-    redaction-multilingue, localisation-doc) are now in DOMAIN_TO_OMLX_MODEL
-    (model: EuroLLM-22B-Instruct-2512) and route to OMLX_PORT (8500).
-    The per-port EUROLLM_PORT (:9303) constant is preserved but no longer
-    wired into DOMAIN_TO_WORKER."""
+    """qwen36 hybrid routing (f375c12): the 4 EUROLLM_DOMAINS (chat-fr,
+    traduction-tech, redaction-multilingue, localisation-doc) are now in
+    DOMAIN_TO_QWEN36 and route to QWEN36_PORT (9360). Previously routed to
+    OMLX_PORT via DOMAIN_TO_OMLX_MODEL (EuroLLM-22B-Instruct-2512).
+    The per-port EUROLLM_PORT (:9303) constant is preserved but not wired."""
     from src.router.domain_map import (
         EUROLLM_DOMAINS,
-        OMLX_PORT,
+        QWEN36_PORT,
         get_worker_for_domain,
     )
 
     for d in EUROLLM_DOMAINS:
-        assert get_worker_for_domain(d) == OMLX_PORT, (
-            f"{d!r} must route to omlx :8500 after consolidation, "
+        assert get_worker_for_domain(d) == QWEN36_PORT, (
+            f"{d!r} must route to qwen36 :9360, "
             f"got {get_worker_for_domain(d)}"
         )
