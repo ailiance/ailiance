@@ -59,6 +59,7 @@ packages = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src"]
 norecursedirs = ["vendored", ".venv", "node_modules"]
 # E2E tests hit production (gateway.ailiance.fr, www.ailiance.fr) and
 # should not run as part of the default suite. Invoke explicitly with
