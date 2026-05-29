@@ -15,6 +15,7 @@ from __future__ import annotations
 from src.gateway.server import (
     _CANONICAL_VISION_ALIAS,
     _maybe_route_to_vision,
+    _public_base_url,
     _VISION_ALIASES,
     _request_has_images,
 )
@@ -132,3 +133,23 @@ class TestVisionRouting:
         assert _maybe_route_to_vision("ailiance-coder", False) == "ailiance-coder"
         assert _maybe_route_to_vision("ailiance", False) == "ailiance"
         assert _maybe_route_to_vision("ailiance-gemma4-omlx", False) == "ailiance-gemma4-omlx"
+
+
+class TestImageFetchBaseUrl:
+    """The worker fetches staged images from this URL, so it must prefer a
+    worker-reachable address over the public (website-fronted) domain."""
+
+    def test_prefers_dedicated_fetch_url(self, monkeypatch):
+        monkeypatch.setenv("AILIANCE_IMAGE_FETCH_BASE_URL", "http://100.78.191.52:9300")
+        monkeypatch.setenv("AILIANCE_PUBLIC_BASE_URL", "https://gateway.ailiance.fr")
+        assert _public_base_url() == "http://100.78.191.52:9300"
+
+    def test_falls_back_to_public(self, monkeypatch):
+        monkeypatch.delenv("AILIANCE_IMAGE_FETCH_BASE_URL", raising=False)
+        monkeypatch.setenv("AILIANCE_PUBLIC_BASE_URL", "https://gateway.ailiance.fr")
+        assert _public_base_url() == "https://gateway.ailiance.fr"
+
+    def test_local_default(self, monkeypatch):
+        monkeypatch.delenv("AILIANCE_IMAGE_FETCH_BASE_URL", raising=False)
+        monkeypatch.delenv("AILIANCE_PUBLIC_BASE_URL", raising=False)
+        assert _public_base_url() == "http://localhost:9300"
