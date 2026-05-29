@@ -116,6 +116,17 @@ _INFERENCE_DEFAULTS: dict[str, InferenceDefaults] = {
             "or any structured representation."
         ),
     ),
+    # Canonical vision worker: gemma-4-E4B VLM on omlx :8500 (verified E2E —
+    # reads text + colours). Low temp for stable image reading; generous
+    # max_tokens for descriptions. No Pixtral-style stop/dict quirks observed.
+    "ailiance-gemma4-omlx": InferenceDefaults(
+        temperature=0.2,
+        max_tokens=1024,
+        system_prompt=(
+            "You are a vision-language assistant. Read or describe what is "
+            "actually shown in the image, in plain natural-language text."
+        ),
+    ),
     # ----- Qwen3.5 family — disable thinking by default -----
     # ``feedback_qwen3_thinking_mode``: short-output workloads need
     # enable_thinking=false on the chat template, otherwise the model
