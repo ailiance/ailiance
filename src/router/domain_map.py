@@ -280,3 +280,48 @@ def get_worker_for_domain_with_confidence(
     if canonical in MASCARADE_DOMAINS and score < mascarade_min_score:
         return APERTUS_PORT
     return DOMAIN_TO_WORKER.get(canonical)
+
+QWEN36_PORT = 9360  # multi-LoRA Qwen3.6-35B server (256k ctx) on Studio
+
+# router domain -> qwen36 adapter name served by the :9360 multi-LoRA server.
+# Excludes spice (numerically unreliable) and kicad-pcb (broken output) -> those
+# stay on omlx via DOMAIN_TO_OMLX_MODEL. python/reasoning/generalists also stay on omlx.
+DOMAIN_TO_QWEN36: dict[str, str] = {
+    "emc": "qwen36-emc-dsp-power",
+    "dsp": "qwen36-emc-dsp-power",
+    "power": "qwen36-emc-dsp-power",
+    "stm32": "qwen36-embedded",
+    "embedded": "qwen36-embedded",
+    "electronics-hw": "qwen36-embedded",
+    "misra-c": "qwen36-embedded",
+    "platformio": "qwen36-platformio",
+    "iot": "qwen36-iot",
+    "freecad": "qwen36-freecad",
+    "security": "qwen36-security-fenrir",
+    "math": "qwen36-math-reasoning",
+    "calcul-normatif": "qwen36-math-reasoning",
+    "kicad": "qwen36-kicad-dsl",
+    "kicad-dsl": "qwen36-kicad-dsl",
+    "cpp": "qwen36-cpp",
+    "rust": "qwen36-rust",
+    "typescript": "qwen36-typescript",
+    "shell": "qwen36-shell",
+    "sql": "qwen36-sql",
+    "html-css": "qwen36-html-css",
+    "web-backend": "qwen36-web-backend",
+    "web-frontend": "qwen36-web-frontend",
+    "docker": "qwen36-docker-devops",
+    "devops": "qwen36-docker-devops",
+    "yaml-json": "qwen36-yaml-json",
+    "llm-ops": "qwen36-llm-ops",
+    "llm-orch": "qwen36-llm-orch",
+    "ml-training": "qwen36-ml-training",
+    "lua-upy": "qwen36-lua-upy",
+    "chat-fr": "qwen36-chat-fr",
+    "traduction-tech": "qwen36-traduction-tech",
+    "redaction-multilingue": "qwen36-multilingual-eu",
+    "localisation-doc": "qwen36-multilingual-eu",
+    "music-audio": "qwen36-music-audio",
+}
+for _d in DOMAIN_TO_QWEN36:
+    DOMAIN_TO_WORKER[_d] = QWEN36_PORT
