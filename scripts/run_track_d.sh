@@ -11,7 +11,7 @@ Usage: run_track_d.sh <mode>
   smoke   1 cell: qwen36 base x skidl compiler x 1 prompt x 1 seed.
   full    Full grid: 5 base models x 4 compilers x 20 prompts x 5 seeds.
 
-Output goes to ~/ailiance/output/track-d/<timestamp>/.
+Output goes to $AILIANCE/output/track-d/<timestamp>/.
 USAGE
 }
 
@@ -27,7 +27,7 @@ case "$MODE" in
 esac
 
 TS=$(date +%Y-%m-%dT%H-%M-%S)
-ROOT="${HOME}/ailiance"
+ROOT="${AILIANCE_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)}"
 OUT="${ROOT}/output/track-d/${TS}"
 mkdir -p "${OUT}/artefacts"
 

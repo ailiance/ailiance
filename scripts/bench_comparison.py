@@ -26,12 +26,13 @@ import argparse
 import glob
 import json
 import math
+import os
 import statistics
 import sys
 import time
 from pathlib import Path
 
-AILIANCE = Path.home() / "ailiance"
+AILIANCE = Path(os.environ.get("AILIANCE_HOME", Path(__file__).resolve().parent.parent))
 RAW = AILIANCE / "output" / "eval" / "raw"
 COMPARISON_DIR = AILIANCE / "output" / "eval"
 

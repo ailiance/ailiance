@@ -58,7 +58,7 @@ def _compile_skidl(tpl: dict, vals: dict, out: Path) -> int:
     """Stub: emit a minimal parseable v10 skeleton.
 
     Real skidl call is a follow-up patch once the v10-capable skidl
-    wheel is wired into the ``~/ailiance/.venv-d2/`` environment.
+    wheel is wired into the ``$AILIANCE/.venv-d2/`` environment.
     """
     out.write_text(
         "(kicad_sch (version 20240101) (generator skidl)\n"

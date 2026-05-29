@@ -19,8 +19,8 @@
 
 set -euo pipefail
 
-KIKI_TUNNER="$HOME/ailiance-mac-tuner"
-AILIANCE="$HOME/ailiance"
+AILIANCE="${AILIANCE_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)}"
+KIKI_TUNNER="${KIKI_TUNNER_HOME:-$(dirname "$AILIANCE")/ailiance-mac-tuner}"
 PYTHON="$KIKI_TUNNER/.venv/bin/python3"
 MODEL="$KIKI_TUNNER/models/Devstral-Small-2-24B-BF16"
 DATA="$AILIANCE/data/vlm-dataset"

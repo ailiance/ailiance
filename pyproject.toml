@@ -55,6 +55,15 @@ dev = ["pytest>=8.0", "pytest-asyncio>=0.24", "httpx"]
 router = ["sentence-transformers>=3.4", "torch>=2.6"]
 data = ["datasets>=2.19", "huggingface-hub>=0.23"]
 
+[tool.uv]
+# CVE floors for transitive deps (pip-audit 2026-05-29). Constrains the
+# resolver without declaring these as direct dependencies.
+constraint-dependencies = [
+    "starlette>=1.0.1",  # CVE-2026-48710 / PYSEC-2026-161 (ASGI under FastAPI)
+    "urllib3>=2.7.0",    # CVE-2026-44431, CVE-2026-44432
+    "idna>=3.15",        # CVE-2026-45409
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

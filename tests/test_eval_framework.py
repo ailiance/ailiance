@@ -144,10 +144,6 @@ def test_strict_iteration_order_groups_each_model_contiguously():
         seen_keys.append(key)
 
 
-@pytest.mark.xfail(
-    reason="#26: scripts still contain $HOME/ailiance literals — pending cleanup decision",
-    strict=False,
-)
 def test_no_ailiance_path_constants_in_scripts():
     """Sibling scripts must not write to ~/ailiance/. The disk root is
     ~/ailiance/ — the GitHub repo is named 'ailiance' but the on-disk

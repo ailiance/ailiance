@@ -3,23 +3,23 @@
 # ailiance LoRA Batch Training — Solid Domains (>=1000 examples)
 #
 # Trains all pending model+domain combos sequentially within each model.
-# Uses HF-traced data at ~/ailiance/data/hf-traced/ for EU AI Act compliance.
+# Uses HF-traced data at $AILIANCE/data/hf-traced/ for EU AI Act compliance.
 #
 # Prerequisites:
 #   sudo sysctl -w iogpu.wired_limit_mb=458752
-#   cd ~/ailiance-mac-tuner
+#   cd $KIKI_TUNNER
 #
 # Usage:
-#   bash ~/ailiance/scripts/train_batch.sh           # run all
-#   bash ~/ailiance/scripts/train_batch.sh --dry-run  # show plan only
+#   bash $AILIANCE/scripts/train_batch.sh           # run all
+#   bash $AILIANCE/scripts/train_batch.sh --dry-run  # show plan only
 #
 # Generated: 2026-04-28
 # ==============================================================================
 
 set -euo pipefail
 
-KIKI_TUNNER="$HOME/ailiance-mac-tuner"
-AILIANCE="$HOME/ailiance"
+AILIANCE="${AILIANCE_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)}"
+KIKI_TUNNER="${KIKI_TUNNER_HOME:-$(dirname "$AILIANCE")/ailiance-mac-tuner}"
 HF_DATA="$AILIANCE/data/hf-traced"
 ADAPTERS="$AILIANCE/output/adapters"
 OUTPUT_ROOT="$KIKI_TUNNER/output/ailiance-hf"
