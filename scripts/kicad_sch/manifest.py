@@ -75,11 +75,18 @@ class DatasetManifest:
         """Append a lineage row. Validates types and key fields at runtime.
 
         Raises:
-            TypeError: if ``file_size_bytes`` is not a plain ``int``
-                (bool is explicitly rejected even though it is an int subclass).
-            ValueError: if ``file_size_bytes`` is negative, or if any of
-                ``dedup_hash``, ``commit_sha``, ``license_spdx``,
-                ``source_type``, ``source_url`` is empty/blank.
+            TypeError: if ``file_size_bytes`` is not a plain ``int`` (bool is
+                explicitly rejected even though it is an int subclass), or if
+                any string field is not a ``str``.
+            ValueError: if ``file_size_bytes`` is negative, or if
+                ``dedup_hash``, ``source_type`` or ``source_url`` is
+                empty/blank.
+
+        Note:
+            ``commit_sha`` and ``license_spdx`` MAY be empty: D3 mix rows
+            inherit lineage from their source rows and carry no own commit
+            or license. Per-split license/source policy is enforced
+            separately by ``lineage_validator``, not here.
         """
         # -- file_size_bytes --
         if isinstance(file_size_bytes, bool):
@@ -95,16 +102,31 @@ class DatasetManifest:
                 f"file_size_bytes must be >= 0, got {file_size_bytes!r}"
             )
 
-        # -- non-empty str fields --
-        _non_empty_str = {
-            "dedup_hash": dedup_hash,
+        # -- str type for every string field (catches type confusion) --
+        _str_fields = {
+            "source_type": source_type,
+            "source_url": source_url,
             "commit_sha": commit_sha,
             "license_spdx": license_spdx,
+            "dedup_hash": dedup_hash,
+            "kicad_version_before": kicad_version_before,
+            "kicad_version_after": kicad_version_after,
+        }
+        for field, value in _str_fields.items():
+            if not isinstance(value, str):
+                raise TypeError(
+                    f"{field} must be a str, got {type(value).__name__!r}"
+                )
+
+        # -- non-empty required (commit_sha/license_spdx MAY be empty: D3
+        #    inherited rows; policy enforced by lineage_validator) --
+        _non_empty = {
+            "dedup_hash": dedup_hash,
             "source_type": source_type,
             "source_url": source_url,
         }
-        for field, value in _non_empty_str.items():
-            if not isinstance(value, str) or not value.strip():
+        for field, value in _non_empty.items():
+            if not value.strip():
                 raise ValueError(
                     f"{field} must be a non-empty str, got {value!r}"
                 )

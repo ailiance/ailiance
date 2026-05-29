@@ -227,11 +227,14 @@ def test_add_rejects_empty_dedup_hash(tmp_path: Path) -> None:
         m.add(**_sample_row(dedup_hash=""))  # type: ignore[arg-type]
 
 
-def test_add_rejects_blank_commit_sha(tmp_path: Path) -> None:
-    """commit_sha must be a non-empty str (not just whitespace)."""
-    m = DatasetManifest(tmp_path / "m.csv", split="D1")
-    with pytest.raises(ValueError):
-        m.add(**_sample_row(commit_sha="   "))  # type: ignore[arg-type]
+def test_add_accepts_empty_commit_sha_and_license(tmp_path: Path) -> None:
+    """commit_sha and license_spdx MAY be empty: D3 mix rows inherit
+    lineage from source rows. Policy is enforced by lineage_validator,
+    not the manifest writer."""
+    m = DatasetManifest(tmp_path / "m.csv", split="D3")
+    m.add(**_sample_row(commit_sha="", license_spdx=""))  # type: ignore[arg-type]
+    assert m.rows[0]["commit_sha"] == ""
+    assert m.rows[0]["license_spdx"] == ""
 
 
 def test_add_rejects_empty_source_url(tmp_path: Path) -> None:
