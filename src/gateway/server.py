@@ -1795,13 +1795,45 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 _release_cm = fifo_cm
                 fifo_cm = None  # prevent finally-block double-release
 
+                # Streaming asymmetry: once bytes start flushing we cannot
+                # change the HTTP status to 502.  Instead we track whether
+                # any content/tool_calls delta was observed and log a warning
+                # (+ track_chat error) at stream end if none was seen.
                 async def relay() -> "object":
+                    saw_content = False
                     try:
                         async for chunk in _normalize_sse_stream(
                             worker_resp.aiter_text()
                         ):
+                            # Detect non-empty deltas to identify empty completions.
+                            if not saw_content and isinstance(chunk, (bytes, str)):
+                                text = chunk.decode("utf-8", errors="replace") if isinstance(chunk, bytes) else chunk
+                                if ('"content"' in text or '"tool_calls"' in text or '"function_call"' in text):
+                                    # Quick heuristic: if any content/tool key appears in the
+                                    # chunk the stream has substance.  False-negatives (key
+                                    # present but value empty) are acceptable — this is a
+                                    # best-effort warning, not a hard gate.
+                                    import re as _re
+                                    if _re.search(r'"content"\s*:\s*"[^"\\]', text):
+                                        saw_content = True
+                                    elif '"tool_calls"' in text or '"function_call"' in text:
+                                        saw_content = True
                             yield chunk
                     finally:
+                        if not saw_content:
+                            log.warning(
+                                "empty streaming completion worker=%s",
+                                worker_port,
+                            )
+                            track_chat(
+                                model_alias=req.model,
+                                domain=domain,
+                                kind="direct",
+                                request_body=_trace_req_body,
+                                response_body={},
+                                started_at=_trace_started_at,
+                                error=f"empty_completion_stream worker={worker_port}",
+                            )
                         await worker_resp.aclose()
                         await _release_cm.__aexit__(None, None, None)
 
@@ -1879,6 +1911,53 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 },
             ) from None
         response_body = _normalize_response_body(response_body)
+
+        # Issue #10 — guard against silent empty completions.
+        # A worker that returns HTTP 200 with structurally-valid JSON but
+        # empty content and completion_tokens==0 would otherwise be relayed
+        # silently.  We surface it as a clean 502 so callers can retry.
+        #
+        # Conservative policy: when ``usage`` is absent the worker gave no
+        # token info, so ``completion_tokens`` is None (not 0) and we relay
+        # rather than 502 — we cannot distinguish an empty completion from a
+        # tool-call or a future extension that omits usage.
+        #
+        # This guard runs AFTER _normalize_response_body so that a
+        # reasoning-only response whose content was backfilled from
+        # ``message.reasoning`` already has non-empty content and passes.
+        _g_choice0 = (response_body.get("choices") or [{}])[0]
+        _g_msg = _g_choice0.get("message") or {}
+        _g_content = _g_msg.get("content")
+        _g_usage = response_body.get("usage") or {}
+        _g_completion_tokens = _g_usage.get("completion_tokens")  # None when absent
+
+        _g_content_empty = not (isinstance(_g_content, str) and _g_content.strip())
+        _g_no_tools = not _g_msg.get("tool_calls") and not _g_msg.get("function_call")
+        _g_no_tokens = _g_completion_tokens == 0  # False when None (absent) → conservative relay
+
+        if _g_content_empty and _g_no_tools and _g_no_tokens:
+            log.warning(
+                "Worker %d returned empty completion (completion_tokens=0, no content)",
+                worker_port,
+            )
+            track_chat(
+                model_alias=req.model,
+                domain=domain,
+                kind="direct",
+                request_body=_trace_req_body,
+                response_body=response_body,
+                started_at=_trace_started_at,
+                error=f"empty_completion worker={worker_port}",
+            )
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "type": "empty_completion",
+                    "worker_port": worker_port,
+                    "message": "Worker returned a structurally-valid but empty completion",
+                },
+            )
+
         # Resolve the effective alias for observability: cascade overrides
         # win > FC force-route > caller's req.model > 'ailiance' fallback.
         # For req.model == "ailiance" the resolver lifts to the actually

@@ -140,3 +140,141 @@ def test_unreachable_worker_returns_503(monkeypatch):
     assert detail.get("type") == "upstream_unreachable", (
         f"Expected type='upstream_unreachable', got detail={detail!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Issue #10 — empty completion 502 guard
+# ---------------------------------------------------------------------------
+
+def _mock_worker_post(response_body: dict, status_code: int = 200):
+    """Return a monkeypatch-compatible async post that replies with *response_body*."""
+    import json as _json
+
+    async def _fake_post(self, url, *args, **kwargs):
+        content = _json.dumps(response_body).encode()
+        return httpx.Response(status_code, content=content,
+                              headers={"content-type": "application/json"})
+
+    return _fake_post
+
+
+def _chat_payload(model: str = "ailiance-gemma") -> dict:
+    return {"model": model, "messages": [{"role": "user", "content": "hi"}]}
+
+
+def _empty_completion(*, tool_calls=None, reasoning=None, usage=None) -> dict:
+    """Build a structurally-valid 200 body with empty content."""
+    msg: dict = {"role": "assistant", "content": ""}
+    if tool_calls is not None:
+        msg["tool_calls"] = tool_calls
+    if reasoning is not None:
+        msg["reasoning"] = reasoning
+    body: dict = {
+        "id": "chatcmpl-test",
+        "object": "chat.completion",
+        "created": 0,
+        "model": "test-model",
+        "choices": [{"index": 0, "message": msg, "finish_reason": "stop"}],
+    }
+    if usage is not None:
+        body["usage"] = usage
+    else:
+        body["usage"] = {"prompt_tokens": 10, "completion_tokens": 0, "total_tokens": 10}
+    return body
+
+
+def test_empty_completion_returns_502(monkeypatch):
+    """Issue #10: empty content + completion_tokens==0 + no tools → 502."""
+    monkeypatch.setattr(httpx.AsyncClient, "post",
+                        _mock_worker_post(_empty_completion()))
+
+    from src.gateway.server import make_gateway_app
+
+    app = make_gateway_app(skip_router_load=True)
+    client = TestClient(app, raise_server_exceptions=False)
+    resp = client.post("/v1/chat/completions", json=_chat_payload())
+    assert resp.status_code == 502, f"Expected 502, got {resp.status_code}: {resp.text}"
+    detail = resp.json().get("detail", {})
+    assert detail.get("type") == "empty_completion", (
+        f"Expected type='empty_completion', got detail={detail!r}"
+    )
+
+
+def test_empty_completion_with_tool_calls_passes(monkeypatch):
+    """tool_calls present → content may legitimately be empty; must NOT 502."""
+    tool_calls = [{"id": "call_1", "type": "function",
+                   "function": {"name": "my_fn", "arguments": "{}"}}]
+    monkeypatch.setattr(
+        httpx.AsyncClient, "post",
+        _mock_worker_post(_empty_completion(tool_calls=tool_calls)),
+    )
+
+    from src.gateway.server import make_gateway_app
+
+    app = make_gateway_app(skip_router_load=True)
+    client = TestClient(app, raise_server_exceptions=False)
+    resp = client.post("/v1/chat/completions", json=_chat_payload())
+    assert resp.status_code == 200, (
+        f"tool_calls response must not be rejected; got {resp.status_code}"
+    )
+
+
+def test_empty_content_with_reasoning_passes(monkeypatch):
+    """content empty but reasoning non-blank → normalize backfills content → 200."""
+    body = _empty_completion(reasoning="my chain of thought")
+    # After _normalize_response_body, content will be promoted from reasoning,
+    # so the guard must NOT fire.
+    monkeypatch.setattr(httpx.AsyncClient, "post", _mock_worker_post(body))
+
+    from src.gateway.server import make_gateway_app
+
+    app = make_gateway_app(skip_router_load=True)
+    client = TestClient(app, raise_server_exceptions=False)
+    resp = client.post("/v1/chat/completions", json=_chat_payload())
+    assert resp.status_code == 200, (
+        f"reasoning-backed response must not be rejected; got {resp.status_code}"
+    )
+
+
+def test_non_empty_content_passes(monkeypatch):
+    """Normal non-empty response must not trigger the guard."""
+    body = {
+        "id": "chatcmpl-ok",
+        "object": "chat.completion",
+        "created": 0,
+        "model": "test-model",
+        "choices": [{"index": 0,
+                     "message": {"role": "assistant", "content": "Hello!"},
+                     "finish_reason": "stop"}],
+        "usage": {"prompt_tokens": 5, "completion_tokens": 3, "total_tokens": 8},
+    }
+    monkeypatch.setattr(httpx.AsyncClient, "post", _mock_worker_post(body))
+
+    from src.gateway.server import make_gateway_app
+
+    app = make_gateway_app(skip_router_load=True)
+    client = TestClient(app, raise_server_exceptions=False)
+    resp = client.post("/v1/chat/completions", json=_chat_payload())
+    assert resp.status_code == 200, (
+        f"Normal response must not be rejected; got {resp.status_code}"
+    )
+
+
+def test_empty_content_no_usage_relayed(monkeypatch):
+    """Conservative: usage absent → completion_tokens is None (not 0) → relay 200.
+
+    Documents the deliberate decision: when the worker gives no token info
+    we cannot be sure it's a true empty completion, so we relay rather than 502.
+    """
+    body = _empty_completion()
+    del body["usage"]  # remove usage entirely
+    monkeypatch.setattr(httpx.AsyncClient, "post", _mock_worker_post(body))
+
+    from src.gateway.server import make_gateway_app
+
+    app = make_gateway_app(skip_router_load=True)
+    client = TestClient(app, raise_server_exceptions=False)
+    resp = client.post("/v1/chat/completions", json=_chat_payload())
+    assert resp.status_code == 200, (
+        f"No-usage response must be relayed conservatively; got {resp.status_code}"
+    )
