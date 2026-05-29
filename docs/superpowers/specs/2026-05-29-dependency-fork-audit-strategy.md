@@ -295,14 +295,24 @@ git-pinned MLX forks). Mirror by commit SHA to the dedicated vendoring org.
 - **GrosMac**: 80 `brew leaves`; critical: `tailscale 1.98.3`, `autossh 1.4g`,
   `ffmpeg 8.1.1`, `git 2.54.0`. `cloudflared` is NOT brew-managed (installed
   via Cloudflare's own channel — track separately).
-- **MacStudio / macM1**: pending — non-login ssh lacks `/opt/homebrew/bin` in
-  PATH; re-run with the full brew path via bastion.
+- **MacStudio**: 23 `brew leaves`; `tailscale 1.96.4`, `ffmpeg 8.1.1`,
+  `git 2.53.0`. NB: tailscale older than GrosMac (1.98.3) — flag for alignment.
+- **macM1**: pending — electron-server lacks macM1's SSH host key
+  (`Host key verification failed`); accept the host key on electron-server,
+  then re-run `/opt/homebrew/bin/brew leaves`.
+
+### Progress 2026-05-29
+- ✅ **Docker FROM digest pins applied & merged** — 25 Dockerfiles on
+  iact-bench `master` (`4d14f53`) + qet's on `feat/qet-validator` (`dcc5f44`).
+  26 Dockerfiles total (the doc earlier said "27" — actual is 26).
+- ✅ brew baseline: GrosMac + MacStudio captured (macM1 pending host key).
+- 🔄 SBOM + pip-audit: in progress (`uvx cyclonedx-py`/`pip-audit`, `sbom/`).
 
 ### Open items still needed before execution
-- Full `brew bundle dump` on Studio + macM1 (full-path PATH via bastion).
-- SBOM generation (`cyclonedx-py`) + `pip-audit`/`osv-scanner` snapshot.
-- Apply the 27 Dockerfile `FROM` digest pins (PR + HITL review) — digests in
-  `iact-bench/docker/BASE_IMAGE_DIGESTS.md`.
+- macM1 brew (host-key accept on electron-server).
+- Tier-0 vendoring (omlx + 5 MLX forks) → **needs the dedicated org created
+  first** (GitHub orgs cannot be created via API/`gh` — manual web step).
+- Full `brew bundle dump` (vs `leaves`) once host set is final.
 - npm/brew/cargo/apt/Docker extension inventory — NOT yet written (the
   extension agent hit a session limit 2026-05-29). Re-run after reset.
 - Tooling proposal: `uv lock` + `pip-audit`/`osv-scanner` + `cyclonedx-py`;
