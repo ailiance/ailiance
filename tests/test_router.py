@@ -7,18 +7,23 @@ def test_domain_map_lookup():
         DOMAIN_TO_QWEN36,
         OMLX_PORT,
         QWEN36_PORT,
+        QWEN36_PORT_B,
+        QWEN36_DOMAINS_B,
         get_worker_for_domain,
     )
 
-    # qwen36 hybrid routing (f375c12): domains in DOMAIN_TO_QWEN36 route to
-    # QWEN36_PORT (9360); domains in DOMAIN_TO_OMLX_MODEL but NOT in
-    # DOMAIN_TO_QWEN36 stay on OMLX_PORT (8500).
+    # Two-instance qwen36 split (79f4136): hardware/EDA/math domains stay on
+    # QWEN36_PORT (9360); code/web/devops/ml/language domains in
+    # QWEN36_DOMAINS_B route to QWEN36_PORT_B (9361). Domains in
+    # DOMAIN_TO_OMLX_MODEL but NOT in DOMAIN_TO_QWEN36 stay on OMLX_PORT (8500).
     # python is NOT in DOMAIN_TO_QWEN36 → stays omlx :8500.
     assert get_worker_for_domain("python") == OMLX_PORT
-    # electronics-hw IS in DOMAIN_TO_QWEN36 → routes to :9360.
+    # electronics-hw is a hardware domain → instance A :9360.
+    assert "electronics-hw" not in QWEN36_DOMAINS_B
     assert get_worker_for_domain("electronics-hw") == QWEN36_PORT
-    # chat-fr IS in DOMAIN_TO_QWEN36 → routes to :9360.
-    assert get_worker_for_domain("chat-fr") == QWEN36_PORT
+    # chat-fr is a language domain → instance B :9361.
+    assert "chat-fr" in QWEN36_DOMAINS_B
+    assert get_worker_for_domain("chat-fr") == QWEN36_PORT_B
     assert get_worker_for_domain("unknown-domain") is None
 
 
@@ -172,19 +177,22 @@ def test_confidence_gating_falls_back_to_apertus():
 
 
 def test_eurollm_domains_route_to_eurollm_when_live():
-    """qwen36 hybrid routing (f375c12): the 4 EUROLLM_DOMAINS (chat-fr,
-    traduction-tech, redaction-multilingue, localisation-doc) are now in
-    DOMAIN_TO_QWEN36 and route to QWEN36_PORT (9360). Previously routed to
-    OMLX_PORT via DOMAIN_TO_OMLX_MODEL (EuroLLM-22B-Instruct-2512).
+    """Two-instance qwen36 split (79f4136): the 4 EUROLLM_DOMAINS (chat-fr,
+    traduction-tech, redaction-multilingue, localisation-doc) are language
+    domains in QWEN36_DOMAINS_B and route to QWEN36_PORT_B (9361). Previously
+    routed to OMLX_PORT via DOMAIN_TO_OMLX_MODEL (EuroLLM-22B-Instruct-2512).
     The per-port EUROLLM_PORT (:9303) constant is preserved but not wired."""
     from src.router.domain_map import (
         EUROLLM_DOMAINS,
         QWEN36_PORT,
+        QWEN36_PORT_B,
+        QWEN36_DOMAINS_B,
         get_worker_for_domain,
     )
 
     for d in EUROLLM_DOMAINS:
-        assert get_worker_for_domain(d) == QWEN36_PORT, (
-            f"{d!r} must route to qwen36 :9360, "
+        expected = QWEN36_PORT_B if d in QWEN36_DOMAINS_B else QWEN36_PORT
+        assert get_worker_for_domain(d) == expected, (
+            f"{d!r} must route to qwen36 ({expected}), "
             f"got {get_worker_for_domain(d)}"
         )
