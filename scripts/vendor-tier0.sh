@@ -1,65 +1,58 @@
 #!/usr/bin/env bash
-# Tier-0 supply-chain vendoring — mirror omlx + its git-pinned MLX forks by
-# SHA into a dedicated vendoring org (frozen, audited baseline).
-#
-# Why: pin-only + SBOM is the baseline for everything (see
-# docs/superpowers/specs/2026-05-29-dependency-fork-audit-strategy.md).
-# omlx is the one Tier-0 escalation: Apache-2.0 but single-maintainer, runs in
-# the inference path, and pulls 5 deps via git+@<commit> from personal forks
-# that could be deleted or force-pushed. Mirroring those commits by SHA makes
-# the serving stack reproducible independent of upstream availability.
-#
-# The per-repo `git checkout <sha>` fails LOUD if the pinned commit is gone —
-# that is the force-push / delete detector, by design.
-#
-# PREREQUISITE: the dedicated vendoring org must ALREADY EXIST. GitHub orgs
-# cannot be created via API/gh — create it on the web first. `gh auth status`
-# must show repo-create rights in that org.
-#
-# Usage:  ORG=<vendoring-org> ./scripts/vendor-tier0.sh
+# Vendor Tier-0 deps into ONE private repo as frozen source snapshots (subdirs),
+# pinned by upstream SHA. The per-dep `git checkout <sha>` fails loud if a commit
+# is gone (force-push/delete detector).
 set -euo pipefail
-: "${ORG:?set ORG to the dedicated vendoring org (must already exist on GitHub)}"
-command -v gh  >/dev/null || { echo "gh not found"; exit 1; }
-command -v git >/dev/null || { echo "git not found"; exit 1; }
-
+REPO="${REPO:-ailiance/vendored}"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 
-# name            upstream_url                                pinned_sha
-# (omlx 0.3.9 = tag v0.3.9; the 5 forks = the git+@<commit> pins from omlx's
-#  Requires-Dist, read off MacStudio ~/omlx-venv 2026-05-29.)
-read -r -d '' MANIFEST <<'EOF' || true
-omlx           https://github.com/jundot/omlx            8cad1212729b4efaeae7e56e131b5b80f8d44f85
-mlx-lm         https://github.com/ml-explore/mlx-lm       ed1fca4cef15a824c5f1702c80f70b4cffc8e4dd
-mlx-embeddings https://github.com/Blaizzy/mlx-embeddings  32981fa4e8064ed664b52071789dd18271fe4206
-mlx-vlm        https://github.com/Blaizzy/mlx-vlm         f96138eef1f5ce7fb5d97f8dd41a664a195b5659
-dflash-mlx     https://github.com/bstnxbt/dflash-mlx      1ba671372b289c025b435c1a13aabb4bfb80b183
-mlx-audio      https://github.com/Blaizzy/mlx-audio       51753266e0a4f766fd5e6fbc46652224efc23981
-EOF
+gh repo view "$REPO" >/dev/null 2>&1 || \
+  gh repo create "$REPO" --private \
+    -d "Tier-0 vendored deps frozen by SHA (supply-chain HITL baseline)"
 
-printf '%s\n' "$MANIFEST" | while read -r name url sha; do
+if git clone -q "https://github.com/$REPO.git" "$WORK/repo" 2>/dev/null && \
+   [ -d "$WORK/repo/.git" ]; then
+  cd "$WORK/repo"
+else
+  mkdir -p "$WORK/repo"; cd "$WORK/repo"; git init -q
+  git remote add origin "https://github.com/$REPO.git"
+fi
+
+mkdir -p vendored
+{
+  echo "# Tier-0 vendored dependencies"
+  echo
+  echo "Frozen source snapshots pinned by upstream SHA (no \`.git\`)."
+  echo "Strategy: ailiance-gateway docs/superpowers/specs/2026-05-29-dependency-fork-audit-strategy.md"
+  echo
+  echo "| dep | upstream | pinned sha |"
+  echo "|-----|----------|------------|"
+} > MANIFEST.md
+
+while read -r name url sha; do
   [ -z "$name" ] && continue
-  dest="$WORK/$name"
   echo ">> $name @ $sha"
-  git clone --quiet "$url" "$dest"
-  # fetch the exact commit in case it is not on a default branch
-  git -C "$dest" fetch --quiet origin "$sha" 2>/dev/null || true
-  # FAILS LOUD if the pinned SHA is gone (force-push / delete detector):
-  git -C "$dest" checkout --quiet "$sha"
-  # idempotent repo create (ignore "already exists")
-  gh repo create "$ORG/${name}-vendored" --private \
-     --description "Vendored $name pinned @ $sha" >/dev/null 2>&1 || true
-  git -C "$dest" remote add vendor "https://github.com/$ORG/${name}-vendored.git"
-  git -C "$dest" push --quiet vendor "$sha:refs/heads/vendored-$sha"
-  git -C "$dest" tag -f "vendored-$sha" "$sha" >/dev/null 2>&1 || true
-  git -C "$dest" push --quiet --force vendor "vendored-$sha" 2>/dev/null || true
-  echo "   mirrored -> $ORG/${name}-vendored  (branch+tag vendored-$sha)"
-done
+  t="$(mktemp -d)"
+  git clone -q "$url" "$t"
+  git -C "$t" fetch -q origin "$sha" 2>/dev/null || true
+  git -C "$t" checkout -q "$sha"
+  rm -rf "$t/.git"
+  rm -rf "vendored/$name"; mkdir -p "vendored/$name"
+  cp -R "$t/." "vendored/$name/"
+  echo "| $name | $url | \`$sha\` |" >> MANIFEST.md
+  rm -rf "$t"
+done <<'PAIRS'
+omlx https://github.com/jundot/omlx 8cad1212729b4efaeae7e56e131b5b80f8d44f85
+mlx-lm https://github.com/ml-explore/mlx-lm ed1fca4cef15a824c5f1702c80f70b4cffc8e4dd
+mlx-embeddings https://github.com/Blaizzy/mlx-embeddings 32981fa4e8064ed664b52071789dd18271fe4206
+mlx-vlm https://github.com/Blaizzy/mlx-vlm f96138eef1f5ce7fb5d97f8dd41a664a195b5659
+dflash-mlx https://github.com/bstnxbt/dflash-mlx 1ba671372b289c025b435c1a13aabb4bfb80b183
+mlx-audio https://github.com/Blaizzy/mlx-audio 51753266e0a4f766fd5e6fbc46652224efc23981
+PAIRS
 
-cat <<'NEXT'
-
-Done. Next (HITL):
-  - Record the 6 SHAs in the CycloneDX SBOM.
-  - Repoint the gateway deps to the vendored remotes (uv source overrides),
-    e.g. mlx-lm @ git+https://github.com/<ORG>/mlx-lm-vendored@<sha>.
-  - Any future bump = review upstream diff vs the frozen SHA, then re-run.
-NEXT
+git add -A
+git -c user.email=clement@saillant.cc -c user.name=electron-rare \
+    commit -q -m "vendor: freeze tier-0 deps by SHA" || { echo "nothing to commit"; exit 0; }
+git branch -M main
+git push -u origin main
+echo "VENDOR_DONE: $REPO populated ($(ls vendored | wc -l | tr -d ' ') deps)"

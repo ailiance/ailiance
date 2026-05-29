@@ -314,8 +314,12 @@ git-pinned MLX forks). Mirror by commit SHA to the dedicated vendoring org.
   in both repos; gateway commit `a87b735`, iact-bench `3c1954c`). Gateway = 80
   components, iact-bench = 45. Method: `uv export` → `uvx cyclonedx-py` ;
   `uvx pip-audit --path .venv/...site-packages -s osv`.
-- ✅ Tier-0 vendoring script committed (gateway `26a001b`,
-  `scripts/vendor-tier0.sh`, 6 SHAs incl. omlx v0.3.9 `8cad1212`).
+- ✅ **Tier-0 vendoring DONE** → private repo **`ailiance/vendored`** (monorepo
+  `vendored/<dep>/` frozen source + `MANIFEST.md`), 6 deps: omlx v0.3.9
+  `8cad1212` + mlx-lm/embeddings/vlm/audio + dflash-mlx (the git-pinned forks).
+  Single private repo chosen over a dedicated org (orgs need manual web
+  creation). Re-runnable via `REPO=ailiance/vendored scripts/vendor-tier0.sh`
+  (per-dep `git checkout <sha>` fails loud = force-push/delete detector).
 
 ### Vulnerabilities found (pip-audit, 2026-05-29) — REMEDIATED on branch
 | Repo | Package | Was | Advisory | Fixed → (branch `chore/relock-cve-floors`) |
@@ -336,16 +340,14 @@ lockfile mutation), then done **deliberately** on branch
 `chore/relock-cve-floors` (`5916dfe`). Re-SBOM after that branch merges.
 
 ### Open items still needed before execution
-- **Review + merge `chore/relock-cve-floors`** (gateway re-lock + CVE floors);
-  then regenerate the SBOM from the synced lock.
+- ✅ `chore/relock-cve-floors` merged (PR #127) — re-SBOM from the synced lock.
+- ✅ Tier-0 vendoring done (`ailiance/vendored`).
+- Repoint gateway deps to the vendored remotes (uv source overrides) — optional
+  hardening; currently still resolving from PyPI/git upstreams.
 - iact-bench `idna` 3.13 → ≥3.15 bump.
-- Tier-0 vendoring run → **needs the dedicated org created first** (GitHub
-  orgs cannot be created via API/`gh` — manual web step); then
-  `ORG=<org> ./scripts/vendor-tier0.sh`.
-- macM1 tailscale dedupe (1.98.3 + 1.96.4 both installed).
+- macM1 tailscale dedupe — `brew cleanup tailscale` failed with EACCES on the
+  old keg; needs `sudo` on macM1.
 - Full `brew bundle dump` (vs `leaves`) once host set is final.
-- npm/brew/cargo/apt/Docker extension inventory — NOT yet written (the
-  extension agent hit a session limit 2026-05-29). Re-run after reset.
 - Tooling proposal: `uv lock` + `pip-audit`/`osv-scanner` + `cyclonedx-py`;
   Renovate for PR-only (no auto-merge of serving-critical).
 
