@@ -8,14 +8,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        # The vendored/iact-bench submodule is private (ailiance/iact-bench);
-        # cloned via the IACT_BENCH_PAT repo secret (PAT with read access to
-        # that repo). Submodule init is mandatory — if the PAT is missing or
-        # loses access, the checkout fails loudly rather than silently
-        # skipping test_iact_bench_validator.py.
-        with:
-          submodules: recursive
-          token: ${{ secrets.IACT_BENCH_PAT || github.token }}
+      - name: Init private iact-bench submodule
+        # Main repo checks out above with the default GITHUB_TOKEN. The
+        # private submodule (ailiance/iact-bench) is cloned here with
+        # IACT_BENCH_PAT — a PAT scoped to ONLY that repo — via a URL
+        # rewrite, so the PAT needs no access to this repo. Mandatory: fails
+        # loudly if the PAT is missing or loses access (no continue-on-error).
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.IACT_BENCH_PAT }}@github.com/".insteadOf "https://github.com/"
+          git submodule update --init --recursive
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
