@@ -1,0 +1,51 @@
+# CI dependencies for the mlx-free "logic" test suite (issue #26).
+#
+# This is the dependency set needed to run `pytest -m "not network and
+# not e2e"` on a Linux GitHub runner WITHOUT mlx. mlx / mlx-lm are
+# Apple-Silicon only and cannot install here — the gateway proxies to a
+# remote omlx server, so they are not needed for the logic tests
+# (mlx-dependent tests importorskip("mlx") and are skipped on CI).
+#
+# Pinned loosely (>=) to mirror pyproject.toml. uvicorn is omitted (the
+# tests use starlette's TestClient, no ASGI server needed); pytesseract
+# is omitted so OCR tests skip cleanly (no tesseract binary on the
+# runner).
+
+# --- web framework / HTTP (TestClient pulls starlette) ---
+fastapi>=0.115
+httpx>=0.28
+python-multipart>=0.0.9          # FastAPI multipart upload parser
+websockets>=12                   # realtime upstream WS
+
+# --- config / data structures ---
+pyyaml>=6.0
+pydantic>=2.10
+networkx>=3.6.1
+
+# --- observability ---
+prometheus-client>=0.21
+structlog>=24.0
+
+# --- numerics / audio (realtime resampling + WAV decode) ---
+numpy>=1.26
+scipy>=1.10
+soundfile>=0.12
+msgpack>=1.0
+
+# --- file extraction (/v1/files/extract) ---
+pdfminer.six>=20231228           # PDF text extraction
+python-docx>=1.1                 # .docx
+openpyxl>=3.1                    # .xlsx
+python-pptx>=1.0                 # .pptx
+beautifulsoup4>=4.12             # HTML / fallback
+pillow>=10.0                     # image handling
+
+# --- Gaia-X credential issuance (src/gateway/gaia_x/) ---
+jwcrypto>=1.5                    # JWS signing of Verifiable Credentials
+pyld>=2.0                        # URDNA2015 JSON-LD canonicalization
+cryptography>=41                 # RSA signing key + publicKeyJwk
+requests>=2.28                   # gaia_x HTTP (non-network-marked paths)
+
+# --- test runner ---
+pytest>=8.0
+pytest-asyncio>=0.24
