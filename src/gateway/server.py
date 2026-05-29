@@ -1199,6 +1199,13 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         exclusion — the two used to drift, see E.1 audit 2026-05-18.
         """
         ids = [a for a in ALL_PUBLIC_ALIASES if a not in _BLOCKED_CHAT_ALIASES]
+        # Liveness filter: suppress aliases whose forced port is currently
+        # unhealthy. The bare "ailiance" auto-router alias has no fixed port
+        # (it's classifier-dispatched) so it is always kept.
+        ids = [
+            a for a in ids
+            if a == "ailiance" or MODEL_FORCE_MAP.get(a) in _healthy_ports
+        ]
         training = request.app.state.training
         unloaded = (
             set(training.state.unloaded_ports)
@@ -1808,6 +1815,27 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 json=body,
                 headers=headers,
             )
+        except httpx.RequestError as exc:
+            log.warning(
+                "Worker %d unreachable: %s", worker_port, exc,
+            )
+            track_chat(
+                model_alias=req.model,
+                domain=domain,
+                kind="direct",
+                request_body=_trace_req_body,
+                response_body={},
+                started_at=_trace_started_at,
+                error=f"upstream_unreachable worker={worker_port}",
+            )
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "type": "upstream_unreachable",
+                    "worker_port": worker_port,
+                    "message": f"Worker on port {worker_port} is unreachable",
+                },
+            ) from exc
         finally:
             if fifo_cm is not None:
                 await fifo_cm.__aexit__(None, None, None)
