@@ -71,4 +71,5 @@ norecursedirs = ["vendored", ".venv", "node_modules"]
 addopts = "-m 'not e2e'"
 markers = [
     "e2e: end-to-end test against production endpoints (gateway.ailiance.fr, www.ailiance.fr)",
+    "network: needs network (Gaia-X JSON-LD context fetch; offline cache deferred). Skip with -m 'not network'.",
 ]
