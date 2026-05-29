@@ -306,12 +306,36 @@ git-pinned MLX forks). Mirror by commit SHA to the dedicated vendoring org.
   iact-bench `master` (`4d14f53`) + qet's on `feat/qet-validator` (`dcc5f44`).
   26 Dockerfiles total (the doc earlier said "27" — actual is 26).
 - ✅ brew baseline: GrosMac + MacStudio captured (macM1 pending host key).
-- 🔄 SBOM + pip-audit: in progress (`uvx cyclonedx-py`/`pip-audit`, `sbom/`).
+- ✅ SBOM + pip-audit generated (`sbom/cyclonedx.json` + `sbom/pip-audit.json`
+  in both repos; gateway commit `a87b735`, iact-bench `3c1954c`). Gateway = 80
+  components, iact-bench = 45. Method: `uv export` → `uvx cyclonedx-py` ;
+  `uvx pip-audit --path .venv/...site-packages -s osv`.
+- ✅ Tier-0 vendoring script committed (gateway `26a001b`,
+  `scripts/vendor-tier0.sh`, 6 SHAs incl. omlx v0.3.9 `8cad1212`).
+
+### Vulnerabilities found (pip-audit, 2026-05-29) — HITL upgrade candidates
+| Repo | Package | Version | Advisory | Fix |
+|------|---------|---------|----------|-----|
+| gateway | **starlette** | 1.0.0 | CVE-2026-48710 / PYSEC-2026-161 | **1.0.1** (ASGI under FastAPI — prod, prioritise) |
+| gateway | urllib3 | 2.6.3 | CVE-2026-44431 + CVE-2026-44432 | 2.7.0 |
+| gateway + bench | idna | 3.13 | CVE-2026-45409 | 3.15 |
+
+### ⚠️ Defect found: stale `uv.lock` (gateway)
+The committed `uv.lock` is **out of sync with `pyproject.toml`** — missing
+~13 declared deps (beautifulsoup4, cryptography, jwcrypto, msgpack, openpyxl,
+pdf2image, pdfminer-six, pillow, pyld, pytesseract, python-docx,
+python-multipart, python-pptx — the Gaia-X + doc-processing work). The SBOM
+agent's `uv export` resynced it (+485 lines); that incidental change was
+**reverted** (no blind lockfile mutation). Fix deliberately: `uv lock` +
+review the regenerated set, then regenerate the SBOM from the synced lock.
 
 ### Open items still needed before execution
+- **Deliberate `uv lock`** on gateway (stale-lock defect above) → re-SBOM.
+- Vuln upgrades above (starlette first) via HITL review.
 - macM1 brew (host-key accept on electron-server).
-- Tier-0 vendoring (omlx + 5 MLX forks) → **needs the dedicated org created
-  first** (GitHub orgs cannot be created via API/`gh` — manual web step).
+- Tier-0 vendoring run → **needs the dedicated org created first** (GitHub
+  orgs cannot be created via API/`gh` — manual web step); then
+  `ORG=<org> ./scripts/vendor-tier0.sh`.
 - Full `brew bundle dump` (vs `leaves`) once host set is final.
 - npm/brew/cargo/apt/Docker extension inventory — NOT yet written (the
   extension agent hit a session limit 2026-05-29). Re-run after reset.
