@@ -1,8 +1,14 @@
 __pycache__/
 *.pyc
 .venv/
+.venv-gaiax/
 *.egg-info/
 dist/
+
+# Gaia-X generated artifacts and signing key (served from var/well-known,
+# never committed — real key store is Vault). See gateway.gaia_x.cli render.
+var/well-known/
+var/gaia-x-signing.pem
 build/
 .pytest_cache/
 # Ignore training/eval artifacts in output/ except the metadata of the
