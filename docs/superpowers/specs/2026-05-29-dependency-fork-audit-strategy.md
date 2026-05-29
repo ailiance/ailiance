@@ -297,10 +297,10 @@ git-pinned MLX forks). Mirror by commit SHA to the dedicated vendoring org.
   via Cloudflare's own channel — track separately).
 - **MacStudio**: 23 `brew leaves`; `tailscale 1.96.4`, `ffmpeg 8.1.1`,
   `git 2.53.0`. NB: tailscale older than GrosMac (1.98.3) — flag for alignment.
-- **macM1**: 14 `brew leaves`; `tailscale 1.98.3` **and** `1.96.4` (two
-  versions installed — cleanup candidate). Reached via direct `ssh macm1`
-  (the electron-server bastion lacked macM1's host key). `git`/`ffmpeg`/
-  `autossh` not brew-managed here.
+- **macM1**: 14 `brew leaves`; `tailscale 1.98.3` (✅ deduped — old `1.96.4`
+  keg removed 2026-05-29; the `tailscaled` binary was root-owned so it took
+  `sudo rm`). Reached via direct `ssh macm1`. `git`/`ffmpeg`/`autossh` not
+  brew-managed here.
 
 ### Progress 2026-05-29
 - ✅ **Docker FROM digest pins applied & merged** — 25 Dockerfiles on
@@ -345,8 +345,7 @@ lockfile mutation), then done **deliberately** on branch
 - Repoint gateway deps to the vendored remotes (uv source overrides) — optional
   hardening; currently still resolving from PyPI/git upstreams.
 - iact-bench `idna` 3.13 → ≥3.15 bump.
-- macM1 tailscale dedupe — `brew cleanup tailscale` failed with EACCES on the
-  old keg; needs `sudo` on macM1.
+- ✅ macM1 tailscale deduped (old `1.96.4` keg removed via `sudo rm`).
 - Full `brew bundle dump` (vs `leaves`) once host set is final.
 - Tooling proposal: `uv lock` + `pip-audit`/`osv-scanner` + `cyclonedx-py`;
   Renovate for PR-only (no auto-merge of serving-critical).
