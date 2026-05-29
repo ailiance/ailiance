@@ -57,7 +57,7 @@ from src.gateway.training.studio_ops import (
 from src.orchestrator.chain_orchestrator import ChainOrchestrator
 from src.orchestrator.chain_policy import ChainPolicy
 from src.orchestrator.validators import StubValidator, make_validator
-from src.router.domain_map import ALL_DOMAINS, get_worker_for_domain
+from src.router.domain_map import ALL_DOMAINS, DOMAIN_TO_OMLX_MODEL, OMLX_PORT, get_worker_for_domain
 from src.worker.schemas import ChatCompletionRequest, ChatMessage
 
 log = logging.getLogger(__name__)
@@ -108,6 +108,7 @@ _DEFAULT_WORKER_URLS = {
     9329: "http://localhost:9329",  # Mixtral-8x22B-Instruct 4-bit
     9330: "http://localhost:9330",  # Devstral multi-LoRA hot-swap server
     9335: "http://localhost:9335",  # Gemma-4-E4B multi-LoRA custom server
+    8500: "http://100.116.92.12:8500",  # omlx consolidated multi-model (Tailscale)
 }
 
 
@@ -316,6 +317,7 @@ WORKER_CONTEXT_WINDOWS: dict[int, int] = {
     9328: 131072,   # Studio Qwen3-235B-A22B-MLX-4bit (when running)
     9329: 65536,    # Studio Mixtral-8x22B-Instruct-MLX-4bit
     9330: 131072,   # Studio Devstral multi-LoRA base
+    8500: 32768,    # omlx consolidated multi-model server
 }
 
 
@@ -388,6 +390,7 @@ def _fc_force_route_enabled() -> bool:
 
 
 MODEL_FORCE_MAP = {
+    "ailiance-eurollm": 9303,  # EuroLLM -> omlx via port 9303
     "ailiance-mistral-medium": 9301,  # Mistral Medium 3.5 128B Q8 (studio:9301, renamed from ailiance-apertus 2026-05-11)
     "ailiance-mistral": 9301,  # alias for ailiance-mistral-medium (same backend)
     "ailiance-apertus": 9301,  # legacy alias preserved for backwards compatibility — routes to Mistral-Medium
@@ -545,14 +548,14 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     "ailiance-ministral": {"model": "mlx-community/Ministral-3-14B-Instruct-2512-4bit"},
     "ailiance-ministral-reasoning": {"model": "mlx-community/Ministral-3-14B-Reasoning-2512-4bit"},
     # kxkm-ai llama-server :8003 (via tunnel) - alias is granite-30b, bearer key.
-    "ailiance-granite": {"model": "granite-30b", "auth_env": "AILIANCE_QWEN_KEY"},
+    "ailiance-granite": {"model": "granite-4.1-30b-mxfp8", "auth_env": "AILIANCE_QWEN_KEY"},
     # studio mlx_lm.server :9305 - rewrite to on-disk path the server has loaded.
-    "ailiance-qwen36": {"model": "/Users/clems/KIKI-Mac_tunner/models/Qwen3.6-35B-A3B-MLX-BF16"},
+    "ailiance-qwen36": {"model": "Qwen3.6-35B-A3B-MLX-BF16"},
     # studio mlx_lm.server :9301 - rewrite to on-disk path the server has loaded
     # (mlx_lm.server resolves an unknown model field as an HF repo id, causing 404 + 60s timeout).
-    "ailiance-mistral-medium": {"model": "/Users/clems/KIKI-Mac_tunner/models/Mistral-Medium-3.5-128B-MLX-Q8"},
-    "ailiance-mistral": {"model": "/Users/clems/KIKI-Mac_tunner/models/Mistral-Medium-3.5-128B-MLX-Q8"},
-    "ailiance-apertus": {"model": "/Users/clems/KIKI-Mac_tunner/models/Mistral-Medium-3.5-128B-MLX-Q8"},  # legacy alias
+    "ailiance-mistral-medium": {"model": "Mistral-Medium-3.5-128B-MLX-Q8"},
+    "ailiance-mistral": {"model": "Mistral-Medium-3.5-128B-MLX-Q8"},
+    "ailiance-apertus": {"model": "Mistral-Medium-3.5-128B-MLX-Q8"},  # legacy alias
     # Tower Ollama :11434 via tunnel :8004 - Ollama needs the exact tag.
     "ailiance-kicad": {"model": "mascarade-kicad:latest"},
     "ailiance-spice": {"model": "mascarade-spice:latest"},
@@ -569,7 +572,7 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     "ailiance-embed": {"model": "bge-m3:latest"},
     # Devstral-Small-2-24B MLX 4-bit on Studio. Server resolves model field
     # as on-disk path or HF repo id; pass the path the server has loaded.
-    "ailiance-devstral-base": {"model": "/Users/clems/KIKI-Mac_tunner/models/Devstral-Small-2-24B-MLX-4bit"},
+    "ailiance-devstral-base": {"model": "Devstral-Small-2-24B-MLX-4bit"},
     "ailiance-python": {"model": "devstral-python"},
     "ailiance-cpp": {"model": "devstral-cpp"},
     "ailiance-rust-emb": {"model": "devstral-rust-embedded"},
@@ -591,34 +594,34 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     "ailiance-apertus-embedded": {"model": "apertus-embedded"},
     # Studio flagship 2026-05-12 — Qwen3-235B-A22B-Instruct MoE 4-bit (~120GB VRAM).
     "ailiance-flagship": {
-        "model": "/Users/clems/KIKI-Mac_tunner/models/Qwen3-235B-A22B-Instruct-MLX-4bit",
+        "model": "Qwen3-235B-A22B-Instruct-MLX-4bit",
     },
     "ailiance-qwen-235b": {
-        "model": "/Users/clems/KIKI-Mac_tunner/models/Qwen3-235B-A22B-Instruct-MLX-4bit",
+        "model": "Qwen3-235B-A22B-Instruct-MLX-4bit",
     },
     # Studio S3 additions 2026-05-12 — mlx_lm.server expects on-disk path.
     "ailiance-reasoning-r1": {
-        "model": "/Users/clems/KIKI-Mac_tunner/models/DeepSeek-R1-Distill-Qwen-32B-MLX-4bit",
+        "model": "DeepSeek-R1-Distill-Qwen-32B-MLX-4bit",
     },
     "ailiance-llama": {
-        "model": "/Users/clems/KIKI-Mac_tunner/models/Llama-3.3-70B-Instruct-MLX-4bit",
+        "model": "Llama-3.3-70B-Instruct-MLX-4bit",
     },
     "ailiance-pixtral": {
-        "model": "/Users/clems/KIKI-Mac_tunner/models/Pixtral-12B-MLX-4bit",
+        "model": "Pixtral-12B-MLX-4bit",
     },
     "ailiance-mistral-small": {
-        "model": "/Users/clems/KIKI-Mac_tunner/models/Mistral-Small-3.1-24B-Instruct-MLX-4bit",
+        "model": "Mistral-Small-3.1-24B-Instruct-MLX-4bit",
     },
     "ailiance-coder-pro": {
-        "model": "/Users/clems/KIKI-Mac_tunner/models/Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
+        "model": "Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
     },
     # Mixtral-8x22B-Instruct MLX 4-bit on Studio :9329 — mlx_lm.server
     # expects on-disk path. Both alias names share the same rewrite.
     "ailiance-mixtral": {
-        "model": "/Users/clems/KIKI-Mac_tunner/models/Mixtral-8x22B-Instruct-MLX-4bit",
+        "model": "Mixtral-8x22B-Instruct-MLX-4bit",
     },
     "ailiance-mixtral-8x22b": {
-        "model": "/Users/clems/KIKI-Mac_tunner/models/Mixtral-8x22B-Instruct-MLX-4bit",
+        "model": "Mixtral-8x22B-Instruct-MLX-4bit",
     },
     # Studio multi-LoRA Gemma-4-E4B custom server :9335. Each alias rewrites
     # `model` body field to the adapter_name the custom server expects.
@@ -630,18 +633,19 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
 
 
 WORKER_FORWARD_OVERRIDES: dict[int, dict[str, str]] = {
+    9303: {"model": "EuroLLM-22B-Instruct-2512"},  # eurollm -> omlx
     8002: {
         "model": "qwen-32b-awq",  # the alias llama-server expects
         "auth_env": "AILIANCE_QWEN_KEY",
     },
     # kxkm-ai llama.cpp :18889 served via tunnel :8003.
     8003: {
-        "model": "granite-30b",
+        "model": "granite-4.1-30b-mxfp8",
     },
     # mlx_lm.server resolves an unknown `model` field as a HF repo and tries to
     # download it; rewrite to the on-disk path the server already has loaded.
     9301: {
-        "model": "/Users/clems/KIKI-Mac_tunner/models/Mistral-Medium-3.5-128B-MLX-Q8",
+        "model": "Mistral-Medium-3.5-128B-MLX-Q8",
     },
     # Tower llama.cpp :9304 served via Tailscale, model loaded with --alias eu-kiki-gemma.
     9304: {
@@ -1073,7 +1077,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
     app.include_router(realtime_router)
 
     start_time = time.time()
-    http_client = httpx.AsyncClient(timeout=600.0)
+    http_client = httpx.AsyncClient(timeout=1800.0)
 
     # v0.3 chain orchestrator — built lazily on first opt-in request so
     # the gateway boots even when configs are missing. Validator kind
@@ -1724,7 +1728,12 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         # honour the cascade alias's rewrite (e.g. mlx_lm.server :8502 needs
         # the on-disk path the cascade target loaded).
         rewrite_key = cascade_alias if cascade_alias else req.model
-        override = ALIAS_MODEL_REWRITES.get(rewrite_key) or WORKER_FORWARD_OVERRIDES.get(worker_port)
+        _omlx_override = (
+            {"model": DOMAIN_TO_OMLX_MODEL[domain]}
+            if worker_port == OMLX_PORT and domain in DOMAIN_TO_OMLX_MODEL
+            else None
+        )
+        override = ALIAS_MODEL_REWRITES.get(rewrite_key) or _omlx_override or WORKER_FORWARD_OVERRIDES.get(worker_port)
         if override:
             if "model" in override:
                 body["model"] = override["model"]

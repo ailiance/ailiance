@@ -45,6 +45,8 @@ LLAMA_PORT = 9324            # Llama-3.3-70B-Instruct 4-bit
 PIXTRAL_PORT = 9325          # Pixtral-12B 4-bit (multimodal, not yet wired)
 MISTRAL_SMALL_PORT = 9326    # Mistral-Small-3.1-24B 4-bit
 
+OMLX_PORT = 8500  # consolidated omlx multi-model server (Tailscale 100.116.92.12:8500)
+
 # Math stays on Apertus (faster, sufficient for routine maths).
 # `reasoning` moved off Apertus to a dedicated reasoning worker — see
 # QWEN_DOMAINS / QWEN_LIVE below.
@@ -134,6 +136,56 @@ DOMAIN_ALIASES: dict[str, str] = {
     "embedded-c": "embedded",
 }
 
+DOMAIN_TO_OMLX_MODEL: dict[str, str] = {
+    "electronics-hw": "apertus-70b-electronics-hw-8bit",
+    "embedded": "apertus-70b-embedded-8bit",
+    "stm32": "apertus-70b-embedded-8bit",
+    "platformio": "apertus-70b-embedded-8bit",
+    "iot": "apertus-70b-embedded-8bit",
+    "misra-c": "apertus-70b-embedded-8bit",
+    "autosar-cert": "apertus-70b-embedded-8bit",
+    "emc": "apertus-70b-emc-dsp-power-8bit",
+    "dsp": "apertus-70b-emc-dsp-power-8bit",
+    "power": "apertus-70b-emc-dsp-power-8bit",
+    "spice": "apertus-70b-spice-sim-8bit",
+    "security": "apertus-70b-security-fenrir-8bit",
+    "math": "apertus-70b-math-8bit",
+    "calcul-normatif": "apertus-70b-math-8bit",
+    "freecad": "apertus-70b-electronics-hw-8bit",
+    "kicad": "gemma-4-e4b-mascarade-fused",
+    "kicad-dsl": "gemma-4-e4b-eukiki-fused",
+    "kicad-pcb": "gemma-4-e4b-eukiki-fused",
+    "reasoning": "DeepSeek-R1-Distill-Qwen-32B-MLX-4bit",
+    "python": "Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
+    "cpp": "Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
+    "rust": "Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
+    "typescript": "Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
+    "shell": "Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
+    "html-css": "Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
+    "sql": "Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
+    "web-backend": "Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
+    "web-frontend": "Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
+    "docker": "Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
+    "devops": "Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
+    "yaml-json": "Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
+    "llm-ops": "Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
+    "llm-orch": "Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
+    "ml-training": "Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
+    "lua-upy": "Qwen3-Coder-30B-A3B-Instruct-MLX-4bit",
+    "chat-fr": "EuroLLM-22B-Instruct-2512",
+    "traduction-tech": "EuroLLM-22B-Instruct-2512",
+    "redaction-multilingue": "EuroLLM-22B-Instruct-2512",
+    "localisation-doc": "EuroLLM-22B-Instruct-2512",
+    "general": "gemma-4-E4B-it-MLX-4bit",
+    "quick": "gemma-4-E4B-it-MLX-4bit",
+    "summarize": "gemma-4-E4B-it-MLX-4bit",
+    "classification": "gemma-4-E4B-it-MLX-4bit",
+    "tldr": "gemma-4-E4B-it-MLX-4bit",
+    "normes-iec": "Mistral-Small-3.1-24B-Instruct-MLX-4bit",
+    "doc-technique-ce": "Mistral-Small-3.1-24B-Instruct-MLX-4bit",
+    "music-audio": "Mistral-Small-3.1-24B-Instruct-MLX-4bit",
+}
+
 ALL_DOMAINS = (
     APERTUS_DOMAINS | DEVSTRAL_DOMAINS | EUROLLM_DOMAINS | GEMMA_DOMAINS
     | QWEN_DOMAINS | AILIANCE_MACM1_DOMAINS
@@ -182,6 +234,12 @@ for d in MASCARADE_DOMAINS:
 # from bypassing this override in get_worker_for_domain().
 for d in AILIANCE_MACM1_DOMAINS:
     DOMAIN_TO_WORKER[d] = AILIANCE_MACM1_PORT
+
+# Consolidation 2026-05-29: every domain with an omlx specialist routes to
+# the single omlx :8500 server; the per-domain model is resolved in server.py
+# via DOMAIN_TO_OMLX_MODEL. Legacy per-port workers are dead.
+for _d in DOMAIN_TO_OMLX_MODEL:
+    DOMAIN_TO_WORKER[_d] = OMLX_PORT
 
 
 # Minimum classifier score to route to a Mascarade specialist. Below this

@@ -438,33 +438,12 @@ def known_aliases() -> frozenset[str]:
 # Mascarade and Apertus aliases follow a strict naming convention
 # (``ailiance-<domain>`` / ``ailiance-apertus-<domain>``) so the map
 # below only enumerates the non-trivial cases.
-_DOMAIN_TO_ALIAS_EXPLICIT: dict[str, str] = {
-    # Reasoning / specialised
-    "reasoning": "ailiance-reasoning-r1",
-    "math-reasoning": "ailiance-apertus-math-reasoning",
-    "math-gsm8k": "ailiance-apertus-math-gsm8k",
-    "math": "ailiance-apertus-math",
-    "security-fenrir": "ailiance-apertus-security-fenrir",
-    "spice-sim": "ailiance-apertus-spice-sim",
-    "emc-dsp-power": "ailiance-apertus-emc-dsp-power",
-    "electronics-hw": "ailiance-apertus-electronics-hw",
-    # Code aliases that route via Devstral hot-swap
-    "python": "ailiance-python",
-    "cpp": "ailiance-cpp",
-    "rust-emb": "ailiance-rust-emb",
-    "html": "ailiance-html",
-    "ml-training": "ailiance-ml-training",
-    # General-purpose buckets → flagship by default
-    "general": "ailiance-mistral-medium",
-}
+_DOMAIN_TO_ALIAS_EXPLICIT: dict[str, str] = {}  # consolidated to omlx 2026-05-29
 
 # Domains served by the mascarade Tower Ollama ensemble. The alias is
 # always ``ailiance-<domain>`` so no enumeration needed; we just check
 # membership.
-_MASCARADE_DOMAINS: frozenset[str] = frozenset({
-    "kicad", "spice", "stm32", "emc", "embedded", "platformio",
-    "freecad", "dsp", "iot", "power", "components-review",
-})
+_MASCARADE_DOMAINS: frozenset[str] = frozenset()  # consolidated to omlx 2026-05-29
 
 
 def resolve_effective_alias(
