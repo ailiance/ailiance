@@ -57,7 +57,7 @@ from src.gateway.training.studio_ops import (
 from src.orchestrator.chain_orchestrator import ChainOrchestrator
 from src.orchestrator.chain_policy import ChainPolicy
 from src.orchestrator.validators import StubValidator, make_validator
-from src.router.domain_map import ALL_DOMAINS, DOMAIN_TO_OMLX_MODEL, DOMAIN_TO_QWEN36, OMLX_PORT, QWEN36_PORT, get_worker_for_domain
+from src.router.domain_map import ALL_DOMAINS, DOMAIN_TO_OMLX_MODEL, DOMAIN_TO_QWEN36, OMLX_PORT, QWEN36_PORT, QWEN36_PORT_B, get_worker_for_domain
 from src.worker.schemas import ChatCompletionRequest, ChatMessage
 from src.gateway.gaia_x.serving import mount_well_known
 
@@ -111,6 +111,7 @@ _DEFAULT_WORKER_URLS = {
     9335: "http://localhost:9335",  # Gemma-4-E4B multi-LoRA custom server
     8500: "http://100.116.92.12:8500",  # omlx consolidated multi-model (Tailscale)
     9360: "http://100.116.92.12:9360",  # qwen36 multi-LoRA server (Qwen3.6-35B + 30 adapters)
+    9361: "http://100.116.92.12:9361",  # qwen36 instance B (load split)
 }
 
 
@@ -321,6 +322,7 @@ WORKER_CONTEXT_WINDOWS: dict[int, int] = {
     9330: 131072,   # Studio Devstral multi-LoRA base
     8500: 32768,    # omlx consolidated multi-model server
     9360: 262144,   # qwen36 Qwen3.6-35B multi-LoRA server (256k ctx)
+    9361: 262144,   # qwen36 instance B (same ctx ceiling)
 }
 
 
@@ -1743,7 +1745,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         rewrite_key = cascade_alias if cascade_alias else req.model
         _qwen36_override = (
             {"model": DOMAIN_TO_QWEN36[domain]}
-            if worker_port == QWEN36_PORT and domain in DOMAIN_TO_QWEN36
+            if worker_port in (QWEN36_PORT, QWEN36_PORT_B) and domain in DOMAIN_TO_QWEN36
             else None
         )
         _omlx_override = (

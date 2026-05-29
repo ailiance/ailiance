@@ -282,6 +282,15 @@ def get_worker_for_domain_with_confidence(
     return DOMAIN_TO_WORKER.get(canonical)
 
 QWEN36_PORT = 9360  # multi-LoRA Qwen3.6-35B server (256k ctx) on Studio
+QWEN36_PORT_B = 9361  # second multi-LoRA instance (load split, less adapter thrash)
+# Domains served by instance B (code / web / devops / ml / language). The rest
+# of DOMAIN_TO_QWEN36 stays on instance A (9360, hardware / EDA / math).
+QWEN36_DOMAINS_B: frozenset[str] = frozenset({
+    "cpp", "rust", "typescript", "shell", "sql", "html-css",
+    "web-backend", "web-frontend", "docker", "devops", "yaml-json",
+    "llm-ops", "llm-orch", "ml-training", "lua-upy",
+    "chat-fr", "traduction-tech", "redaction-multilingue", "localisation-doc",
+})
 
 # router domain -> qwen36 adapter name served by the :9360 multi-LoRA server.
 # Excludes spice (numerically unreliable) and kicad-pcb (broken output) -> those
@@ -325,4 +334,4 @@ DOMAIN_TO_QWEN36: dict[str, str] = {
     "spice": "qwen36",  # spice adapter ruins RC math; base correct
 }
 for _d in DOMAIN_TO_QWEN36:
-    DOMAIN_TO_WORKER[_d] = QWEN36_PORT
+    DOMAIN_TO_WORKER[_d] = QWEN36_PORT_B if _d in QWEN36_DOMAINS_B else QWEN36_PORT
