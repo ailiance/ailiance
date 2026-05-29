@@ -36,6 +36,15 @@ degrades silently.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from src.router.domain_map import (
+    DOMAIN_TO_OMLX_MODEL,
+    DOMAIN_TO_QWEN36,
+    OMLX_PORT,
+    QWEN36_PORT,
+    QWEN36_PORT_B,
+)
+
+_QWEN36_PORTS = frozenset({QWEN36_PORT, QWEN36_PORT_B})
 
 
 @dataclass(frozen=True)
@@ -398,6 +407,28 @@ _REGISTRY: dict[str, AliasInventory] = {
         worker_host="studio:9322",
     ),
 }
+
+
+def served_model_for(*, alias: str, domain: str | None, worker_port: int) -> str:
+    """Derive the model/adapter actually serving a routed request.
+
+    Observability only (X-Ailiance-Served-Model header + audit stamp) —
+    never used for routing. Never raises; returns "unknown" only when
+    given no usable input.
+    """
+    if domain:
+        if worker_port in _QWEN36_PORTS:
+            adapter = DOMAIN_TO_QWEN36.get(domain)
+            if adapter:
+                return adapter
+        elif worker_port == OMLX_PORT:
+            model = DOMAIN_TO_OMLX_MODEL.get(domain)
+            if model:
+                return model
+    inv = _REGISTRY.get(alias)
+    if inv and inv.base_model:
+        return inv.base_model
+    return alias or "unknown"
 
 
 def get_alias_inventory(alias: str) -> AliasInventory | None:

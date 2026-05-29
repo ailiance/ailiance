@@ -405,3 +405,55 @@ def test_mid_stream_drop_telemetry(monkeypatch, caplog):
     assert drop_warnings, (
         f"Expected a WARNING log containing 'mid-stream', got records: {[(r.levelname, r.message) for r in caplog.records]}"
     )
+
+
+def test_worker_headers_includes_served_model():
+    from src.router.domain_map import QWEN36_PORT
+    from src.gateway.server import _worker_headers
+    h = _worker_headers(worker_port=QWEN36_PORT, domain="emc", effective_alias="ailiance")
+    assert h["X-Ailiance-Served-Model"] == "qwen36-emc-dsp-power"
+
+
+def test_worker_headers_omits_served_model_when_uninformative():
+    from src.gateway.server import _worker_headers
+    h = _worker_headers(worker_port=9304, domain="", effective_alias="ailiance")
+    assert "X-Ailiance-Served-Model" not in h
+
+
+def test_track_chat_accepts_served_model(monkeypatch):
+    import src.gateway.observability as obs
+    import asyncio
+    captured = {}
+
+    async def _fake_send_trace(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr(obs, "_send_trace", _fake_send_trace)
+
+    async def _run():
+        obs.track_chat(model_alias="ailiance", domain="emc", kind="direct",
+                       request_body={}, response_body={}, started_at=0.0,
+                       served_model="qwen36-emc-dsp-power")
+        await asyncio.sleep(0)
+
+    asyncio.run(_run())
+    assert captured.get("served_model") == "qwen36-emc-dsp-power"
+
+
+# ---------------------------------------------------------------------------
+# Issue #116 — EFFECTIVE_FORCE_MAP: self-maintaining, drops unconfigured ports
+# ---------------------------------------------------------------------------
+
+
+def test_effective_force_map_drops_unconfigured_ports():
+    from src.gateway.server import EFFECTIVE_FORCE_MAP, MODEL_FORCE_MAP, WORKER_URLS
+    for alias, port in EFFECTIVE_FORCE_MAP.items():
+        assert port in WORKER_URLS, f"{alias}:{port} not in WORKER_URLS"
+    dead = [a for a, p in MODEL_FORCE_MAP.items() if p not in WORKER_URLS]
+    for a in dead:
+        assert a not in EFFECTIVE_FORCE_MAP
+
+
+def test_effective_force_map_not_empty_at_cold_start():
+    from src.gateway.server import EFFECTIVE_FORCE_MAP
+    assert len(EFFECTIVE_FORCE_MAP) > 0
