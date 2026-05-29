@@ -309,7 +309,7 @@ WORKER_CONTEXT_WINDOWS: dict[int, int] = {
     8004: 32768,    # Tower Ollama: Qwen3 4B Q4 mascarade fine-tunes (32k default)
     9340: 32768,    # Studio MLX bf16 qwen3-4b-mascarade experts (conservative cap)
     8502: 32768,    # macm1 mlx_lm.server multi-model (Ministral/Gemma/Qwen 32k)
-    9301: 256000,   # Studio Mistral-Medium-3.5-128B-MLX-Q8
+    9301: 256000,   # Studio Mistral-Small-3.1-24B-Instruct-MLX-4bit
     9303: 131072,   # Studio EuroLLM-22B-Instruct-2512
     9304: 131072,   # Tower llama.cpp Gemma 3 4B IT
     9305: 131072,   # Studio Qwen3.6-35B-A3B-MLX-BF16
@@ -576,9 +576,9 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     "ailiance-qwen36": {"model": "Qwen3.6-35B-A3B-MLX-BF16"},
     # studio mlx_lm.server :9301 - rewrite to on-disk path the server has loaded
     # (mlx_lm.server resolves an unknown model field as an HF repo id, causing 404 + 60s timeout).
-    "ailiance-mistral-medium": {"model": "Mistral-Medium-3.5-128B-MLX-Q8"},
-    "ailiance-mistral": {"model": "Mistral-Medium-3.5-128B-MLX-Q8"},
-    "ailiance-apertus": {"model": "Mistral-Medium-3.5-128B-MLX-Q8"},  # legacy alias
+    "ailiance-mistral-medium": {"model": "Mistral-Small-3.1-24B-Instruct-MLX-4bit"},
+    "ailiance-mistral": {"model": "Mistral-Small-3.1-24B-Instruct-MLX-4bit"},
+    "ailiance-apertus": {"model": "Mistral-Small-3.1-24B-Instruct-MLX-4bit"},  # legacy alias
     # Tower Ollama :11434 via tunnel :8004 - Ollama needs the exact tag.
     "ailiance-kicad": {"model": "mascarade-kicad:latest"},
     "ailiance-spice": {"model": "mascarade-spice:latest"},
@@ -668,7 +668,7 @@ WORKER_FORWARD_OVERRIDES: dict[int, dict[str, str]] = {
     # mlx_lm.server resolves an unknown `model` field as a HF repo and tries to
     # download it; rewrite to the on-disk path the server already has loaded.
     9301: {
-        "model": "Mistral-Medium-3.5-128B-MLX-Q8",
+        "model": "Mistral-Small-3.1-24B-Instruct-MLX-4bit",
     },
     # Tower llama.cpp :9304 served via Tailscale, model loaded with --alias eu-kiki-gemma.
     9304: {
