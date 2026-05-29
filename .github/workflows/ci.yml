@@ -8,17 +8,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        # The vendored/iact-bench submodule is private (its GitHub repo is
-        # not publicly reachable as of #26), so a plain checkout cannot
-        # clone it without a token. The logic suite does not require it —
-        # the only test that needs it (test_iact_bench_validator.py) skips
-        # cleanly when vendored/iact-bench is absent. We therefore allow
-        # the submodule checkout to fail without failing the job. To make
-        # it init in CI, grant a PAT/deploy-key with read access to the
-        # submodule repo and add `token:`/`ssh-key:` below.
+        # The vendored/iact-bench submodule is private (ailiance/iact-bench).
+        # Set a repo secret IACT_BENCH_PAT (a PAT with read access to that
+        # repo) to clone it in CI. Absent the secret, the `|| github.token`
+        # fallback keeps the MAIN-repo checkout working; only the submodule
+        # clone fails, harmlessly — the one test needing it
+        # (test_iact_bench_validator.py) skips when vendored/iact-bench is
+        # absent. Once IACT_BENCH_PAT is set, drop `continue-on-error` to
+        # make the submodule init mandatory.
         continue-on-error: true
         with:
           submodules: recursive
+          token: ${{ secrets.IACT_BENCH_PAT || github.token }}
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
