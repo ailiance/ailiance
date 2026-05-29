@@ -60,8 +60,9 @@ def test_gateway_force_map_has_all_workers():
         "ailiance-embed",
     }
     assert expected_core.issubset(set(MODEL_FORCE_MAP))
-    # Tower Ollama mascarade aliases all share port 8004 (tunnel target).
-    assert MODEL_FORCE_MAP["ailiance-kicad"] == 8004
+    # Mascarade hardware aliases route to Studio MLX :9340 (omlx consolidation 2026-05-29).
+    assert MODEL_FORCE_MAP["ailiance-kicad"] == 9340
+    # ailiance-embed (bge-m3) remains on Tower Ollama :8004 (embed-only, not a chat model).
     assert MODEL_FORCE_MAP["ailiance-embed"] == 8004
     # ailiance-apertus is preserved as legacy alias → routes to mistral-medium.
     assert MODEL_FORCE_MAP.get("ailiance-apertus") == 9301

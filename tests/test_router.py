@@ -3,14 +3,13 @@ import pytest
 
 
 def test_domain_map_lookup():
-    from src.router.domain_map import DOMAIN_TO_WORKER, get_worker_for_domain
+    from src.router.domain_map import DOMAIN_TO_WORKER, OMLX_PORT, get_worker_for_domain
 
-    # `python` (and other DEVSTRAL_DOMAINS) now route to Studio
-    # Qwen3-Coder-30B :9327 — Devstral :9302 was decommissioned 2026-05-10.
-    assert get_worker_for_domain("python") == 9327
-    assert get_worker_for_domain("electronics-hw") == 9301
-    # chat-fr routes to EuroLLM (:9303) — Studio worker is up since 2026-05-11 08:50
-    assert get_worker_for_domain("chat-fr") == 9303
+    # omlx consolidation (2026-05-29): all domains in DOMAIN_TO_OMLX_MODEL route
+    # to the single omlx :8500 server (OMLX_PORT). Per-port workers are legacy.
+    assert get_worker_for_domain("python") == OMLX_PORT
+    assert get_worker_for_domain("electronics-hw") == OMLX_PORT
+    assert get_worker_for_domain("chat-fr") == OMLX_PORT
     assert get_worker_for_domain("unknown-domain") is None
 
 
@@ -40,62 +39,71 @@ def test_classifier_config():
 
 
 def test_mascarade_overrides_apertus():
-    """The 10 mascarade-specialized domains must route to Tower (:8004),
-    overriding the default Apertus mapping. Otherwise the auto-router
-    silently sends KiCad/SPICE/STM32 prompts to the 128B generalist
-    instead of the domain-fine-tuned LoRA."""
+    """The mascarade-specialized domains route to the omlx server (:8500)
+    after the omlx consolidation (2026-05-29). Previously routed to
+    Tower :8004 (Ollama Q4_K_M), then Studio MLX :9340 (MASCARADE_PORT).
+    Now all domains in DOMAIN_TO_OMLX_MODEL — including mascarade hardware
+    domains — resolve to OMLX_PORT via the last-write-wins consolidation loop."""
     from src.router.domain_map import (
         APERTUS_DOMAINS,
-        APERTUS_PORT,
         MASCARADE_DOMAINS,
         MASCARADE_PORT,
+        OMLX_PORT,
         get_worker_for_domain,
     )
 
-    assert MASCARADE_PORT == 8004
+    assert MASCARADE_PORT == 9340  # Studio MLX bf16 (was Tower Ollama :8004)
     assert MASCARADE_DOMAINS <= APERTUS_DOMAINS  # subset = override semantics
 
+    # After omlx consolidation, mascarade domains are in DOMAIN_TO_OMLX_MODEL
+    # and thus route to OMLX_PORT (last-write-wins over MASCARADE_PORT).
     for d in MASCARADE_DOMAINS:
-        assert get_worker_for_domain(d) == MASCARADE_PORT, (
-            f"{d!r} must route to Mascarade Tower tunnel, "
+        assert get_worker_for_domain(d) == OMLX_PORT, (
+            f"{d!r} must route to omlx :8500 after consolidation, "
             f"got {get_worker_for_domain(d)}"
         )
 
-    # Apertus domains NOT in mascarade keep Apertus
-    apertus_only = APERTUS_DOMAINS - MASCARADE_DOMAINS
-    assert apertus_only, "sanity: at least one pure-Apertus domain remains"
-    for d in apertus_only:
-        assert get_worker_for_domain(d) == APERTUS_PORT
-
 
 def test_kicad_pcb_routes_to_eukiki():
-    """'kicad-pcb' is now a first-class eu-kiki domain routed to :8502
-    (macm1 Gemma-4 E4B + curriculum LoRA). It was previously aliased to
-    'kicad' → Mascarade :8004. Bench Phase 6 (commit 46801af) shows eu-kiki
-    wins P1 generation by +42 pts — kicad-pcb alias removed, direct mapping
-    added to AILIANCE_MACM1_DOMAINS."""
-    from src.router.domain_map import AILIANCE_MACM1_PORT, get_worker_for_domain
+    """'kicad-pcb' routes to omlx :8500 (OMLX_PORT) after the omlx
+    consolidation (2026-05-29). Previously routed to macm1 :8502
+    (AILIANCE_MACM1_PORT) as a eu-kiki P1 champion (commit 46801af,
+    +42 pts). Now served via the omlx multi-model server with model
+    'gemma-4-e4b-eukiki-fused' (DOMAIN_TO_OMLX_MODEL)."""
+    from src.router.domain_map import OMLX_PORT, get_worker_for_domain
 
-    assert get_worker_for_domain("kicad-pcb") == AILIANCE_MACM1_PORT
+    assert get_worker_for_domain("kicad-pcb") == OMLX_PORT
 
 
 def test_kicad_dsl_routes_to_eukiki():
-    """'kicad-dsl' is a new P1 generation label routed to :8502
-    (macm1 Gemma-4 E4B + curriculum LoRA). Bench Phase 6 (commit 46801af)
-    shows eu-kiki wins P1 generation by +55 pts vs base Gemma-E4B."""
-    from src.router.domain_map import AILIANCE_MACM1_PORT, get_worker_for_domain
+    """'kicad-dsl' routes to omlx :8500 (OMLX_PORT) after the omlx
+    consolidation (2026-05-29). Previously routed to macm1 :8502
+    (AILIANCE_MACM1_PORT) as a eu-kiki P1 champion (commit 46801af,
+    +55 pts). Now served via the omlx multi-model server with model
+    'gemma-4-e4b-eukiki-fused' (DOMAIN_TO_OMLX_MODEL)."""
+    from src.router.domain_map import OMLX_PORT, get_worker_for_domain
 
-    assert get_worker_for_domain("kicad-dsl") == AILIANCE_MACM1_PORT
+    assert get_worker_for_domain("kicad-dsl") == OMLX_PORT
 
 
 def test_eukiki_domains_all_route_to_8502():
-    """All AILIANCE_MACM1_DOMAINS must resolve to :8502 — regression guard."""
-    from src.router.domain_map import AILIANCE_MACM1_DOMAINS, AILIANCE_MACM1_PORT, get_worker_for_domain
+    """AILIANCE_MACM1_DOMAINS (kicad-dsl, kicad-pcb) now route to omlx :8500
+    after the omlx consolidation (2026-05-29) — the omlx server handles these
+    via DOMAIN_TO_OMLX_MODEL. AILIANCE_MACM1_PORT (:8502) constant is preserved
+    for potential rollback; AILIANCE_MACM1_DOMAINS defines the label set."""
+    from src.router.domain_map import (
+        AILIANCE_MACM1_DOMAINS,
+        AILIANCE_MACM1_PORT,
+        DOMAIN_TO_OMLX_MODEL,
+        OMLX_PORT,
+        get_worker_for_domain,
+    )
 
     assert AILIANCE_MACM1_PORT == 8502
     for d in AILIANCE_MACM1_DOMAINS:
-        assert get_worker_for_domain(d) == AILIANCE_MACM1_PORT, (
-            f"{d!r} must route to eu-kiki macm1 :8502, "
+        expected = OMLX_PORT if d in DOMAIN_TO_OMLX_MODEL else AILIANCE_MACM1_PORT
+        assert get_worker_for_domain(d) == expected, (
+            f"{d!r} must route to omlx :8500 after consolidation, "
             f"got {get_worker_for_domain(d)}"
         )
 
@@ -103,34 +111,40 @@ def test_eukiki_domains_all_route_to_8502():
 def test_confidence_gating_falls_back_to_apertus():
     """Below the confidence threshold, mascarade domains fall back to
     Apertus. This protects against false-positive specialist routing
-    on ambiguous prompts where the bigger generalist is safer."""
+    on ambiguous prompts where the bigger generalist is safer.
+
+    omlx consolidation (2026-05-29): high-confidence mascarade domains
+    now route to OMLX_PORT (8500) instead of MASCARADE_PORT (9340),
+    because the omlx loop is last-write-wins in DOMAIN_TO_WORKER.
+    The low-confidence → APERTUS_PORT fallback is unchanged."""
     from src.router.domain_map import (
         APERTUS_PORT,
         MASCARADE_MIN_CONFIDENCE,
         MASCARADE_PORT,
+        OMLX_PORT,
         get_worker_for_domain_with_confidence,
     )
 
-    # High confidence → Mascarade
+    # High confidence → omlx (consolidation: kicad in DOMAIN_TO_OMLX_MODEL → OMLX_PORT)
     assert (
         get_worker_for_domain_with_confidence("kicad", 0.996)
-        == MASCARADE_PORT
+        == OMLX_PORT
     )
-    # Below threshold → Apertus fallback
+    # Below threshold → Apertus fallback (confidence gate still active)
     assert (
         get_worker_for_domain_with_confidence("kicad", 0.50)
         == APERTUS_PORT
     )
-    # Exactly at threshold → Mascarade (>= semantics)
+    # Exactly at threshold → omlx (>= semantics; above MASCARADE_MIN_CONFIDENCE)
     assert (
         get_worker_for_domain_with_confidence(
             "kicad", MASCARADE_MIN_CONFIDENCE
         )
-        == MASCARADE_PORT
+        == OMLX_PORT
     )
-    # Non-mascarade domain ignores threshold
+    # Non-mascarade domain ignores threshold; python → omlx after consolidation
     assert (
-        get_worker_for_domain_with_confidence("python", 0.01) == 9327
+        get_worker_for_domain_with_confidence("python", 0.01) == OMLX_PORT
     )
     # Empty/None safe
     assert get_worker_for_domain_with_confidence(None, 0.99) is None
@@ -138,27 +152,20 @@ def test_confidence_gating_falls_back_to_apertus():
 
 
 def test_eurollm_domains_route_to_eurollm_when_live():
-    """EuroLLM :9303 (Studio) was restored 2026-05-11 08:50 CEST after
-    the morning bench freed it. The 4 EUROLLM_DOMAINS (chat-fr,
-    traduction-tech, redaction-multilingue, localisation-doc) should now
-    route to EuroLLM 22B again instead of falling back to Gemma 4B.
-
-    Flip EUROLLM_LIVE=False in domain_map.py if :9303 dies again — the
-    sister assertion below will fail loudly and remind you to invert
-    this test back to the GEMMA_PORT expectation."""
+    """omlx consolidation (2026-05-29): EUROLLM_LIVE flag removed from
+    domain_map.py. The 4 EUROLLM_DOMAINS (chat-fr, traduction-tech,
+    redaction-multilingue, localisation-doc) are now in DOMAIN_TO_OMLX_MODEL
+    (model: EuroLLM-22B-Instruct-2512) and route to OMLX_PORT (8500).
+    The per-port EUROLLM_PORT (:9303) constant is preserved but no longer
+    wired into DOMAIN_TO_WORKER."""
     from src.router.domain_map import (
         EUROLLM_DOMAINS,
-        EUROLLM_LIVE,
-        EUROLLM_PORT,
+        OMLX_PORT,
         get_worker_for_domain,
     )
 
-    assert EUROLLM_LIVE is True, (
-        "EUROLLM_LIVE=False means Studio :9303 is down again — "
-        "this test must then be inverted to expect GEMMA_PORT."
-    )
     for d in EUROLLM_DOMAINS:
-        assert get_worker_for_domain(d) == EUROLLM_PORT, (
-            f"{d!r} must route to EuroLLM when live, "
+        assert get_worker_for_domain(d) == OMLX_PORT, (
+            f"{d!r} must route to omlx :8500 after consolidation, "
             f"got {get_worker_for_domain(d)}"
         )

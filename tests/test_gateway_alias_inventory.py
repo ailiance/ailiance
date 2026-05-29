@@ -173,26 +173,35 @@ class TestResolveEffectiveAlias:
         assert resolve_effective_alias("ailiance-pixtral") == "ailiance-pixtral"
 
     def test_auto_router_mascarade_kicad(self):
-        # Mascarade domain → ailiance-<domain> auto-derived.
-        assert resolve_effective_alias("ailiance", domain="kicad") == "ailiance-kicad"
+        # omlx consolidation (2026-05-29): _MASCARADE_DOMAINS and
+        # _DOMAIN_TO_ALIAS_EXPLICIT were emptied; all auto-routed traffic
+        # resolves to bare "ailiance" — the real served model is now
+        # determined by DOMAIN_TO_OMLX_MODEL in server.py.
+        assert resolve_effective_alias("ailiance", domain="kicad") == "ailiance"
 
     def test_auto_router_mascarade_spice(self):
-        assert resolve_effective_alias("ailiance", domain="spice") == "ailiance-spice"
+        # omlx consolidation: spice was already removed from mascarade 2026-05-11;
+        # _MASCARADE_DOMAINS now empty → falls through to bare "ailiance".
+        assert resolve_effective_alias("ailiance", domain="spice") == "ailiance"
 
     def test_auto_router_explicit_map_math_reasoning(self):
+        # omlx consolidation: _DOMAIN_TO_ALIAS_EXPLICIT emptied → bare "ailiance".
         assert (
             resolve_effective_alias("ailiance", domain="math-reasoning")
-            == "ailiance-apertus-math-reasoning"
+            == "ailiance"
         )
 
     def test_auto_router_python_domain(self):
-        # Code domains go to Devstral hot-swap aliases.
-        assert resolve_effective_alias("ailiance", domain="python") == "ailiance-python"
+        # omlx consolidation: code domains no longer resolve to devstral aliases
+        # via alias_inventory; resolved to bare "ailiance" (model dispatched via omlx).
+        assert resolve_effective_alias("ailiance", domain="python") == "ailiance"
 
     def test_auto_router_general_falls_to_flagship(self):
+        # omlx consolidation: _DOMAIN_TO_ALIAS_EXPLICIT emptied →
+        # general domain falls through to bare "ailiance".
         assert (
             resolve_effective_alias("ailiance", domain="general")
-            == "ailiance-mistral-medium"
+            == "ailiance"
         )
 
     def test_auto_router_unknown_domain_returns_ailiance(self):

@@ -152,6 +152,11 @@ _REGISTRY: dict[str, AliasInventory] = {
         base_model=BASE_MIXTRAL_8X22B,
         worker_host="studio:9329",
     ),
+    "ailiance-mixtral-8x22b": AliasInventory(
+        alias="ailiance-mixtral-8x22b",
+        base_model=BASE_MIXTRAL_8X22B,
+        worker_host="studio:9350",
+    ),
     "ailiance-qwen36": AliasInventory(
         alias="ailiance-qwen36",
         base_model=BASE_QWEN3_6_35B,
@@ -163,6 +168,24 @@ _REGISTRY: dict[str, AliasInventory] = {
         base_model=BASE_GEMMA_4_E4B,
         lora=("ailiance-curriculum",),
         worker_host="macm1:8502",
+    ),
+    "ailiance-gemma4-mascarade": AliasInventory(
+        alias="ailiance-gemma4-mascarade",
+        base_model=BASE_GEMMA_4_E4B,
+        lora=("gemma4-e4b-mascarade",),
+        worker_host="studio:9335",
+    ),
+    "ailiance-gemma4-aggro": AliasInventory(
+        alias="ailiance-gemma4-aggro",
+        base_model=BASE_GEMMA_4_E4B,
+        lora=("gemma4-e4b-aggro",),
+        worker_host="studio:9335",
+    ),
+    "ailiance-gemma4-kicad9plus": AliasInventory(
+        alias="ailiance-gemma4-kicad9plus",
+        base_model=BASE_GEMMA_4_E4B,
+        lora=("gemma4-e4b-kicad9plus",),
+        worker_host="studio:9335",
     ),
     "ailiance-gemma2": AliasInventory(
         alias="ailiance-gemma2",
