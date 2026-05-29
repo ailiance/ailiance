@@ -1,6 +1,6 @@
 """Generate a markdown compliance audit trail for the PDF pipeline.
 
-Output: ~/ailiance/docs/pdf-compliance-report.md
+Output: $AILIANCE/docs/pdf-compliance-report.md
 """
 
 from __future__ import annotations

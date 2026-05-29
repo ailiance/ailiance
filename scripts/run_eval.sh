@@ -15,16 +15,16 @@
 #   bash run_eval.sh --compare --skip-generation
 #
 # Output:
-#   ~/ailiance/output/eval/eval_report_v1_vs_v2.md    — comparison report
-#   ~/ailiance/output/eval/raw/                        — raw JSON results
+#   $AILIANCE/output/eval/eval_report_v1_vs_v2.md    — comparison report
+#   $AILIANCE/output/eval/raw/                        — raw JSON results
 #
 # EU AI Act Art. 53(1)(d): eval methodology documented for transparency
 # ==============================================================================
 
 set -euo pipefail
 
-AILIANCE="$HOME/ailiance"
-KIKI_TUNNER="$HOME/ailiance-mac-tuner"
+AILIANCE="${AILIANCE_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)}"
+KIKI_TUNNER="${KIKI_TUNNER_HOME:-$(dirname "$AILIANCE")/ailiance-mac-tuner}"
 EVAL_SCRIPT="$AILIANCE/scripts/eval_framework.py"
 
 # ---------------------------------------------------------------------------

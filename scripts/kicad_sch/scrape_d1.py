@@ -1,6 +1,6 @@
 """D1: scrape .kicad_sch from GitHub, license-filter, normalize, dedupe.
 
-Output: hash-named files in ``~/ailiance-data/kicad-sch-scraped/`` plus
+Output: hash-named files in ``<out-dir>/kicad-sch-scraped/`` plus
 an Annex-IV manifest (D1 split) and an NDJSON audit log.
 """
 

@@ -16,6 +16,7 @@ the perplexity numbers are directly comparable to the tuned matrix.
 import argparse
 import json
 import math
+import os
 import sys
 import time
 from pathlib import Path
@@ -26,7 +27,7 @@ import eval_framework as ef  # noqa: E402
 
 import mlx.core as mx  # noqa: E402,F401
 
-AILIANCE = Path.home() / "ailiance"
+AILIANCE = Path(os.environ.get("AILIANCE_HOME", Path(__file__).resolve().parent.parent))
 HF_DATA = AILIANCE / "data" / "hf-traced"
 RAW_OUTPUT = AILIANCE / "output" / "eval" / "raw"
 

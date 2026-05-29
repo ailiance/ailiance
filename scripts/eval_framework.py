@@ -41,8 +41,8 @@ WIRED_MEMORY_BUDGET_GIB = 440
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-AILIANCE = Path.home() / "ailiance"
-KIKI_TUNNER = Path.home() / "ailiance-mac-tuner"
+AILIANCE = Path(os.environ.get("AILIANCE_HOME", Path(__file__).resolve().parent.parent))
+KIKI_TUNNER = Path(os.environ.get("KIKI_TUNNER_HOME", AILIANCE.parent / "ailiance-mac-tuner"))
 HF_DATA = AILIANCE / "data" / "hf-traced"
 ADAPTERS_V1 = AILIANCE / "output" / "adapters"
 ADAPTERS_V2 = AILIANCE / "output" / "adapters-v2"
