@@ -379,3 +379,28 @@ the 27 Dockerfile `FROM` bases by digest.
 3. Acceptable to pin Dockerfile `FROM` by digest given multi-arch (amd64 host
    vs the Macs)? Digest is arch-specific — may need per-arch pins or a manifest
    list digest.
+
+## 13. Vision-stack additions to reconcile (2026-05-30)
+
+Enabling Pixtral/gemma-4 vision on omlx required ad-hoc additions that bypass
+the HITL pin+SBOM flow and must be reconciled:
+
+- **`torch==2.12.0` + `torchvision==0.27.0`** added to the **MacStudio
+  `~/omlx-venv`** (omlx's `PixtralProcessor` / VLM path needs them; without
+  them omlx falls back to text-only and drops the image). Installed via
+  `uv pip install --python ~/omlx-venv/bin/python torch torchvision`.
+  - **To reconcile:** pin these in the omlx-node deploy manifest
+    (`ailiance/ailiance-omlx-node`) and add the omlx-venv to the SBOM scope
+    (it was previously UNVERIFIED — captured here: omlx 0.3.9 + the MLX pins
+    in §11 + now torch/torchvision). These are heavy native deps (Metal/MPS).
+- **Gemma-4 vision model**: `gemma-4-E4B-it-MLX-4bit` (already in the omlx
+  catalog) is now the canonical vision worker (gateway #132). `pixtral-12b-8bit`
+  was downloaded (`mlx-community/pixtral-12b-8bit`) but is broken in omlx
+  (issue #133); both are Tier-0 omlx-served models, in scope for the freeze.
+- **Gateway env** `AILIANCE_IMAGE_FETCH_BASE_URL=http://100.78.191.52:9300`
+  (Tailscale) added so the worker fetches staged images directly (gateway
+  #135); the public `AILIANCE_PUBLIC_BASE_URL` stays HTTPS. Config, not a dep,
+  but recorded for the deploy manifest.
+
+**Open:** regenerate the omlx-venv SBOM once torch/torchvision are pinned in
+the omlx-node manifest; run `pip-audit` against the omlx-venv (torch CVEs).
