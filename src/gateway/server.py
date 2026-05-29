@@ -59,6 +59,7 @@ from src.orchestrator.chain_policy import ChainPolicy
 from src.orchestrator.validators import StubValidator, make_validator
 from src.router.domain_map import ALL_DOMAINS, DOMAIN_TO_OMLX_MODEL, OMLX_PORT, get_worker_for_domain
 from src.worker.schemas import ChatCompletionRequest, ChatMessage
+from gateway.gaia_x.serving import mount_well_known
 
 log = logging.getLogger(__name__)
 
@@ -1034,6 +1035,9 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         allow_credentials=False,
         max_age=86400,
     )
+    # Gaia-X: serve did.json + signed VCs under /.well-known (no-op until
+    # `python -m gateway.gaia_x.cli render` has written var/well-known).
+    mount_well_known(app)
     reg = CollectorRegistry()
     requests_total = Counter(
         "ailiance_gw_requests_total",
