@@ -278,3 +278,130 @@ def test_empty_content_no_usage_relayed(monkeypatch):
     assert resp.status_code == 200, (
         f"No-usage response must be relayed conservatively; got {resp.status_code}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Issue #117 — mid-stream worker drop: log + telemetry, no crash/500
+# ---------------------------------------------------------------------------
+
+def _make_mid_stream_drop_send(first_chunk: str):
+    """
+    Return a mock for httpx.AsyncClient.send that:
+    - Returns a streaming HTTP 200 with content-type text/event-stream.
+    - aiter_text() yields *first_chunk* then raises RemoteProtocolError.
+
+    The mock patches the `send` method (not `post`) because the streaming path
+    calls `http_client.send(req_stream, stream=True)`.
+
+    The fake response uses a custom stream object that satisfies httpx's
+    async iterator protocol without requiring a real network connection.
+    """
+    import json as _json
+
+    class _DropStream(httpx.AsyncByteStream):
+        """Async byte-stream that yields one chunk then simulates a mid-stream drop.
+
+        Must subclass httpx.AsyncByteStream so httpx's aiter_raw() guard passes.
+        """
+
+        def __init__(self, chunk: bytes):
+            self._chunk = chunk
+
+        async def __aiter__(self):
+            yield self._chunk
+            raise httpx.RemoteProtocolError(
+                "peer closed connection without sending complete message body",
+                request=None,
+            )
+
+        async def aclose(self):
+            pass
+
+    async def _fake_send(self, request, *, stream=False, **kwargs):
+        raw_stream = _DropStream(first_chunk.encode("utf-8"))
+        resp = httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            stream=raw_stream,
+            request=request,
+        )
+        return resp
+
+    return _fake_send
+
+
+def test_mid_stream_drop_no_crash(monkeypatch):
+    """Issue #117: worker drops SSE connection after first chunk.
+
+    Assertions:
+    (a) The client receives the initial SSE chunk (stream starts, no 500).
+    (b) The response status is 200 (already committed before drop — cannot 5xx).
+    (c) No unhandled exception propagates to the test.
+
+    The log/telemetry side-effect (track_chat with mid_stream_drop error) is
+    verified in test_mid_stream_drop_telemetry below.
+    """
+    import json as _json
+
+    # A single valid SSE chunk with content so saw_content=True (prevents the
+    # 'empty_completion' branch in finally — only the drop warning fires).
+    chunk = 'data: ' + _json.dumps({
+        "choices": [{"index": 0, "delta": {"content": "hello"}}]
+    }) + "\n\n"
+
+    monkeypatch.setattr(
+        httpx.AsyncClient, "send", _make_mid_stream_drop_send(chunk)
+    )
+
+    from src.gateway.server import make_gateway_app
+
+    app = make_gateway_app(skip_router_load=True)
+    client = TestClient(app, raise_server_exceptions=False)
+    resp = client.post(
+        "/v1/chat/completions",
+        json={"model": "ailiance-gemma", "messages": [{"role": "user", "content": "hi"}], "stream": True},
+        headers={"Accept": "text/event-stream"},
+    )
+    # HTTP 200 already committed — mid-stream drop cannot become 5xx.
+    assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text!r}"
+    # The first chunk must have reached the client.
+    assert b"hello" in resp.content, (
+        f"Expected first chunk to be relayed, got: {resp.content!r}"
+    )
+
+
+def test_mid_stream_drop_telemetry(monkeypatch, caplog):
+    """Issue #117: worker mid-stream drop must emit a warning log containing
+    'mid-stream worker drop' (and not crash).
+
+    Uses caplog to capture the WARNING from relay()'s except clause.
+    """
+    import json as _json
+    import logging
+
+    chunk = 'data: ' + _json.dumps({
+        "choices": [{"index": 0, "delta": {"content": "first"}}]
+    }) + "\n\n"
+
+    monkeypatch.setattr(
+        httpx.AsyncClient, "send", _make_mid_stream_drop_send(chunk)
+    )
+
+    from src.gateway.server import make_gateway_app
+
+    app = make_gateway_app(skip_router_load=True)
+    client = TestClient(app, raise_server_exceptions=False)
+
+    with caplog.at_level(logging.WARNING, logger="gateway"):
+        resp = client.post(
+            "/v1/chat/completions",
+            json={"model": "ailiance-gemma", "messages": [{"role": "user", "content": "hi"}], "stream": True},
+            headers={"Accept": "text/event-stream"},
+        )
+
+    assert resp.status_code == 200
+    # The except clause in relay() must have logged a warning.
+    drop_warnings = [r for r in caplog.records if "mid-stream" in r.message.lower() and r.levelno == logging.WARNING]
+    assert drop_warnings, (
+        f"Expected a WARNING log containing 'mid-stream', got records: {[(r.levelname, r.message) for r in caplog.records]}"
+    )

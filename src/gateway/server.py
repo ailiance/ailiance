@@ -1801,6 +1801,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 # (+ track_chat error) at stream end if none was seen.
                 async def relay() -> "object":
                     saw_content = False
+                    _mid_stream_drop = False  # set in except; suppresses double-signal in finally
                     try:
                         async for chunk in _normalize_sse_stream(
                             worker_resp.aiter_text()
@@ -1819,8 +1820,35 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                                     elif '"tool_calls"' in text or '"function_call"' in text:
                                         saw_content = True
                             yield chunk
+                    except httpx.RequestError as exc:
+                        # Worker dropped the connection mid-stream (after headers were
+                        # sent, so the HTTP 200 is already committed — cannot become a
+                        # 5xx).  Surface via log + audit telemetry instead of failing
+                        # silently.  The generator ends here; the client stream is
+                        # truncated.
+                        #
+                        # Double-signal policy: set _mid_stream_drop=True so the
+                        # finally block skips the empty-completion warning even if
+                        # saw_content is False (the drop warning is the right signal;
+                        # emitting both would be confusing in the audit trail).
+                        _mid_stream_drop = True
+                        log.warning(
+                            "mid-stream worker drop worker=%s: %s",
+                            worker_port,
+                            exc,
+                        )
+                        track_chat(
+                            model_alias=req.model,
+                            domain=domain,
+                            kind="direct",
+                            request_body=_trace_req_body,
+                            response_body={},
+                            started_at=_trace_started_at,
+                            error=f"mid_stream_drop worker={worker_port}: {exc}",
+                        )
+                        # Generator ends; finally still runs for lock/socket cleanup.
                     finally:
-                        if not saw_content:
+                        if not saw_content and not _mid_stream_drop:
                             log.warning(
                                 "empty streaming completion worker=%s",
                                 worker_port,
