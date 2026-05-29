@@ -10,15 +10,13 @@ jobs:
       - uses: actions/checkout@v6
         # Main repo only, via the default GITHUB_TOKEN (always works — never
         # coupled to any PAT).
-      - name: Init private iact-bench submodule (best-effort)
+      - name: Init private iact-bench submodule
         # ailiance/iact-bench is a private CROSS-repo submodule; the default
-        # GITHUB_TOKEN cannot read it. Clone it with IACT_BENCH_PAT (a PAT
-        # scoped to that repo) via a URL rewrite. Best-effort: if the PAT is
-        # unset/invalid the submodule is skipped and the one dependent test
-        # (test_iact_bench_validator.py) skips — main-repo CI stays green
-        # regardless. Drop continue-on-error once the PAT is confirmed working
-        # to make the submodule mandatory.
-        continue-on-error: true
+        # GITHUB_TOKEN cannot read it. Clone it with the IACT_BENCH_PAT secret
+        # (a fine-grained PAT scoped to that repo) via a URL rewrite. The PAT
+        # MUST be the git username (https://<token>@github.com) — the
+        # x-access-token:<token> form is rejected for fine-grained PATs.
+        # Mandatory: fails the build if the PAT is missing or loses access.
         run: |
           git config --global url."https://${{ secrets.IACT_BENCH_PAT }}@github.com/".insteadOf "https://github.com/"
           git submodule update --init --recursive
