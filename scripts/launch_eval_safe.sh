@@ -2,7 +2,7 @@
 # Wraps run_eval.sh and emits output/eval/last_run_status.json so downstream
 # automation can react without parsing free-form logs.
 set -euo pipefail
-AILIANCE="$HOME/ailiance"
+AILIANCE="${AILIANCE_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)}"
 STAMP=$(date +%Y%m%d-%H%M%S)
 LOG="$AILIANCE/output/eval/launch-${STAMP}.log"
 STATUS_FILE="$AILIANCE/output/eval/last_run_status.json"

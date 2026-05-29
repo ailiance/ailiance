@@ -19,14 +19,14 @@
 #   sudo sysctl -w iogpu.wired_limit_mb=458752
 #
 # Usage:
-#   bash ~/ailiance/scripts/train_batch9_qwen36_coding.sh
-#   bash ~/ailiance/scripts/train_batch9_qwen36_coding.sh --dry-run
+#   bash $AILIANCE/scripts/train_batch9_qwen36_coding.sh
+#   bash $AILIANCE/scripts/train_batch9_qwen36_coding.sh --dry-run
 # ==============================================================================
 
 set -euo pipefail
 
-KIKI_TUNNER="$HOME/ailiance-mac-tuner"
-AILIANCE="$HOME/ailiance"
+AILIANCE="${AILIANCE_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)}"
+KIKI_TUNNER="${KIKI_TUNNER_HOME:-$(dirname "$AILIANCE")/ailiance-mac-tuner}"
 HF_DATA="$AILIANCE/data/hf-traced"
 ADAPTERS="$AILIANCE/output/adapters-v2/qwen36"
 OUTPUT_ROOT="$KIKI_TUNNER/output/ailiance-v2"

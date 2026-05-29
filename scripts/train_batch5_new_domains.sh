@@ -7,8 +7,8 @@
 
 set -euo pipefail
 
-KIKI_TUNNER="$HOME/ailiance-mac-tuner"
-AILIANCE="$HOME/ailiance"
+AILIANCE="${AILIANCE_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)}"
+KIKI_TUNNER="${KIKI_TUNNER_HOME:-$(dirname "$AILIANCE")/ailiance-mac-tuner}"
 HF_DATA="$AILIANCE/data/hf-traced"
 ADAPTERS="$AILIANCE/output/adapters"
 OUTPUT_ROOT="$KIKI_TUNNER/output/ailiance-hf"

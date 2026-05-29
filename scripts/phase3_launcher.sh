@@ -7,14 +7,14 @@
 #   3. iogpu.wired_limit_mb=458752 (already set on Studio).
 #
 # Output:
-#   ~/ailiance/output/eval/raw/{perplexity,efficiency,generation,speed}_*.json
-#   ~/ailiance/output/eval/eval_report_v1_vs_v2.md
+#   $AILIANCE/output/eval/raw/{perplexity,efficiency,generation,speed}_*.json
+#   $AILIANCE/output/eval/eval_report_v1_vs_v2.md
 #
 # Wall-clock estimate: 3-4 h sustained MLX on M3 Ultra 512 GB.
 
 set -euo pipefail
 
-AILIANCE="$HOME/ailiance"
+AILIANCE="${AILIANCE_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)}"
 RAW="$AILIANCE/output/eval/raw"
 
 # 1. Pre-flight: confirm Phase 1 ran
