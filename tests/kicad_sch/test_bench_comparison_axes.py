@@ -6,7 +6,10 @@ from pathlib import Path
 
 import pytest
 
-BENCH = Path.home() / "ailiance/scripts/bench_comparison.py"
+# Repo-relative path (tests/kicad_sch/ -> repo root -> scripts/). The
+# previous Path.home()/"ailiance/scripts" pointed at a production deploy
+# location absent in CI; the script lives in the repo itself.
+BENCH = Path(__file__).resolve().parents[2] / "scripts" / "bench_comparison.py"
 
 
 def _write_ppl(path: Path, model: str, domain: str, ppl: float, n=30):

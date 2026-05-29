@@ -6,7 +6,10 @@ from pathlib import Path
 
 import pytest
 
-RUNNER = Path.home() / "ailiance/scripts/run_eval_n3.py"
+# Repo-relative path (tests/kicad_sch/ -> repo root -> scripts/). The
+# previous Path.home()/"ailiance/scripts" pointed at a production deploy
+# location absent in CI; the script lives in the repo itself.
+RUNNER = Path(__file__).resolve().parents[2] / "scripts" / "run_eval_n3.py"
 
 
 @pytest.mark.skipif(not RUNNER.exists(), reason="runner not yet created")

@@ -1,5 +1,7 @@
 import pytest
 
+pytest.importorskip("mlx")  # src.worker.runtime imports mlx; skip on CI/linux
+
 
 def test_runtime_config_defaults():
     from src.worker.runtime import WorkerConfig

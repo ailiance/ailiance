@@ -2,6 +2,8 @@ import json
 import pytest
 from pathlib import Path
 
+pytest.importorskip("mlx")  # mlx is Apple-Silicon only; skip on CI/linux
+
 from scripts.kicad_sch.audit_log import AuditLogger
 from scripts.kicad_sch import hybrid_pipeline
 

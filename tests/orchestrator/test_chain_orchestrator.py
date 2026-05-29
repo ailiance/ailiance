@@ -273,8 +273,13 @@ async def test_reflector_lookup_by_tool_when_domain_missing(
 
     Critic finding (MAJOR): ``configs/reflector_prompts.yaml`` keys
     ``ngspice-converge`` / ``compile-shell`` are tool names while the
-    orchestrator looks up by domain (``spice-sim`` / ``shell``). The
+    orchestrator looks up by domain (``spice`` / ``shell``). The
     fallback keeps both naming conventions working.
+
+    Note: the 2026-05-12 chain_policies.yaml realignment renamed the
+    iact-bench metric name ``spice-sim`` (never emitted by the
+    classifier) to the router-prod label ``spice``. This test was
+    updated to the canonical domain so the deliberate policy engages.
     """
     llm, seen = _make_llm(["bad", "good"])
     validator = _ScriptedValidator([1, 0], stderr="LIBRARY_NOT_FOUND")
@@ -285,11 +290,12 @@ async def test_reflector_lookup_by_tool_when_domain_missing(
         llm_call=llm,
         audit_dir=tmp_path,
     )
-    # spice-sim has policy=deliberate tool=ngspice-converge; the
-    # reflector YAML keys this template under the tool name.
+    # spice has policy=deliberate tool=ngspice-converge; the reflector
+    # YAML keys this template under the tool name, so the lookup must
+    # fall back from the (absent) domain key to the tool key.
     result = await orch.execute(
         "simulate this netlist",
-        domain="spice-sim",
+        domain="spice",
         model="ailiance",
     )
     assert result.status == "ok"

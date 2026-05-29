@@ -1,4 +1,7 @@
 import pytest
+
+pytest.importorskip("mlx")  # src.worker.runtime imports mlx; skip on CI/linux
+
 from fastapi.testclient import TestClient
 
 

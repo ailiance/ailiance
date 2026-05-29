@@ -1,3 +1,7 @@
+import pytest
+
+pytest.importorskip("mlx")  # mlx is Apple-Silicon only; skip on CI/linux
+
 import mlx.core as mx
 
 

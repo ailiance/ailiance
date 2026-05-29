@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 
 import pytest
+
+pytest.importorskip("mlx")  # mlx is Apple-Silicon only; skip on CI/linux
+
 from fastapi.testclient import TestClient
 
 from src.worker.runtime import WorkerConfig

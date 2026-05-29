@@ -8,6 +8,7 @@ boxes.
 
 from __future__ import annotations
 
+import importlib.util
 import io
 import shutil
 
@@ -16,9 +17,14 @@ import pytest
 from src.gateway.file_extract import detect_format, extract
 
 
+# OCR needs BOTH the tesseract binary and the pytesseract Python wrapper.
+# The wrapper is an optional dep not pinned in requirements-ci.txt, so the
+# binary alone is not sufficient (a dev box may have the binary via brew
+# without the wrapper in the venv).
 pytestmark = pytest.mark.skipif(
-    shutil.which("tesseract") is None,
-    reason="tesseract binary not available — install tesseract-ocr",
+    shutil.which("tesseract") is None
+    or importlib.util.find_spec("pytesseract") is None,
+    reason="OCR needs tesseract binary + pytesseract wrapper",
 )
 
 
