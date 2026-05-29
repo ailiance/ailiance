@@ -899,14 +899,26 @@ def _last_user_text(req) -> str:
 
 
 def _public_base_url() -> str:
-    """Public base URL the gateway is reachable at — for staged image URLs.
+    """Base URL a WORKER uses to fetch staged multimodal image URLs.
 
-    Set via ``AILIANCE_PUBLIC_BASE_URL`` (e.g. ``https://gateway.ailiance.fr``).
-    Falls back to ``http://localhost:9300`` for local dev / tests; that
-    fallback is only useful when both gateway and worker run on the
-    same host.
+    The gateway stages images and rewrites them to ``{base}/...`` so the
+    worker (e.g. omlx on another host) fetches them. The worker must be able
+    to reach this URL — which is NOT necessarily the public HTTPS domain
+    (that may front the website, not the gateway API, returning a 404 page
+    instead of the image).
+
+    Resolution order:
+    1. ``AILIANCE_IMAGE_FETCH_BASE_URL`` — a worker-reachable gateway address
+       (e.g. ``http://100.78.191.52:9300`` over Tailscale). Preferred; lets
+       the public URL stay HTTPS while the internal fetch uses a direct path.
+    2. ``AILIANCE_PUBLIC_BASE_URL`` — used if it is also worker-reachable and
+       serves the gateway API.
+    3. ``http://localhost:9300`` — local dev / same-host.
     """
-    return os.environ.get("AILIANCE_PUBLIC_BASE_URL", "http://localhost:9300")
+    return (
+        os.environ.get("AILIANCE_IMAGE_FETCH_BASE_URL")
+        or os.environ.get("AILIANCE_PUBLIC_BASE_URL", "http://localhost:9300")
+    )
 
 
 def _normalize_message_dict(msg: dict) -> None:
