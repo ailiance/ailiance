@@ -96,11 +96,11 @@ class TestVisionAliasContract:
     def test_canonical_is_in_set(self):
         assert _CANONICAL_VISION_ALIAS in _VISION_ALIASES
 
-    def test_pixtral_is_canonical(self):
-        # Pin the canonical alias to the only vision worker we run today.
-        # If the catalog grows (LLaVA, Qwen2-VL, etc.) this test will
-        # force a deliberate update.
-        assert _CANONICAL_VISION_ALIAS == "ailiance-pixtral"
+    def test_canonical_is_gemma4_omlx(self):
+        # gemma-4-E4B on omlx :8500 is the verified-working vision worker.
+        # Pixtral is broken in omlx (follow-up); if the catalog changes this
+        # test forces a deliberate update.
+        assert _CANONICAL_VISION_ALIAS == "ailiance-gemma4-omlx"
 
 
 class TestMultimodalHelper:
@@ -115,20 +115,20 @@ class TestMultimodalHelper:
 
 
 class TestVisionRouting:
-    """Any image-bearing request must reach Pixtral, regardless of the
-    requested alias — Pixtral is the only vision-capable worker."""
+    """Any image-bearing request must reach the canonical vision worker
+    (gemma-4-E4B on omlx), regardless of the requested alias."""
 
-    def test_image_request_routes_any_alias_to_pixtral(self):
-        assert _maybe_route_to_vision("ailiance", True) == "ailiance-pixtral"
-        assert _maybe_route_to_vision("ailiance-coder", True) == "ailiance-pixtral"
-        assert _maybe_route_to_vision("ailiance-qwen", True) == "ailiance-pixtral"
-        assert _maybe_route_to_vision("some-domain-model", True) == "ailiance-pixtral"
+    def test_image_request_routes_any_alias_to_vision(self):
+        for m in ("ailiance", "ailiance-coder", "ailiance-qwen", "some-domain-model"):
+            assert _maybe_route_to_vision(m, True) == "ailiance-gemma4-omlx"
 
     def test_vision_alias_passes_through(self):
-        # Already a vision alias → no rewrite.
+        # Already a vision alias → no rewrite (canonical and the pixtral
+        # follow-up alias both pass through).
+        assert _maybe_route_to_vision("ailiance-gemma4-omlx", True) == "ailiance-gemma4-omlx"
         assert _maybe_route_to_vision("ailiance-pixtral", True) == "ailiance-pixtral"
 
     def test_text_request_keeps_requested_alias(self):
         assert _maybe_route_to_vision("ailiance-coder", False) == "ailiance-coder"
         assert _maybe_route_to_vision("ailiance", False) == "ailiance"
-        assert _maybe_route_to_vision("ailiance-pixtral", False) == "ailiance-pixtral"
+        assert _maybe_route_to_vision("ailiance-gemma4-omlx", False) == "ailiance-gemma4-omlx"

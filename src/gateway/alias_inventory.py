@@ -136,6 +136,11 @@ _REGISTRY: dict[str, AliasInventory] = {
         base_model=BASE_PIXTRAL_12B,
         worker_host="omlx:8500",
     ),
+    "ailiance-gemma4-omlx": AliasInventory(
+        alias="ailiance-gemma4-omlx",
+        base_model=BASE_GEMMA_4_E4B,
+        worker_host="omlx:8500",
+    ),
     "ailiance-mistral-small": AliasInventory(
         alias="ailiance-mistral-small",
         base_model=BASE_MISTRAL_SMALL_24B,

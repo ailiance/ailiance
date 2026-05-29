@@ -466,6 +466,9 @@ MODEL_FORCE_MAP = {
     "ailiance-reasoning-r1": 9323,  # DeepSeek-R1-Distill-Qwen-32B 4-bit
     "ailiance-llama": 9350,  # Llama-3.3-70B-Instruct — swap pool :9350
     "ailiance-pixtral": 8500,  # Pixtral-12B 8bit on omlx :8500 (was dead :9325)
+    # Canonical vision worker: gemma-4-E4B VLM on omlx :8500 (verified E2E).
+    # Pixtral is broken in omlx (tokenizer regex drops [IMG]); follow-up pending.
+    "ailiance-gemma4-omlx": 8500,
     "ailiance-mistral-small": 9350,  # Mistral-Small-3.1-24B — swap pool :9350
     "ailiance-coder-pro": 9327,  # Qwen3-Coder-30B-A3B-Instruct 4-bit
     # Mixtral-8x22B-Instruct — swap pool :9350 (on-demand). `ailiance-mixtral`
@@ -631,6 +634,9 @@ ALIAS_MODEL_REWRITES: dict[str, dict[str, str]] = {
     },
     "ailiance-pixtral": {
         "model": "pixtral-12b-8bit",  # omlx :8500 subdir (8bit); standalone :9325 retired
+    },
+    "ailiance-gemma4-omlx": {
+        "model": "gemma-4-E4B-it-MLX-4bit",  # omlx :8500 VLM (canonical vision)
     },
     "ailiance-mistral-small": {
         "model": "Mistral-Small-3.1-24B-Instruct-MLX-4bit",
@@ -810,21 +816,23 @@ _BLOCKED_CHAT_ALIASES: frozenset[str] = frozenset({
 # Aliases backed by a vision-capable worker. Used by the multimodal
 # auto-route: ANY request whose body carries an ``image_url`` (or other
 # image) block is routed to the canonical vision alias, regardless of the
-# alias the caller asked for. Pixtral is the only vision-capable worker, so
-# a non-vision alias + image would otherwise fail at the worker; routing it
-# makes vision work for every caller (auto-router, coder, MCP, …). A caller
-# that already picked a vision alias is left untouched.
-_VISION_ALIASES: frozenset[str] = frozenset({"ailiance-pixtral"})
-_CANONICAL_VISION_ALIAS = "ailiance-pixtral"
+# alias the caller asked for, unless the caller already picked a vision
+# alias. The canonical worker is gemma-4-E4B on omlx :8500 (verified E2E:
+# reads text + colours). ailiance-pixtral is kept vision-capable for a
+# follow-up (Pixtral's [IMG] tokenization is broken in omlx today).
+_VISION_ALIASES: frozenset[str] = frozenset(
+    {"ailiance-gemma4-omlx", "ailiance-pixtral"}
+)
+_CANONICAL_VISION_ALIAS = "ailiance-gemma4-omlx"
 
 
 def _maybe_route_to_vision(model: str, has_images: bool) -> str:
     """Return the alias to actually serve.
 
     Any image-bearing request is routed to the canonical vision worker
-    (Pixtral) unless the caller already chose a vision-capable alias —
-    Pixtral is the only vision worker, so a non-vision alias + image would
-    otherwise be served by a text-only worker and fail.
+    (gemma-4-E4B on omlx) unless the caller already chose a vision-capable
+    alias — a non-vision alias + image would otherwise be served by a
+    text-only worker and fail.
     """
     if has_images and model not in _VISION_ALIASES:
         return _CANONICAL_VISION_ALIAS
