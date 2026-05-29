@@ -297,15 +297,19 @@ git-pinned MLX forks). Mirror by commit SHA to the dedicated vendoring org.
   via Cloudflare's own channel — track separately).
 - **MacStudio**: 23 `brew leaves`; `tailscale 1.96.4`, `ffmpeg 8.1.1`,
   `git 2.53.0`. NB: tailscale older than GrosMac (1.98.3) — flag for alignment.
-- **macM1**: pending — electron-server lacks macM1's SSH host key
-  (`Host key verification failed`); accept the host key on electron-server,
-  then re-run `/opt/homebrew/bin/brew leaves`.
+- **macM1**: 14 `brew leaves`; `tailscale 1.98.3` **and** `1.96.4` (two
+  versions installed — cleanup candidate). Reached via direct `ssh macm1`
+  (the electron-server bastion lacked macM1's host key). `git`/`ffmpeg`/
+  `autossh` not brew-managed here.
 
 ### Progress 2026-05-29
 - ✅ **Docker FROM digest pins applied & merged** — 25 Dockerfiles on
   iact-bench `master` (`4d14f53`) + qet's on `feat/qet-validator` (`dcc5f44`).
   26 Dockerfiles total (the doc earlier said "27" — actual is 26).
-- ✅ brew baseline: GrosMac + MacStudio captured (macM1 pending host key).
+- ✅ brew baseline: all 3 Macs captured (GrosMac 80 / Studio 23 / macM1 14).
+- ✅ **Stale lock fixed + CVEs remediated** on branch `chore/relock-cve-floors`
+  (gateway): `5916dfe` re-lock sync (+485 lines), `39cd228` CVE floors via
+  `[tool.uv] constraint-dependencies`. Awaiting HITL review/merge (prod deps).
 - ✅ SBOM + pip-audit generated (`sbom/cyclonedx.json` + `sbom/pip-audit.json`
   in both repos; gateway commit `a87b735`, iact-bench `3c1954c`). Gateway = 80
   components, iact-bench = 45. Method: `uv export` → `uvx cyclonedx-py` ;
@@ -313,29 +317,32 @@ git-pinned MLX forks). Mirror by commit SHA to the dedicated vendoring org.
 - ✅ Tier-0 vendoring script committed (gateway `26a001b`,
   `scripts/vendor-tier0.sh`, 6 SHAs incl. omlx v0.3.9 `8cad1212`).
 
-### Vulnerabilities found (pip-audit, 2026-05-29) — HITL upgrade candidates
-| Repo | Package | Version | Advisory | Fix |
-|------|---------|---------|----------|-----|
-| gateway | **starlette** | 1.0.0 | CVE-2026-48710 / PYSEC-2026-161 | **1.0.1** (ASGI under FastAPI — prod, prioritise) |
-| gateway | urllib3 | 2.6.3 | CVE-2026-44431 + CVE-2026-44432 | 2.7.0 |
-| gateway + bench | idna | 3.13 | CVE-2026-45409 | 3.15 |
+### Vulnerabilities found (pip-audit, 2026-05-29) — REMEDIATED on branch
+| Repo | Package | Was | Advisory | Fixed → (branch `chore/relock-cve-floors`) |
+|------|---------|-----|----------|--------------------------------------------|
+| gateway | **starlette** | 1.0.0 | CVE-2026-48710 / PYSEC-2026-161 | **1.2.0** (≥1.0.1) |
+| gateway | urllib3 | 2.6.3 | CVE-2026-44431 + CVE-2026-44432 | **2.7.0** |
+| gateway + bench | idna | 3.13 | CVE-2026-45409 | **3.17** (≥3.15) |
 
-### ⚠️ Defect found: stale `uv.lock` (gateway)
-The committed `uv.lock` is **out of sync with `pyproject.toml`** — missing
-~13 declared deps (beautifulsoup4, cryptography, jwcrypto, msgpack, openpyxl,
-pdf2image, pdfminer-six, pillow, pyld, pytesseract, python-docx,
-python-multipart, python-pptx — the Gaia-X + doc-processing work). The SBOM
-agent's `uv export` resynced it (+485 lines); that incidental change was
-**reverted** (no blind lockfile mutation). Fix deliberately: `uv lock` +
-review the regenerated set, then regenerate the SBOM from the synced lock.
+idna in iact-bench (3.13) is still to bump separately (transitive; no CVE
+floor added there yet).
+
+### Defect found & fixed: stale `uv.lock` (gateway)
+The committed `uv.lock` was **out of sync with `pyproject.toml`** — missing
+~13 declared deps (Gaia-X + doc-processing: jwcrypto, cryptography, pyld,
+pdfminer-six, python-docx/pptx, openpyxl, pillow, pytesseract, …). The SBOM
+agent's incidental `uv export` resync was reverted on `main` (no blind
+lockfile mutation), then done **deliberately** on branch
+`chore/relock-cve-floors` (`5916dfe`). Re-SBOM after that branch merges.
 
 ### Open items still needed before execution
-- **Deliberate `uv lock`** on gateway (stale-lock defect above) → re-SBOM.
-- Vuln upgrades above (starlette first) via HITL review.
-- macM1 brew (host-key accept on electron-server).
+- **Review + merge `chore/relock-cve-floors`** (gateway re-lock + CVE floors);
+  then regenerate the SBOM from the synced lock.
+- iact-bench `idna` 3.13 → ≥3.15 bump.
 - Tier-0 vendoring run → **needs the dedicated org created first** (GitHub
   orgs cannot be created via API/`gh` — manual web step); then
   `ORG=<org> ./scripts/vendor-tier0.sh`.
+- macM1 tailscale dedupe (1.98.3 + 1.96.4 both installed).
 - Full `brew bundle dump` (vs `leaves`) once host set is final.
 - npm/brew/cargo/apt/Docker extension inventory — NOT yet written (the
   extension agent hit a session limit 2026-05-29). Re-run after reset.
