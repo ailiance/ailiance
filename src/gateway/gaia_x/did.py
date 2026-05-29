@@ -1,7 +1,7 @@
 """did:web DID document builder."""
 from __future__ import annotations
 
-from gateway.gaia_x.config import GaiaXConfig
+from src.gateway.gaia_x.config import GaiaXConfig
 
 
 def build_did_document(cfg: GaiaXConfig, public_jwk: dict) -> dict:

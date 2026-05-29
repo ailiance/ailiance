@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from gateway.gaia_x.serving import mount_well_known
+from src.gateway.gaia_x.serving import mount_well_known
 
 
 def test_mount_serves_did_document(tmp_path):

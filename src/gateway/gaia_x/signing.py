@@ -22,8 +22,8 @@ from pathlib import Path
 
 from jwcrypto import jwk, jws
 
-from gateway.gaia_x.canonicalize import canonical_digest
-from gateway.gaia_x.config import GaiaXConfig
+from src.gateway.gaia_x.canonicalize import canonical_digest
+from src.gateway.gaia_x.config import GaiaXConfig
 
 # RFC 7797 §3 unencoded payload; required by JsonWebSignature2020 / GXDCH
 _PROTECTED = {"alg": "PS256", "b64": False, "crit": ["b64"]}

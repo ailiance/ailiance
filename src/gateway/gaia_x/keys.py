@@ -7,7 +7,7 @@ from pathlib import Path
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from gateway.gaia_x.config import GaiaXConfig
+from src.gateway.gaia_x.config import GaiaXConfig
 
 
 def ensure_key(path: Path) -> None:

@@ -1,7 +1,7 @@
 """Gaia-X Verifiable Credential builders (unsigned)."""
 from __future__ import annotations
 
-from gateway.gaia_x.config import GaiaXConfig, GX_CONTEXT, JWS_CONTEXT, VC_CONTEXT
+from src.gateway.gaia_x.config import GaiaXConfig, GX_CONTEXT, JWS_CONTEXT, VC_CONTEXT
 
 # Fixed Gaia-X-mandated T&C text. Its SHA-256 must match the registry
 # canonical text; copy the exact string from the registry at integration.

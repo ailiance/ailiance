@@ -1,6 +1,6 @@
 from pathlib import Path
-from gateway.gaia_x.keys import ensure_key, public_jwk
-from gateway.gaia_x.did import build_did_document
+from src.gateway.gaia_x.keys import ensure_key, public_jwk
+from src.gateway.gaia_x.did import build_did_document
 
 
 def test_did_document_shape(tmp_path: Path, cfg):

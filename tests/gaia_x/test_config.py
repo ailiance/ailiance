@@ -1,6 +1,6 @@
 import os
 import pytest
-from gateway.gaia_x.config import GaiaXConfig
+from src.gateway.gaia_x.config import GaiaXConfig
 
 
 def test_from_env_defaults(monkeypatch):

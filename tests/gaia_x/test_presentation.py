@@ -1,4 +1,4 @@
-from gateway.gaia_x.presentation import build_presentation
+from src.gateway.gaia_x.presentation import build_presentation
 
 
 def test_presentation_wraps_credentials():

@@ -1,5 +1,5 @@
 import pytest
-from gateway.gaia_x.config import GaiaXConfig
+from src.gateway.gaia_x.config import GaiaXConfig
 
 
 @pytest.fixture

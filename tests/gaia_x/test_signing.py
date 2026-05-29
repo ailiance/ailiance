@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
-from gateway.gaia_x.keys import ensure_key
-from gateway.gaia_x.signing import sign_credential, verify_credential
+from src.gateway.gaia_x.keys import ensure_key
+from src.gateway.gaia_x.signing import sign_credential, verify_credential
 
 pytestmark = pytest.mark.network
 

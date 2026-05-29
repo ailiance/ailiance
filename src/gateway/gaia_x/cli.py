@@ -12,15 +12,15 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-from gateway.gaia_x.config import GaiaXConfig
-from gateway.gaia_x.credentials import (
+from src.gateway.gaia_x.config import GaiaXConfig
+from src.gateway.gaia_x.credentials import (
     build_legal_participant,
     build_service_offering,
     build_terms_and_conditions,
 )
-from gateway.gaia_x.did import build_did_document
-from gateway.gaia_x.keys import ensure_key, public_jwk
-from gateway.gaia_x.signing import sign_credential
+from src.gateway.gaia_x.did import build_did_document
+from src.gateway.gaia_x.keys import ensure_key, public_jwk
+from src.gateway.gaia_x.signing import sign_credential
 
 
 def _now() -> str:
@@ -55,7 +55,7 @@ def _cfg_and_paths(args):
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="gateway.gaia_x.cli")
+    parser = argparse.ArgumentParser(prog="src.gateway.gaia_x.cli")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("render", help="write did.json + signed VCs")
     args = parser.parse_args(argv)

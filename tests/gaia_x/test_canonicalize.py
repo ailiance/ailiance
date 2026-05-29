@@ -2,7 +2,7 @@ import hashlib
 
 import pytest
 
-from gateway.gaia_x.canonicalize import canonical_digest, normalize
+from src.gateway.gaia_x.canonicalize import canonical_digest, normalize
 
 # These tests fetch the W3C VC JSON-LD context over the network because the
 # offline context cache (_CACHED_CONTEXTS) is deliberately deferred. Marked

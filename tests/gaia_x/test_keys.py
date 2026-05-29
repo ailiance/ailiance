@@ -1,5 +1,5 @@
 from pathlib import Path
-from gateway.gaia_x.keys import ensure_key, public_jwk
+from src.gateway.gaia_x.keys import ensure_key, public_jwk
 
 
 def test_ensure_key_creates_rsa_pem(tmp_path: Path):

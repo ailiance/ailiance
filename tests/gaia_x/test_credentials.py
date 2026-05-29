@@ -1,4 +1,4 @@
-from gateway.gaia_x.credentials import (
+from src.gateway.gaia_x.credentials import (
     build_legal_participant,
     build_terms_and_conditions,
     build_service_offering,

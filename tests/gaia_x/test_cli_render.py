@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from gateway.gaia_x.config import GaiaXConfig
-from gateway.gaia_x.cli import render_artifacts
+from src.gateway.gaia_x.config import GaiaXConfig
+from src.gateway.gaia_x.cli import render_artifacts
 
 # render signs VCs -> canonical_digest fetches the W3C JSON-LD context (network).
 pytestmark = pytest.mark.network
