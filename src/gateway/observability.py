@@ -76,6 +76,7 @@ async def _send_trace(
     upstream_model: str | None = None,
     chain_id: str | None = None,
     error: str | None = None,
+    served_model: str | None = None,
 ) -> None:
     """Background task: emit a Langfuse trace + generation observation."""
     client = _get_client()
@@ -98,6 +99,7 @@ async def _send_trace(
             metadata={
                 "alias": model_alias,
                 "upstream_model": upstream_model or response_body.get("model"),
+                "served_model": served_model,
                 "domain": domain,
                 "kind": kind,
                 "latency_ms": round(latency_ms, 1),
@@ -140,6 +142,7 @@ def track_chat(
     upstream_model: str | None = None,
     chain_id: str | None = None,
     error: str | None = None,
+    served_model: str | None = None,
 ) -> None:
     """Public entry point: spawn the background trace and return immediately."""
     latency_ms = (time.perf_counter() - started_at) * 1000.0
@@ -155,6 +158,7 @@ def track_chat(
                 upstream_model=upstream_model,
                 chain_id=chain_id,
                 error=error,
+                served_model=served_model,
             )
         )
     except RuntimeError:

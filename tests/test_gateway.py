@@ -418,3 +418,23 @@ def test_worker_headers_omits_served_model_when_uninformative():
     from src.gateway.server import _worker_headers
     h = _worker_headers(worker_port=9304, domain="", effective_alias="ailiance")
     assert "X-Ailiance-Served-Model" not in h
+
+
+def test_track_chat_accepts_served_model(monkeypatch):
+    import src.gateway.observability as obs
+    import asyncio
+    captured = {}
+
+    async def _fake_send_trace(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr(obs, "_send_trace", _fake_send_trace)
+
+    async def _run():
+        obs.track_chat(model_alias="ailiance", domain="emc", kind="direct",
+                       request_body={}, response_body={}, started_at=0.0,
+                       served_model="qwen36-emc-dsp-power")
+        await asyncio.sleep(0)
+
+    asyncio.run(_run())
+    assert captured.get("served_model") == "qwen36-emc-dsp-power"

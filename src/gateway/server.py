@@ -1710,6 +1710,11 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                 response_body=response,
                 started_at=_trace_started_at,
                 chain_id=chain_result.chain_id,
+                served_model=served_model_for(
+                    alias=req.model,
+                    domain=domain,
+                    worker_port=worker_port,
+                ),
             )
             chain_alias = resolve_effective_alias(
                 req.model, cascade_alias=cascade_alias, domain=domain,
@@ -2017,6 +2022,11 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             response_body=response_body,
             started_at=_trace_started_at,
             upstream_model=response_body.get("model"),
+            served_model=served_model_for(
+                alias=effective_alias or req.model,
+                domain=domain,
+                worker_port=worker_port,
+            ),
         )
         return JSONResponse(
             content=response_body,
