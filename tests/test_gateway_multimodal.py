@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from src.gateway.server import (
     _CANONICAL_VISION_ALIAS,
+    _maybe_route_to_vision,
     _VISION_ALIASES,
     _request_has_images,
 )
@@ -111,3 +112,23 @@ class TestMultimodalHelper:
         assert _content_has_multimodal_block(blocks) is True
         text_blocks = [{"type": "text", "text": "hi"}]
         assert _content_has_multimodal_block(text_blocks) is False
+
+
+class TestVisionRouting:
+    """Any image-bearing request must reach Pixtral, regardless of the
+    requested alias — Pixtral is the only vision-capable worker."""
+
+    def test_image_request_routes_any_alias_to_pixtral(self):
+        assert _maybe_route_to_vision("ailiance", True) == "ailiance-pixtral"
+        assert _maybe_route_to_vision("ailiance-coder", True) == "ailiance-pixtral"
+        assert _maybe_route_to_vision("ailiance-qwen", True) == "ailiance-pixtral"
+        assert _maybe_route_to_vision("some-domain-model", True) == "ailiance-pixtral"
+
+    def test_vision_alias_passes_through(self):
+        # Already a vision alias → no rewrite.
+        assert _maybe_route_to_vision("ailiance-pixtral", True) == "ailiance-pixtral"
+
+    def test_text_request_keeps_requested_alias(self):
+        assert _maybe_route_to_vision("ailiance-coder", False) == "ailiance-coder"
+        assert _maybe_route_to_vision("ailiance", False) == "ailiance"
+        assert _maybe_route_to_vision("ailiance-pixtral", False) == "ailiance-pixtral"

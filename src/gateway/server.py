@@ -808,13 +808,27 @@ _BLOCKED_CHAT_ALIASES: frozenset[str] = frozenset({
 
 
 # Aliases backed by a vision-capable worker. Used by the multimodal
-# auto-route override: when the request body carries any ``image_url``
-# content and the caller is on the auto-router (``model == "ailiance"``),
-# we transparently re-route to the canonical vision alias. Aliases the
-# caller explicitly set are honoured verbatim — we never override an
-# explicit non-vision choice.
+# auto-route: ANY request whose body carries an ``image_url`` (or other
+# image) block is routed to the canonical vision alias, regardless of the
+# alias the caller asked for. Pixtral is the only vision-capable worker, so
+# a non-vision alias + image would otherwise fail at the worker; routing it
+# makes vision work for every caller (auto-router, coder, MCP, …). A caller
+# that already picked a vision alias is left untouched.
 _VISION_ALIASES: frozenset[str] = frozenset({"ailiance-pixtral"})
 _CANONICAL_VISION_ALIAS = "ailiance-pixtral"
+
+
+def _maybe_route_to_vision(model: str, has_images: bool) -> str:
+    """Return the alias to actually serve.
+
+    Any image-bearing request is routed to the canonical vision worker
+    (Pixtral) unless the caller already chose a vision-capable alias —
+    Pixtral is the only vision worker, so a non-vision alias + image would
+    otherwise be served by a text-only worker and fail.
+    """
+    if has_images and model not in _VISION_ALIASES:
+        return _CANONICAL_VISION_ALIAS
+    return model
 
 
 def _request_has_images(req) -> bool:
@@ -1441,16 +1455,18 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         if _request_has_images(req):
             rewrite_image_urls(req.messages, _public_base_url())
 
-        # Multimodal auto-route: when the caller is on the auto-router
-        # alias and the request body carries an image (or any non-text
-        # block), transparently redirect to the canonical vision alias.
-        # An explicit non-vision choice from the caller is respected —
-        # they'll get whatever error the worker raises, never a silent
-        # rewrite that hides their intent.
+        # Multimodal auto-route: any request whose body carries an image
+        # block is redirected to the canonical vision alias (Pixtral), no
+        # matter which alias the caller asked for. Pixtral is the only
+        # vision-capable worker, so a non-vision alias + image would fail at
+        # the worker; routing it makes vision work for every caller. A caller
+        # already on a vision alias is left untouched.
         _multimodal_routed = False
-        if req.model == "ailiance" and _request_has_images(req):
-            req.model = _CANONICAL_VISION_ALIAS
-            _multimodal_routed = True
+        if _request_has_images(req):
+            _vision_alias = _maybe_route_to_vision(req.model, True)
+            if _vision_alias != req.model:
+                req.model = _vision_alias
+                _multimodal_routed = True
 
         # Per-alias default system prompt: only prepended if the caller
         # hasn't already supplied a ``system`` message. Used today to
