@@ -291,8 +291,15 @@ lockfile.
 These 7 + omlx 0.3.9 = the **Tier-0 vendoring set** (Apache-2.0 omlx + its
 git-pinned MLX forks). Mirror by commit SHA to the dedicated vendoring org.
 
+### brew baseline (partial, 2026-05-29)
+- **GrosMac**: 80 `brew leaves`; critical: `tailscale 1.98.3`, `autossh 1.4g`,
+  `ffmpeg 8.1.1`, `git 2.54.0`. `cloudflared` is NOT brew-managed (installed
+  via Cloudflare's own channel — track separately).
+- **MacStudio / macM1**: pending — non-login ssh lacks `/opt/homebrew/bin` in
+  PATH; re-run with the full brew path via bastion.
+
 ### Open items still needed before execution
-- brew formulae per Mac host (`brew bundle dump`).
+- Full `brew bundle dump` on Studio + macM1 (full-path PATH via bastion).
 - SBOM generation (`cyclonedx-py`) + `pip-audit`/`osv-scanner` snapshot.
 - Apply the 27 Dockerfile `FROM` digest pins (PR + HITL review) — digests in
   `iact-bench/docker/BASE_IMAGE_DIGESTS.md`.
