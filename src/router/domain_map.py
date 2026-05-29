@@ -313,8 +313,8 @@ DOMAIN_TO_QWEN36: dict[str, str] = {
     "docker": "qwen36-docker-devops",
     "devops": "qwen36-docker-devops",
     "yaml-json": "qwen36-yaml-json",
-    "llm-ops": "qwen36-llm-ops",
-    "llm-orch": "qwen36-llm-orch",
+    "llm-ops": "qwen36",  # adapter leaks URLs -> base
+    "llm-orch": "qwen36",  # adapter leaks URLs -> base
     "ml-training": "qwen36-ml-training",
     "lua-upy": "qwen36-lua-upy",
     "chat-fr": "qwen36-chat-fr",
@@ -322,6 +322,7 @@ DOMAIN_TO_QWEN36: dict[str, str] = {
     "redaction-multilingue": "qwen36-multilingual-eu",
     "localisation-doc": "qwen36-multilingual-eu",
     "music-audio": "qwen36-music-audio",
+    "spice": "qwen36",  # spice adapter ruins RC math; base correct
 }
 for _d in DOMAIN_TO_QWEN36:
     DOMAIN_TO_WORKER[_d] = QWEN36_PORT
