@@ -7,7 +7,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         # The vendored/iact-bench submodule is private (its GitHub repo is
         # not publicly reachable as of #26), so a plain checkout cannot
         # clone it without a token. The logic suite does not require it —
@@ -19,7 +19,7 @@ jobs:
         continue-on-error: true
         with:
           submodules: recursive
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
       - name: Install deps
