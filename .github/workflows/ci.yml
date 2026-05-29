@@ -20,7 +20,7 @@ jobs:
         # to make the submodule mandatory.
         continue-on-error: true
         run: |
-          git config --global url."https://x-access-token:${{ secrets.IACT_BENCH_PAT }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://${{ secrets.IACT_BENCH_PAT }}@github.com/".insteadOf "https://github.com/"
           git submodule update --init --recursive
       - uses: actions/setup-python@v6
         with:
