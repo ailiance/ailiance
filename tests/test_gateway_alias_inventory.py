@@ -27,6 +27,9 @@ class TestRegistryContract:
         assert inv is not None
         assert "Pixtral" in inv.base_model
         assert inv.lora == ()
+        # Repointed from the retired standalone :9325 worker to omlx :8500
+        # (which serves the 8bit Pixtral). See server.py MODEL_FORCE_MAP.
+        assert inv.worker_host == "omlx:8500"
 
     def test_mascarade_kicad_has_lora(self):
         inv = get_alias_inventory("ailiance-kicad")
