@@ -8,15 +8,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Init private iact-bench submodule
-        # Main repo checks out above with the default GITHUB_TOKEN. The
-        # private submodule (ailiance/iact-bench) is cloned here with
-        # IACT_BENCH_PAT — a PAT scoped to ONLY that repo — via a URL
-        # rewrite, so the PAT needs no access to this repo. Mandatory: fails
-        # loudly if the PAT is missing or loses access (no continue-on-error).
-        run: |
-          git config --global url."https://x-access-token:${{ secrets.IACT_BENCH_PAT }}@github.com/".insteadOf "https://github.com/"
-          git submodule update --init --recursive
+        # The private submodule ailiance/iact-bench is cloned with the default
+        # GITHUB_TOKEN: that repo grants Actions access to the org (its
+        # Settings → Actions → Access = organization), so no PAT/secret is
+        # needed. Mandatory init — fails loudly if that access is revoked.
+        with:
+          submodules: recursive
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
