@@ -259,9 +259,43 @@ lockfile.
 - **jwcrypto = KEPT** — LGPL-3.0 used via dynamic linking only (no copyleft
   contamination of the Apache-2.0 product); record it in `NOTICE` + SBOM.
 
+### omlx resolved (2026-05-29, MacStudio bastion probe)
+- **omlx 0.3.9 = Apache-2.0** (dist-info METADATA: `License: Apache-2.0`,
+  classifier OSI Apache, `LICENSE` file present). Upstream confirmed
+  `github.com/jundot/omlx`. **License-unknown blocker is CLEARED.** The
+  vendoring case now rests on *reputation + privilege* (single-maintainer
+  repo running in the inference path), not licensing.
+- **omlx pulls 5 deps via `git+…@<commit>` (NOT PyPI) — the real supply-chain
+  surface:** `mlx-lm @ ml-explore@ed1fca4`, `mlx-embeddings @ Blaizzy@32981fa`,
+  `mlx-vlm @ Blaizzy@f96138e`, `dflash-mlx @ bstnxbt@1ba6713`, `mlx-audio @
+  Blaizzy@5175326` (audio extra). Commit-pinned (good) but they point at
+  individual-maintainer forks — risk if a repo is deleted/force-pushed.
+  **Action:** mirror those 5 commits to the dedicated vendoring org (this is
+  the strongest argument for vendoring omlx + its git deps together).
+- `mlx>=0.31.2`, `transformers>=5.0.0`, `fastapi>=0.108.0`, etc. are `>=`
+  ranges → pin exact installed versions in the baseline lock.
+- The uv-style `~/omlx-venv` has **no `pip`**; use `~/omlx-venv/bin/python`
+  or read `*.dist-info/METADATA` directly (done here).
+
+### Installed MLX-family pins on Studio (`~/omlx-venv`, 2026-05-29)
+| Package | Installed version |
+|---------|-------------------|
+| `mlx` | 0.31.2 |
+| `mlx-metal` | 0.31.2 |
+| `mlx-lm` | 0.31.3 (git `ml-explore@ed1fca4`) |
+| `mlx-vlm` | 0.5.0 (git `Blaizzy@f96138e`) |
+| `mlx-embeddings` | 0.1.0 (git `Blaizzy@32981fa`) |
+| `mlx-audio` | 0.4.3 (git `Blaizzy@5175326`) |
+| `dflash-mlx` | 0.1.7 (git `bstnxbt@1ba6713`) |
+
+These 7 + omlx 0.3.9 = the **Tier-0 vendoring set** (Apache-2.0 omlx + its
+git-pinned MLX forks). Mirror by commit SHA to the dedicated vendoring org.
+
 ### Open items still needed before execution
-- omlx LICENSE + canonical source (unknown #1) — still blocks the omlx
-  vendoring decision; needs `~/omlx-venv/bin/pip freeze` on MacStudio (#2).
+- brew formulae per Mac host (`brew bundle dump`).
+- SBOM generation (`cyclonedx-py`) + `pip-audit`/`osv-scanner` snapshot.
+- Apply the 27 Dockerfile `FROM` digest pins (PR + HITL review) — digests in
+  `iact-bench/docker/BASE_IMAGE_DIGESTS.md`.
 - npm/brew/cargo/apt/Docker extension inventory — NOT yet written (the
   extension agent hit a session limit 2026-05-29). Re-run after reset.
 - Tooling proposal: `uv lock` + `pip-audit`/`osv-scanner` + `cyclonedx-py`;
