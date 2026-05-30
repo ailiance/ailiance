@@ -1,8 +1,8 @@
 # omlx: Mistral-Small-3.1 (mistral3) text corrupted with byte-level surface forms
 
-**Status:** open upstream (jundot/omlx). Worked around gateway-side
-(`_repair_byte_level` in `server.py`, PR #141). Ready-to-file issue below
-(sanitized of internal infra details).
+**Status:** filed upstream — **jundot/omlx#1537**. Worked around gateway-side
+(`_repair_byte_level` in `server.py`, PR #141). Filed as jundot/omlx#1537 (the sanitized body below). Also worked around
+bench-side (iact-bench#37).
 
 ---
 
