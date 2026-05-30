@@ -30,13 +30,10 @@ def test_domain_map_lookup():
 def test_domain_map_completeness():
     from src.router.domain_map import DOMAIN_TO_WORKER, ALL_DOMAINS
 
-    # 40 classifier-predicted domains (apertus + devstral + eurollm + qwen)
-    # + 5 GEMMA fallback/utility domains (general, quick, summarize,
-    # classification, tldr). The MLP head still emits 40 logits — the
-    # 5 extras are routing-only post-fallback targets. Bumps here MUST
-    # be reviewed against RouterConfig.num_domains (still 40).
-    # + 2 eu-kiki P1 KiCad generation domains added 2026-05-11 (kicad-dsl,
-    # kicad-pcb): bench Phase 6 champion, routed to macm1 :8502.
+    # 47 domains total — the canonical set the MLP head emits logits over,
+    # derived from DOMAIN_TO_OMLX_MODEL keys. Bumps here MUST be reviewed
+    # against RouterConfig.num_domains (47) and the trained classifier
+    # (retraining required when the domain set changes).
     assert len(ALL_DOMAINS) == 47
     for domain in ALL_DOMAINS:
         assert domain in DOMAIN_TO_WORKER, f"Missing mapping for {domain}"
@@ -52,32 +49,25 @@ def test_classifier_config():
     assert cfg.num_domains == 47
 
 
-def test_mascarade_overrides_apertus():
-    """qwen36 hybrid routing (f375c12): mascarade hardware domains that are
-    also in DOMAIN_TO_QWEN36 now route to QWEN36_PORT (9360) — the qwen36
-    loop is last-write-wins in DOMAIN_TO_WORKER, after omlx consolidation.
-    MASCARADE_DOMAINS not in DOMAIN_TO_QWEN36 stay on OMLX_PORT (none currently).
-    The confidence-gate still applies: below MASCARADE_MIN_CONFIDENCE the
-    fallback is APERTUS_PORT regardless of the final high-confidence target."""
+def test_hardware_specialist_domains_route_to_qwen36():
+    """The former mascarade hardware specialists (kicad, stm32, emc, embedded,
+    platformio, freecad, dsp, iot, power) are all in DOMAIN_TO_QWEN36 and route
+    to the qwen36 hardware instance :9360 (QWEN36_PORT) — none are in the
+    code/language split QWEN36_DOMAINS_B (:9361)."""
     from src.router.domain_map import (
-        APERTUS_DOMAINS,
         DOMAIN_TO_QWEN36,
-        MASCARADE_DOMAINS,
-        MASCARADE_PORT,
-        OMLX_PORT,
+        QWEN36_DOMAINS_B,
         QWEN36_PORT,
         get_worker_for_domain,
     )
 
-    assert MASCARADE_PORT == 9340  # Studio MLX bf16 (was Tower Ollama :8004)
-    assert MASCARADE_DOMAINS <= APERTUS_DOMAINS  # subset = override semantics
-
-    # After qwen36 hybrid routing, mascarade domains in DOMAIN_TO_QWEN36
-    # route to QWEN36_PORT; those not in DOMAIN_TO_QWEN36 stay on OMLX_PORT.
-    for d in MASCARADE_DOMAINS:
-        expected = QWEN36_PORT if d in DOMAIN_TO_QWEN36 else OMLX_PORT
-        assert get_worker_for_domain(d) == expected, (
-            f"{d!r} expected {expected}, got {get_worker_for_domain(d)}"
+    hardware = {"kicad", "stm32", "emc", "embedded",
+                "platformio", "freecad", "dsp", "iot", "power"}
+    for d in hardware:
+        assert d in DOMAIN_TO_QWEN36, f"{d!r} should be qwen36-routed"
+        assert d not in QWEN36_DOMAINS_B, f"{d!r} is hardware → instance A"
+        assert get_worker_for_domain(d) == QWEN36_PORT, (
+            f"{d!r} expected {QWEN36_PORT}, got {get_worker_for_domain(d)}"
         )
 
 
@@ -102,97 +92,38 @@ def test_kicad_dsl_routes_to_eukiki():
     assert get_worker_for_domain("kicad-dsl") == QWEN36_PORT
 
 
-def test_eukiki_domains_all_route_to_8502():
-    """AILIANCE_MACM1_DOMAINS (kicad-dsl, kicad-pcb): after qwen36 hybrid
-    routing (f375c12), kicad-dsl is in DOMAIN_TO_QWEN36 → QWEN36_PORT (9360);
-    kicad-pcb is NOT in DOMAIN_TO_QWEN36 (excluded, broken output) → OMLX_PORT
-    (8500) via DOMAIN_TO_OMLX_MODEL. AILIANCE_MACM1_PORT (:8502) is preserved
-    for rollback; AILIANCE_MACM1_DOMAINS defines the label set."""
+def test_kicad_generation_domains_route():
+    """The two KiCad generation labels split across backends: kicad-dsl is in
+    DOMAIN_TO_QWEN36 → qwen36 :9360 (QWEN36_PORT); kicad-pcb is intentionally
+    excluded (broken qwen36 output) and stays on omlx :8500 (OMLX_PORT) via
+    DOMAIN_TO_OMLX_MODEL 'gemma-4-e4b-eukiki-fused'."""
     from src.router.domain_map import (
-        AILIANCE_MACM1_DOMAINS,
-        AILIANCE_MACM1_PORT,
-        DOMAIN_TO_OMLX_MODEL,
         DOMAIN_TO_QWEN36,
         OMLX_PORT,
         QWEN36_PORT,
         get_worker_for_domain,
     )
 
-    assert AILIANCE_MACM1_PORT == 8502
-    for d in AILIANCE_MACM1_DOMAINS:
-        if d in DOMAIN_TO_QWEN36:
-            expected = QWEN36_PORT
-        elif d in DOMAIN_TO_OMLX_MODEL:
-            expected = OMLX_PORT
-        else:
-            expected = AILIANCE_MACM1_PORT
-        assert get_worker_for_domain(d) == expected, (
-            f"{d!r} expected {expected}, got {get_worker_for_domain(d)}"
-        )
+    assert get_worker_for_domain("kicad-dsl") == QWEN36_PORT
+    assert "kicad-dsl" in DOMAIN_TO_QWEN36
+    assert get_worker_for_domain("kicad-pcb") == OMLX_PORT
+    assert "kicad-pcb" not in DOMAIN_TO_QWEN36
 
 
-def test_confidence_gating_falls_back_to_apertus():
-    """Below the confidence threshold, mascarade domains fall back to
-    Apertus. This protects against false-positive specialist routing
-    on ambiguous prompts where the bigger generalist is safer.
-
-    qwen36 hybrid routing (f375c12): high-confidence mascarade domains
-    now route to QWEN36_PORT (9360) instead of OMLX_PORT (8500), because
-    the qwen36 loop is last-write-wins in DOMAIN_TO_WORKER.
-    The low-confidence → APERTUS_PORT fallback is unchanged."""
+def test_language_domains_route_to_qwen36_instance_b():
+    """The 4 EU-language domains (chat-fr, traduction-tech,
+    redaction-multilingue, localisation-doc) are in QWEN36_DOMAINS_B and route
+    to the qwen36 language instance :9361 (QWEN36_PORT_B)."""
     from src.router.domain_map import (
-        APERTUS_PORT,
-        MASCARADE_MIN_CONFIDENCE,
-        MASCARADE_PORT,
-        OMLX_PORT,
-        QWEN36_PORT,
-        get_worker_for_domain_with_confidence,
-    )
-
-    # High confidence + kicad in DOMAIN_TO_QWEN36 → qwen36 :9360
-    assert (
-        get_worker_for_domain_with_confidence("kicad", 0.996)
-        == QWEN36_PORT
-    )
-    # Below threshold → Apertus fallback (confidence gate still active)
-    assert (
-        get_worker_for_domain_with_confidence("kicad", 0.50)
-        == APERTUS_PORT
-    )
-    # Exactly at threshold → qwen36 (>= semantics; kicad in DOMAIN_TO_QWEN36)
-    assert (
-        get_worker_for_domain_with_confidence(
-            "kicad", MASCARADE_MIN_CONFIDENCE
-        )
-        == QWEN36_PORT
-    )
-    # Non-mascarade domain ignores threshold; python NOT in DOMAIN_TO_QWEN36
-    # → omlx :8500 after consolidation
-    assert (
-        get_worker_for_domain_with_confidence("python", 0.01) == OMLX_PORT
-    )
-    # Empty/None safe
-    assert get_worker_for_domain_with_confidence(None, 0.99) is None
-
-
-
-def test_eurollm_domains_route_to_eurollm_when_live():
-    """Two-instance qwen36 split (79f4136): the 4 EUROLLM_DOMAINS (chat-fr,
-    traduction-tech, redaction-multilingue, localisation-doc) are language
-    domains in QWEN36_DOMAINS_B and route to QWEN36_PORT_B (9361). Previously
-    routed to OMLX_PORT via DOMAIN_TO_OMLX_MODEL (EuroLLM-22B-Instruct-2512).
-    The per-port EUROLLM_PORT (:9303) constant is preserved but not wired."""
-    from src.router.domain_map import (
-        EUROLLM_DOMAINS,
-        QWEN36_PORT,
-        QWEN36_PORT_B,
         QWEN36_DOMAINS_B,
+        QWEN36_PORT_B,
         get_worker_for_domain,
     )
 
-    for d in EUROLLM_DOMAINS:
-        expected = QWEN36_PORT_B if d in QWEN36_DOMAINS_B else QWEN36_PORT
-        assert get_worker_for_domain(d) == expected, (
-            f"{d!r} must route to qwen36 ({expected}), "
-            f"got {get_worker_for_domain(d)}"
+    language = {"chat-fr", "traduction-tech",
+                "redaction-multilingue", "localisation-doc"}
+    for d in language:
+        assert d in QWEN36_DOMAINS_B, f"{d!r} should be instance B"
+        assert get_worker_for_domain(d) == QWEN36_PORT_B, (
+            f"{d!r} expected {QWEN36_PORT_B}, got {get_worker_for_domain(d)}"
         )
