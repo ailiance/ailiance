@@ -923,14 +923,61 @@ def _public_base_url() -> str:
     )
 
 
+def _make_byte_decoder() -> dict[str, int]:
+    """GPT-2 byte-level char→byte map (inverse of ``bytes_to_unicode``)."""
+    bs = (
+        list(range(ord("!"), ord("~") + 1))
+        + list(range(ord("¡"), ord("¬") + 1))
+        + list(range(ord("®"), ord("ÿ") + 1))
+    )
+    cs = bs[:]
+    n = 0
+    for b in range(256):
+        if b not in bs:
+            bs.append(b)
+            cs.append(256 + n)
+            n += 1
+    return {chr(c): b for b, c in zip(bs, cs)}
+
+
+_BYTE_DECODER = _make_byte_decoder()
+
+
+def _repair_byte_level(text: str) -> str:
+    """Reverse byte-level BPE surface leakage (``Ġ``→space, ``Ã©``→é, ``Ċ``→\\n).
+
+    Some omlx-served tokenizers (Mistral-Small-3.1) leak the GPT-2
+    byte-level surface forms instead of decoded text — the token ids are
+    correct, only the final byte-decode is missing, so it is deterministically
+    reversible. A *fully* corrupted message has every space replaced by ``Ġ``,
+    so the reliable signal is: contains ``Ġ`` AND no normal space. The decode
+    is identity for ASCII, so applying it wholesale to a corrupted message is
+    safe; clean text (which has real spaces) is returned untouched.
+    """
+    if not text or "Ġ" not in text or " " in text:
+        return text
+    out = bytearray()
+    for ch in text:
+        b = _BYTE_DECODER.get(ch)
+        if b is None:
+            out.extend(ch.encode("utf-8"))
+        else:
+            out.append(b)
+    return out.decode("utf-8", "replace")
+
+
 def _normalize_message_dict(msg: dict) -> None:
-    """Apply reasoning→content promotion + tag stripping to one message dict.
+    """Apply byte-level repair + reasoning→content promotion + tag stripping.
 
     Mutates ``msg`` in place. Shared by the non-streaming response
     normalizer and the SSE stream normalizer (which operates on each
     chunk's ``delta``).
     """
     content = msg.get("content")
+    if isinstance(content, str):
+        repaired = _repair_byte_level(content)
+        if repaired != content:
+            msg["content"] = content = repaired
     reasoning = msg.get("reasoning")
     if (not content) and isinstance(reasoning, str) and reasoning.strip():
         msg["content"] = reasoning
