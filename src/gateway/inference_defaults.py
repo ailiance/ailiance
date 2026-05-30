@@ -101,7 +101,9 @@ _INFERENCE_DEFAULTS: dict[str, InferenceDefaults] = {
         # 0.7+. Validated 2026-05-12: temp=0.2 on a wikipedia-hosted
         # red image returned "red"; temp=0.7 sometimes returned "blue".
         temperature=0.2,
-        max_tokens=512,
+        # Canonical vision worker (issue #133) — generous budget for full
+        # image descriptions, matching the role gemma-4 previously held.
+        max_tokens=1024,
         # Worker leaks Vicuna template past end-of-turn. Folded in
         # from former _STOP_TOKEN_DEFAULTS (PR #82).
         stop=("\nUSER:", "USER:", "</s>", "[INST]"),
