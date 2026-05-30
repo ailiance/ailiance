@@ -27,9 +27,9 @@ DOMAINS: dict[str, str] = {
     "emc": "electromagnetic compatibility — EMC testing, EMI, CISPR, FCC, shielding, grounding",
     "dsp": "digital signal processing — FIR, IIR, FFT, audio, filtering, sampling theory",
     "spice": "SPICE simulation — ngspice, LTspice, .tran/.ac/.dc, netlists, opamp circuits",
-    "kicad": "KiCad EDA generic — schematic capture, library, footprint, project setup",
+    "kicad": "KiCad EDA GUI workflow — schematic capture in Eeschema, symbol/footprint libraries, ERC, project/netlist setup. Interactive editor use, NOT text-to-file generation (that is kicad-dsl) nor board routing (that is kicad-pcb)",
     "stm32": "STM32 microcontroller — STM32CubeIDE, HAL, RTOS on STM32, peripherals",
-    "platformio": "PlatformIO build system — platformio.ini, libraries, framework selection",
+    "platformio": "PlatformIO build tooling ONLY — platformio.ini config, [env:] sections, lib_deps, board=, framework=arduino/espidf, build_flags, monitor_speed, and the `pio run`/`pio test`/`pio device monitor` CLI. About the build & dependency tool itself, NEVER the target chip (ESP32 is iot, STM32 is stm32)",
     "iot": "Internet of Things — ESP32, MQTT, LoRa, Zigbee, sensors, edge devices",
     "embedded": "embedded systems generic — bare-metal, RTOS, bootloader, hardware bring-up",
     "math": "mathematics — algebra, calculus, linear algebra, equations, proofs",
@@ -73,8 +73,8 @@ DOMAINS: dict[str, str] = {
     "classification": "classification tasks — categorize text, sentiment, label assignment",
     "tldr": "TL;DR requests — give me the short version, the gist, key takeaways",
     # AILIANCE_MACM1 (2)
-    "kicad-dsl": "KiCad DSL — generate kicad_sch / kicad_pcb files from textual spec, atopile-like",
-    "kicad-pcb": "KiCad PCB layout — placement, routing, copper pours, design rules, fab output",
+    "kicad-dsl": "KiCad as-code — programmatically GENERATE kicad_sch / kicad_pcb / netlist files from a textual or DSL spec (atopile-like), scripting the schematic from text. The code-generation task, not the GUI (kicad) nor manual layout (kicad-pcb)",
+    "kicad-pcb": "KiCad PCB board layout in Pcbnew — component placement, track routing, copper zones/pours, design rules (DRC), stackup, Gerber/fab output. The physical layout task, not schematic capture (kicad) nor file generation (kicad-dsl)",
 }
 
 assert len(DOMAINS) == 47, f"Expected 47 domains, got {len(DOMAINS)}"
