@@ -817,13 +817,15 @@ _BLOCKED_CHAT_ALIASES: frozenset[str] = frozenset({
 # auto-route: ANY request whose body carries an ``image_url`` (or other
 # image) block is routed to the canonical vision alias, regardless of the
 # alias the caller asked for, unless the caller already picked a vision
-# alias. The canonical worker is gemma-4-E4B on omlx :8500 (verified E2E:
-# reads text + colours). ailiance-pixtral is kept vision-capable for a
-# follow-up (Pixtral's [IMG] tokenization is broken in omlx today).
+# alias. The canonical worker is Pixtral-12B on omlx :8500 (issue #133
+# resolved: the prior image-drop was a missing torch/torchvision image
+# processor in the omlx env, not fix_mistral_regex — verified E2E reading
+# text + colours via omlx and through the gateway). gemma-4-E4B stays
+# vision-capable as the lightweight explicit alias.
 _VISION_ALIASES: frozenset[str] = frozenset(
     {"ailiance-gemma4-omlx", "ailiance-pixtral"}
 )
-_CANONICAL_VISION_ALIAS = "ailiance-gemma4-omlx"
+_CANONICAL_VISION_ALIAS = "ailiance-pixtral"
 
 
 def _maybe_route_to_vision(model: str, has_images: bool) -> str:

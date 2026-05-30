@@ -86,8 +86,9 @@ class TestApplyDefaults:
         assert "USER:" in body["stop"]
         # temp lowered
         assert body["temperature"] == 0.2
-        # max_tokens lowered from schema default
-        assert body["max_tokens"] == 512
+        # canonical vision worker (issue #133): generous budget for full
+        # image descriptions
+        assert body["max_tokens"] == 1024
 
     def test_pixtral_user_stop_preserved(self):
         body = {"temperature": 0.7, "max_tokens": 2048, "stop": ["###END"]}
