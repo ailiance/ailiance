@@ -389,10 +389,11 @@ the HITL pin+SBOM flow and must be reconciled:
   `~/omlx-venv`** (omlx's `PixtralProcessor` / VLM path needs them; without
   them omlx falls back to text-only and drops the image). Installed via
   `uv pip install --python ~/omlx-venv/bin/python torch torchvision`.
-  - **To reconcile:** pin these in the omlx-node deploy manifest
-    (`ailiance/ailiance-omlx-node`) and add the omlx-venv to the SBOM scope
-    (it was previously UNVERIFIED — captured here: omlx 0.3.9 + the MLX pins
-    in §11 + now torch/torchvision). These are heavy native deps (Metal/MPS).
+  - **RECONCILED 2026-05-30** (`ailiance/ailiance-omlx-node` PR #1): pinned in
+    the deploy manifest as `defaults.pip_pins` (`install_omlx` reconciles them
+    on every run, idempotent), and the omlx-venv is now in SBOM scope
+    (`ailiance-omlx-node/sbom/`: CycloneDX 1.6 over 93 packages + OSV scan).
+    These are heavy native deps (Metal/MPS).
 - **Gemma-4 vision model**: `gemma-4-E4B-it-MLX-4bit` (already in the omlx
   catalog) is now the canonical vision worker (gateway #132). `pixtral-12b-8bit`
   was downloaded (`mlx-community/pixtral-12b-8bit`) but is broken in omlx
@@ -402,5 +403,9 @@ the HITL pin+SBOM flow and must be reconciled:
   #135); the public `AILIANCE_PUBLIC_BASE_URL` stays HTTPS. Config, not a dep,
   but recorded for the deploy manifest.
 
-**Open:** regenerate the omlx-venv SBOM once torch/torchvision are pinned in
-the omlx-node manifest; run `pip-audit` against the omlx-venv (torch CVEs).
+**Done (2026-05-30):** omlx-venv SBOM regenerated with torch/torchvision
+pinned (`ailiance-omlx-node` PR #1); OSV scan over the 93-package venv shows
+**0 advisories** at capture (`ailiance-omlx-node/sbom/pip-audit.json`). The
+venv is uv-provisioned (no `pip`), so the freeze is enumerated via
+`importlib.metadata` and the CVE scan hits OSV's API directly — repeatable
+steps in that repo's `sbom/README.md`.
