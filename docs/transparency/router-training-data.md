@@ -9,24 +9,49 @@ this artefact as a high-quality classifier without reading below.
 
 ---
 
-## 1. Current status (as of 2026-05-06)
+## 1. Current status (as of 2026-05-30 — router v9)
 
 | Item | Value |
 |---|---|
-| Active checkpoint | `output/router-v6/router.safetensors` |
-| Encoder | `sentence-transformers/all-MiniLM-L6-v2` |
-| Head | 2-layer MLP (384 → 256 → 32) |
-| Total training examples | ~7 800 |
-| Total validation examples | ~2 000 |
-| Top-1 accuracy on validation | **87.7 %** |
-| Top-3 accuracy on validation | ~98 % |
-| Threshold | 0.50 (calibrated on v6 head — see scripts/calibrate_threshold.py) |
-| HuggingFace mirror | https://huggingface.co/clemsail/ailiance-router-v6-minilm |
+| Active checkpoint | `output/router-prod` → `router-v9-20260530/router.safetensors` |
+| Encoder | `sentence-transformers/all-MiniLM-L6-v2` (384d) |
+| Head | 2-layer MLP (384 → 256 → 47) |
+| Domains | **47** (canonical set = `DOMAIN_TO_OMLX_MODEL` keys in `src/router/domain_map.py`) |
+| Total examples | 6 548 (train 5 219 / valid 634 / test 695) |
+| macro-F1 (test) | **0.889** (v8 was 0.869) |
+| weighted-F1 (test) | **0.889** |
+| Behavioural check | 14/14 neutral prompts (v8: 10/14); 10/10 live via gateway `/v1/route` |
+| Threshold | 0.50 |
+
+### v7 → v9 pipeline (LLM-generated corpus)
+
+From v7 the corpus is **synthesised**, not scraped: `scripts/router_v7_gen.py`
+prompts a clean instruct model for ~120 prompts per domain (50% FR / 50% EN,
+varied length/tone/form), `scripts/router_v7_curate.py` injects hand-written
+edge cases and does a seeded 80/10/10 split, `scripts/router_v7_train.py`
+encodes with MiniLM and trains the MLP. Reproducible from the scripts (the
+seeded split is deterministic given a fixed raw corpus; LLM generation itself
+is not bit-reproducible — freeze `data/router-v9/` to pin a corpus).
+
+### v9 changes vs v8 (2026-05-30)
+
+1. **Detokenizer-corruption fix (root cause of v8's weakness).** The v8
+   generator defaulted to `ailiance-mistral-small`, whose **omlx serving has an
+   SPM-detokenizer-on-byte-level-BPE bug**: it emits literal `Ġ` (space), `Ã©`
+   (é), `Ċ` (newline) surface forms instead of decoded text — silently poisoning
+   the corpus and starving it (only ~2–3 usable prompts/domain, hence v8
+   `platformio` F1 = **0.0**). Only mistral-small is affected; Qwen / DeepSeek /
+   gemma-4 / EuroLLM serve clean. v9 defaults to a clean model (`ailiance-qwen`)
+   and adds a hard `_is_corrupt()` guard that drops any `Ġ`/`Ċ`/mojibake line —
+   so no detokenizer regression in any model can reach the training set again.
+2. **Discriminative prompts** for the previously-confused clusters: `platformio`
+   (build tooling, not the chip), the `kicad` / `kicad-dsl` / `kicad-pcb` triplet
+   (GUI vs code-gen vs layout), with FR+EN edge cases. Result: `platformio`
+   0.00 → 0.88, kicad-pcb 0.59 → 0.87, and the whole code cluster lifted.
 
 The §4 limitation that affected v3 (label drift in the noisy auto-classified
-corpus) is now resolved: v6 trains on the AI-Act-traceable clean corpus
-(`data/router-clean/`) plus 150 manually-curated niche-domain prompts
-(`scripts/augment_niche_domains.py`).
+corpus) was resolved at v6 (clean corpus); v7+ moved to the synthesised corpus
+above.
 
 ---
 

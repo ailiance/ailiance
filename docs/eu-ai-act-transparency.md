@@ -138,7 +138,7 @@ AILIANCE is a multi-model routing system that dispatches user queries to one of 
 | **Parameters** | 22.7M |
 | **Embedding dim** | 384 |
 | **License** | Apache 2.0 |
-| **Purpose** | Domain classifier encoder (production since router-v5) |
+| **Purpose** | Domain classifier encoder (production since router-v5; current head **router-v9**, 47 domains, macro-F1 0.889) |
 | **Bench rationale** | Retained after comparative evaluation with Jina v3 — see [`docs/transparency/router-training-data.md`](transparency/router-training-data.md) (KEEP MiniLM decision) |
 
 ### 3.2 Evaluated alternative (rejected): Jina Embeddings v3
