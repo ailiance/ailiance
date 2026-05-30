@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
-"""Generate router v7 corpus (47-label) using ailiance-mistral-small via gateway.
+"""Generate router v7 corpus (47-label) via the gateway.
 
-Concurrency: 2 parallel streams against the gateway to amortize TTFT.
+Concurrency: parallel streams against the gateway to amortize TTFT.
 Writes one JSONL per domain in data/router-v7-raw/<domain>.jsonl.
+
+GEN_MODEL must be a model whose omlx detokenizer is correct. Mistral-Small
+(``ailiance-mistral-small``) is BANNED here: its omlx serving uses an
+SPM detokenizer on a byte-level BPE vocab and emits literal ``Ġ``/``Ã©``/``Ċ``
+surface forms instead of spaces/accents/newlines, silently poisoning the
+corpus (this is the same detok bug that keeps it off the bench judge). The
+``_is_corrupt`` guard below rejects any such line as defence-in-depth, so a
+future detokenizer regression in *any* model cannot reach the training set.
 """
 from __future__ import annotations
 
@@ -18,7 +26,19 @@ from pathlib import Path
 import httpx
 
 GATEWAY = os.environ.get("GATEWAY_URL", "http://localhost:9300/v1/chat/completions")
-MODEL = os.environ.get("GEN_MODEL", "ailiance-mistral-small")
+# Default to a detokenizer-clean model. ailiance-qwen (Qwen3) verified clean +
+# high-yield 2026-05-30. NEVER default to ailiance-mistral-small (see docstring).
+MODEL = os.environ.get("GEN_MODEL", "ailiance-qwen")
+
+# Byte-level / SPM detokenizer corruption markers. Their presence in "natural"
+# text means the worker leaked tokenizer surface forms — reject the line.
+#   Ġ U+0120 (BPE space), Ċ U+010A (BPE newline), Ã©/Ã¨/Ã /Â… (UTF-8 read as latin-1)
+_CORRUPT_MARKERS = ("Ġ", "Ċ", "Ã©", "Ã¨", "Ã ", "Ã§", "Ãª", "Ã®", "Ã´", "Ã»", "Ã¹", "Â°", "â\x82¬")
+
+
+def _is_corrupt(text: str) -> bool:
+    """True if text carries detokenizer-leak markers (Ġ/Ċ/mojibake)."""
+    return any(m in text for m in _CORRUPT_MARKERS)
 
 # 47 domains with concise descriptions for the meta-prompt.
 DOMAINS: dict[str, str] = {
@@ -125,6 +145,17 @@ def gen_one(domain: str, desc: str, out_dir: Path, n_target: int = 100) -> tuple
             print(f"  [{domain}] HTTP error attempt {attempts}: {e}", flush=True)
             continue
 
+        # Hard stop if the whole response is detokenizer-corrupted: a bad
+        # GEN_MODEL would otherwise fill the corpus with Ġ/mojibake garbage.
+        if _is_corrupt(content):
+            print(
+                f"  [{domain}] CORRUPT response (Ġ/mojibake) from model {MODEL!r} — "
+                f"refusing to ingest. Use a detokenizer-clean GEN_MODEL.",
+                flush=True,
+            )
+            continue
+
+        rejected = 0
         for line in content.split("\n"):
             line = line.strip().rstrip(",")
             if not line.startswith("{"):
@@ -140,7 +171,13 @@ def gen_one(domain: str, desc: str, out_dir: Path, n_target: int = 100) -> tuple
             text = ex.get("text") or ex.get("prompt") or ex.get("instruction")
             if not text or len(text) < 3:
                 continue
-            collected.append({"text": text.strip(), "label": domain})
+            text = text.strip()
+            if _is_corrupt(text):
+                rejected += 1
+                continue
+            collected.append({"text": text, "label": domain})
+        if rejected:
+            print(f"  [{domain}] rejected {rejected} corrupted line(s)", flush=True)
 
         # dedup
         seen = set()
