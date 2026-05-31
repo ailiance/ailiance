@@ -290,3 +290,79 @@ def messages_already_have_system(messages) -> bool:
         if role == "system":
             return True
     return False
+
+
+def _msg_get(msg, key):
+    """Read ``key`` from a pydantic ChatMessage or a raw dict."""
+    return msg.get(key) if isinstance(msg, dict) else getattr(msg, key, None)
+
+
+def _msg_set_content(msg, value) -> None:
+    if isinstance(msg, dict):
+        msg["content"] = value
+    else:
+        msg.content = value
+
+
+def _is_structural(msg) -> bool:
+    """True for messages that carry tool-use structure and must never be
+    merged (assistant ``tool_calls``, ``role=='tool'`` results, anything
+    bound to a ``tool_call_id`` or a ``name``)."""
+    if _msg_get(msg, "role") == "tool":
+        return True
+    return bool(_msg_get(msg, "tool_calls")) or _msg_get(msg, "tool_call_id") is not None or _msg_get(msg, "name") is not None
+
+
+def _content_to_blocks(content) -> list:
+    """Normalise message content to a list of OpenAI content blocks."""
+    if content is None:
+        return []
+    if isinstance(content, str):
+        return [{"type": "text", "text": content}] if content else []
+    if isinstance(content, list):
+        return list(content)
+    return [{"type": "text", "text": str(content)}]
+
+
+def _merge_content(a, b):
+    """Merge two message contents. Two plain strings join with a blank
+    line; anything multimodal degrades to a concatenated block list so no
+    image/text part is lost."""
+    if isinstance(a, str) and isinstance(b, str):
+        if a and b:
+            return f"{a}\n\n{b}"
+        return a or b
+    return _content_to_blocks(a) + _content_to_blocks(b)
+
+
+def normalize_message_roles(messages):
+    """Collapse consecutive same-role messages into one.
+
+    Strict chat templates (Mistral / Qwen3 / DeepSeek) raise
+    ``Conversation roles must alternate user/assistant/...`` when two
+    messages of the same role appear back to back — which happens when an
+    agent (Dirac/``aki``) maps tool results onto consecutive ``user`` turns.
+    Merging same-role neighbours is semantically equivalent and harmless to
+    tolerant templates (gemma, etc.), so it is applied to every backend.
+
+    Tool-use messages (``role=='tool'``, assistant ``tool_calls``, anything
+    with a ``tool_call_id``/``name``) are treated as structural boundaries
+    and never merged, preserving function-calling round trips. ``system`` is
+    merged with an adjacent ``system`` only; it is never folded into ``user``.
+
+    Handles both pydantic :class:`ChatMessage` and raw dicts. Returns a new
+    list; kept messages may have their ``content`` mutated in place.
+    """
+    result: list = []
+    for msg in messages or []:
+        prev = result[-1] if result else None
+        if (
+            prev is not None
+            and _msg_get(prev, "role") == _msg_get(msg, "role")
+            and not _is_structural(prev)
+            and not _is_structural(msg)
+        ):
+            _msg_set_content(prev, _merge_content(_msg_get(prev, "content"), _msg_get(msg, "content")))
+        else:
+            result.append(msg)
+    return result
