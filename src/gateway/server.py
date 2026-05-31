@@ -42,6 +42,7 @@ from src.gateway.inference_defaults import (
     apply_inference_defaults,
     default_system_prompt,
     messages_already_have_system,
+    normalize_message_roles,
 )
 from src.gateway.inline_files import (
     image_store,
@@ -1546,6 +1547,12 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         _sys_default = default_system_prompt(req.model)
         if _sys_default and not messages_already_have_system(req.messages):
             req.messages.insert(0, ChatMessage(role="system", content=_sys_default))
+
+        # Collapse consecutive same-role messages so strict backend chat
+        # templates (Qwen3 / Mistral / DeepSeek) don't raise "roles must
+        # alternate" when an agent maps tool results onto back-to-back user
+        # turns. Tool-use messages are preserved as structural boundaries.
+        req.messages = normalize_message_roles(req.messages)
 
         # Extract the last user message once; reused for routing, cascade
         # complexity scoring, and the orchestrator path below. _last_user_text
