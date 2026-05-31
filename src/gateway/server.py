@@ -293,8 +293,13 @@ def _cascade_pick(domain: str, prompt: str) -> str | None:
 # this port regardless of which alias the caller picked. This override
 # composes with the cascade above: if cascade picks a non-FC alias and
 # tools[] is present, the force-route still wins.
-FC_CAPABLE_PORTS: frozenset[int] = frozenset({8002})
+FC_CAPABLE_PORTS: frozenset[int] = frozenset({8002, OMLX_PORT})
 FC_FORCE_ROUTE_PORT: int = 8002
+# When the primary FC backend (8002, Qwen3-Next on kxkm-ai) is unreachable,
+# fall back to omlx Qwen3-Coder-30B, which also emits valid OpenAI tool_calls
+# (verified 2026-05-31) rather than the hallucinated XML other workers produce.
+FC_FALLBACK_PORT: int = OMLX_PORT
+FC_FALLBACK_MODEL: str = "Qwen3-Coder-30B-A3B-Instruct-MLX-4bit"
 
 # Effective context window each worker actually accepts. Source of truth: the
 # launch flags of the worker process (llama.cpp --ctx-size, mlx_lm.server
@@ -1639,18 +1644,31 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         # the client could not dispatch). Set GATEWAY_FC_FORCE_ROUTE=false
         # to disable when testing FC support on a new worker.
         # ------------------------------------------------------------------
+        fc_fallback_active = False
         if (
             req.tools
             and _fc_force_route_enabled()
             and worker_port not in FC_CAPABLE_PORTS
         ):
+            # Prefer the primary FC backend (8002, kxkm-ai); if it is unhealthy,
+            # fall back to omlx Qwen3-Coder-30B (also emits valid tool_calls) so
+            # agent tools[] requests degrade gracefully instead of hanging on a
+            # dead backend until the client times out (524).
+            if FC_FORCE_ROUTE_PORT in _healthy_ports:
+                fc_target = FC_FORCE_ROUTE_PORT
+            elif FC_FALLBACK_PORT in _healthy_ports:
+                fc_target = FC_FALLBACK_PORT
+                fc_fallback_active = True
+            else:
+                fc_target = FC_FORCE_ROUTE_PORT  # both FC backends down — fail loud
             log.info(
-                "fc-force-route: model=%s tools=%d redirect %d -> %d",
-                req.model, len(req.tools), worker_port, FC_FORCE_ROUTE_PORT,
+                "fc-force-route: model=%s tools=%d redirect %d -> %d%s",
+                req.model, len(req.tools), worker_port, fc_target,
+                " (omlx fallback)" if fc_fallback_active else "",
             )
-            forced_port = FC_FORCE_ROUTE_PORT
+            forced_port = fc_target
             domain = ""
-            worker_port = _gate_port(FC_FORCE_ROUTE_PORT)
+            worker_port = _gate_port(fc_target)
 
         # Router v0.3 dispatch resolution. Two ways to engage the chain:
         #   (1) explicit  — extra_body.chain_policy from any request,
@@ -1868,7 +1886,14 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             if worker_port == OMLX_PORT and domain in DOMAIN_TO_OMLX_MODEL
             else None
         )
-        override = ALIAS_MODEL_REWRITES.get(rewrite_key) or _qwen36_override or _omlx_override or WORKER_FORWARD_OVERRIDES.get(worker_port)
+        _fc_fallback_override = {"model": FC_FALLBACK_MODEL} if fc_fallback_active else None
+        override = (
+            ALIAS_MODEL_REWRITES.get(rewrite_key)
+            or _qwen36_override
+            or _omlx_override
+            or _fc_fallback_override
+            or WORKER_FORWARD_OVERRIDES.get(worker_port)
+        )
         if override:
             if "model" in override:
                 body["model"] = override["model"]

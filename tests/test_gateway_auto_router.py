@@ -44,6 +44,88 @@ def _build_orch(audit_dir: Path) -> ChainOrchestrator:
     )
 
 
+def test_fc_force_route_falls_back_to_omlx_when_primary_down(tmp_path: Path) -> None:
+    """tools[] force-routes to the FC backend (8002). When 8002 is unhealthy,
+    the gateway must fall back to omlx Qwen3-Coder-30B (valid tool_calls) and
+    rewrite the model field — instead of hanging on the dead backend."""
+    from src.gateway import server as gw
+
+    app = gw.make_gateway_app(skip_router_load=True)
+    app.state.router = _FakeRouter(domain="math-gsm8k")  # DIRECT, non-FC port
+    app.state.orchestrator = _build_orch(tmp_path)
+    client = TestClient(app)
+
+    captured: dict = {}
+
+    class _FakeResp:
+        status_code = 200
+        content = b"{}"
+
+        def json(self):
+            return {"id": "x", "choices": [{"message": {"content": "ok"}}]}
+
+    async def fake_post(self, *args, **kwargs):
+        captured["url"] = args[0] if args else kwargs.get("url")
+        captured["model"] = (kwargs.get("json") or {}).get("model")
+        return _FakeResp()
+
+    tools = [{"type": "function", "function": {
+        "name": "ls", "description": "list", "parameters": {"type": "object", "properties": {}}}}]
+
+    # Primary FC backend (8002) down; omlx (8500) healthy.
+    with patch.object(gw, "_healthy_ports", {gw.OMLX_PORT, gw.HEALTH_FALLBACK_PORT}), \
+         patch("httpx.AsyncClient.post", new=fake_post):
+        resp = client.post("/v1/chat/completions", json={
+            "model": "ailiance",
+            "messages": [{"role": "user", "content": "hello"}],
+            "tools": tools,
+        })
+
+    assert resp.status_code == 200
+    assert str(gw.OMLX_PORT) in str(captured["url"])      # forwarded to omlx :8500
+    assert captured["model"] == gw.FC_FALLBACK_MODEL        # model rewritten to Qwen3-Coder
+
+
+def test_fc_force_route_uses_primary_when_healthy(tmp_path: Path) -> None:
+    """When 8002 is healthy, tools[] still pins to the primary FC backend and
+    does NOT rewrite the model to the omlx fallback."""
+    from src.gateway import server as gw
+
+    app = gw.make_gateway_app(skip_router_load=True)
+    app.state.router = _FakeRouter(domain="math-gsm8k")
+    app.state.orchestrator = _build_orch(tmp_path)
+    client = TestClient(app)
+
+    captured: dict = {}
+
+    class _FakeResp:
+        status_code = 200
+        content = b"{}"
+
+        def json(self):
+            return {"id": "x", "choices": [{"message": {"content": "ok"}}]}
+
+    async def fake_post(self, *args, **kwargs):
+        captured["url"] = args[0] if args else kwargs.get("url")
+        captured["model"] = (kwargs.get("json") or {}).get("model")
+        return _FakeResp()
+
+    tools = [{"type": "function", "function": {
+        "name": "ls", "description": "list", "parameters": {"type": "object", "properties": {}}}}]
+
+    with patch.object(gw, "_healthy_ports", {gw.FC_FORCE_ROUTE_PORT, gw.OMLX_PORT}), \
+         patch("httpx.AsyncClient.post", new=fake_post):
+        resp = client.post("/v1/chat/completions", json={
+            "model": "ailiance",
+            "messages": [{"role": "user", "content": "hello"}],
+            "tools": tools,
+        })
+
+    assert resp.status_code == 200
+    assert str(gw.FC_FORCE_ROUTE_PORT) in str(captured["url"])  # pinned to primary
+    assert captured["model"] != gw.FC_FALLBACK_MODEL            # no omlx rewrite
+
+
 def test_auto_engages_for_ailiance_alias_on_deliberate_domain(
     tmp_path: Path,
 ) -> None:
