@@ -252,6 +252,34 @@ def _complexity_estimate(prompt: str) -> str:
     return "medium"
 
 
+def _estimate_prompt_tokens(req_body: dict) -> int:
+    """Cheap char-based prompt-token estimate for context-budget routing.
+
+    ~3.5 chars/token is conservative for mixed English/code, and the tools
+    schema is counted too. Intentionally errs high: a borderline prompt is
+    better rerouted to the big-context backend than rejected by a small
+    worker with "prompt too long". No tokenizer on the hot path.
+    """
+    chars = 0
+    for m in req_body.get("messages") or []:
+        if not isinstance(m, dict):
+            continue
+        c = m.get("content")
+        if isinstance(c, str):
+            chars += len(c)
+        elif isinstance(c, list):
+            for part in c:
+                if isinstance(part, dict):
+                    chars += len(str(part.get("text", "")))
+    tools = req_body.get("tools")
+    if tools:
+        try:
+            chars += len(json.dumps(tools))
+        except Exception:
+            pass
+    return int(chars / 3.5)
+
+
 # Cascade table: (complexity, domain) → alias override.
 # A ``None`` (or absent key) means "no override". Domain ``_default`` applies
 # when the classifier domain is not explicitly listed.
@@ -1645,6 +1673,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         # to disable when testing FC support on a new worker.
         # ------------------------------------------------------------------
         fc_fallback_active = False
+        fc_force_routed = False
         if (
             req.tools
             and _fc_force_route_enabled()
@@ -1669,6 +1698,39 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             forced_port = fc_target
             domain = ""
             worker_port = _gate_port(fc_target)
+            # When the FC force-route redirects to the primary backend (8002),
+            # the request must carry THAT port's model id + auth (qwen-32b-awq +
+            # AILIANCE_QWEN_KEY), not the inbound alias rewrite — otherwise the
+            # kxkm-ai worker gets a foreign model id and no bearer and 401s
+            # ("Invalid API Key", relayed as a misleading auth error). The OMLX
+            # fallback already injects its own override, so scope this to the
+            # primary target.
+            fc_force_routed = fc_target == FC_FORCE_ROUTE_PORT
+
+        # ------------------------------------------------------------------
+        # Context-budget reroute. If the estimated prompt size exceeds the
+        # chosen worker's context window, send the request to the large-context
+        # backend (8002, Qwen3-Next-80B, 196k) instead of letting the worker
+        # reject it with a 400 "prompt too long". Long agent sessions outgrow
+        # the 32k MLX/omlx models; 8002 has the biggest window in the parc and
+        # is tool-capable. Reuses the FC override path (fc_force_routed) so 8002
+        # receives its served model id + bearer. No-op when 8002 is unhealthy
+        # (the request then degrades to a clean 400 the client can condense on).
+        # ------------------------------------------------------------------
+        if worker_port != FC_FORCE_ROUTE_PORT and FC_FORCE_ROUTE_PORT in _healthy_ports:
+            _wctx = WORKER_CONTEXT_WINDOWS.get(worker_port)
+            if _wctx and WORKER_CONTEXT_WINDOWS.get(FC_FORCE_ROUTE_PORT, 0) > _wctx:
+                _est_tokens = _estimate_prompt_tokens(_trace_req_body)
+                _reply_headroom = min(int(_trace_req_body.get("max_tokens") or 0) or 4096, _wctx // 4)
+                if _est_tokens > _wctx - _reply_headroom:
+                    log.info(
+                        "context-budget reroute: est=%d > ctx[%d]=%d-%d → %d (196k)",
+                        _est_tokens, worker_port, _wctx, _reply_headroom, FC_FORCE_ROUTE_PORT,
+                    )
+                    forced_port = FC_FORCE_ROUTE_PORT
+                    domain = ""
+                    worker_port = _gate_port(FC_FORCE_ROUTE_PORT)
+                    fc_force_routed = True
 
         # Router v0.3 dispatch resolution. Two ways to engage the chain:
         #   (1) explicit  — extra_body.chain_policy from any request,
@@ -1887,8 +1949,14 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
             else None
         )
         _fc_fallback_override = {"model": FC_FALLBACK_MODEL} if fc_fallback_active else None
+        # B-fix: when force-routed to the primary FC backend, that port's
+        # forward override (model + auth_env) MUST win over the inbound alias
+        # rewrite, so the worker receives the model id it serves and the bearer
+        # it requires.
+        _fc_force_override = WORKER_FORWARD_OVERRIDES.get(worker_port) if fc_force_routed else None
         override = (
-            ALIAS_MODEL_REWRITES.get(rewrite_key)
+            _fc_force_override
+            or ALIAS_MODEL_REWRITES.get(rewrite_key)
             or _qwen36_override
             or _omlx_override
             or _fc_fallback_override
@@ -1931,6 +1999,42 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
                     path="stream",
                     auto="0",
                 ).inc()
+
+                # D-fix: the worker responded before any byte was relayed, so we
+                # can still return a clean status (fifo_cm is still held here, so
+                # the outer finally releases the lock on return). Two cases:
+                #  - 5xx / infra failure  -> normalize to a clear 502 so a bare
+                #    relayed upstream status doesn't confuse the client.
+                #  - 4xx client error (e.g. 400 "prompt too long",
+                #    invalid_request) -> pass the REAL status + body through so
+                #    the caller can react (condense context, abort) instead of
+                #    futilely retrying a masked, retriable 502.
+                if worker_resp.status_code >= 400:
+                    _err_text = (await worker_resp.aread()).decode("utf-8", errors="replace")
+                    await worker_resp.aclose()
+                    log.warning(
+                        "upstream worker=%s status=%s body=%s",
+                        worker_port, worker_resp.status_code, _err_text[:300],
+                    )
+                    if worker_resp.status_code >= 500:
+                        return JSONResponse(
+                            status_code=502,
+                            content={
+                                "error": {
+                                    "message": f"upstream worker {worker_port} returned {worker_resp.status_code}",
+                                    "type": "upstream_error",
+                                    "code": 502,
+                                }
+                            },
+                        )
+                    # 4xx: relay the upstream's real status + body verbatim.
+                    try:
+                        _client_err = json.loads(_err_text)
+                    except Exception:
+                        _client_err = {
+                            "error": {"message": _err_text[:500] or "upstream client error", "code": worker_resp.status_code}
+                        }
+                    return JSONResponse(status_code=worker_resp.status_code, content=_client_err)
 
                 # Capture for closure so the lock is released once the
                 # stream is fully consumed (or the client disconnects).
