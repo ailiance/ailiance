@@ -72,7 +72,7 @@ _DEFAULT_WORKER_URLS = {
     9304: "http://localhost:9304",
     # Qwen3.6-35B-A3B MLX BF16 on Studio (mlx_lm.server :9305)
     9305: "http://localhost:9305",
-    # Qwen3-Next 80B-A3B MoE on kxkm-ai (llama-server, alias 'qwen-32b-awq')
+    # Qwen3-Coder-30B-A3B MoE on kxkm-ai (llama-server, alias 'qwen-32b-awq')
     # reached via the autossh tunnel listening on 0.0.0.0:8002.
     8002: "http://localhost:8002",
     # Granite 4.1 30B Q4_K_M GGUF on kxkm-ai (llama-server :18889)
@@ -314,7 +314,7 @@ def _cascade_pick(domain: str, prompt: str) -> str | None:
 # JSON array in responses). Today only the kxkm-ai vLLM Qwen 32B native-FC
 # worker on port 8002 qualifies; all MLX backends (Mistral-Medium-128B :9301,
 # EuroLLM :9303, Gemma macm1 :8502, Studio MLX :9305/9323-9327) and llama.cpp
-# servers (Gemma :9304, Granite :8003, Qwen-80B via :8002 tunnel when running
+# servers (Gemma :9304, Granite :8003, Qwen3-Coder-30B via :8002 tunnel when running
 # llama-server rather than vLLM) either lack FC support entirely or emit
 # hallucinated XML shapes that downstream parsers cannot dispatch. When a
 # request carries tools[], FC_FORCE_ROUTE_PORT below pins the dispatch to
@@ -323,7 +323,7 @@ def _cascade_pick(domain: str, prompt: str) -> str | None:
 # tools[] is present, the force-route still wins.
 FC_CAPABLE_PORTS: frozenset[int] = frozenset({8002, OMLX_PORT})
 FC_FORCE_ROUTE_PORT: int = 8002
-# When the primary FC backend (8002, Qwen3-Next on kxkm-ai) is unreachable,
+# When the primary FC backend (8002, Qwen3-Coder-30B on kxkm-ai) is unreachable,
 # fall back to omlx Qwen3-Coder-30B, which also emits valid OpenAI tool_calls
 # (verified 2026-05-31) rather than the hallucinated XML other workers produce.
 FC_FALLBACK_PORT: int = OMLX_PORT
@@ -338,7 +338,7 @@ FC_FALLBACK_MODEL: str = "Qwen3-Coder-30B-A3B-Instruct-MLX-4bit"
 # CLI clients read this header off the response and override info.contextWindow
 # accordingly. Numbers verified 2026-05-12 from live ps + worker launch args.
 WORKER_CONTEXT_WINDOWS: dict[int, int] = {
-    8002: 196608,   # llama-server Qwen3-Next-80B-A3B Q4_K_M (--ctx-size 196608)
+    8002: 131072,   # kxkm-ai llama-server Qwen3-Coder-30B-A3B Q4_K_M (--ctx-size 131072, KV in CPU RAM)
     8003: 131072,   # llama-server Granite-4.1-30B Q4_K_M (n_ctx_train 131072)
     8004: 32768,    # Tower Ollama: Qwen3 4B Q4 mascarade fine-tunes (32k default)
     9340: 32768,    # Studio MLX bf16 qwen3-4b-mascarade experts (conservative cap)
@@ -1710,7 +1710,7 @@ def make_gateway_app(skip_router_load: bool = False) -> FastAPI:
         # ------------------------------------------------------------------
         # Context-budget reroute. If the estimated prompt size exceeds the
         # chosen worker's context window, send the request to the large-context
-        # backend (8002, Qwen3-Next-80B, 196k) instead of letting the worker
+        # backend (8002, Qwen3-Coder-30B, 131k) instead of letting the worker
         # reject it with a 400 "prompt too long". Long agent sessions outgrow
         # the 32k MLX/omlx models; 8002 has the biggest window in the parc and
         # is tool-capable. Reuses the FC override path (fc_force_routed) so 8002
